@@ -1,0 +1,13 @@
+node_modules
+# Environment varibales
+.env*
+!.env*.example
+
+# IDE
+.idea
+
+# Code coverage
+coverage
+
+# data mongo
+data
