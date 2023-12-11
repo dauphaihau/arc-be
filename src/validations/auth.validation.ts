@@ -1,46 +1,26 @@
-import Joi from 'joi';
-import { password } from './custom.validation';
+import { z } from 'zod';
+import { tokenSchema } from '@/interfaces/schema/token';
+import { userSchema } from '@/interfaces/schema/user';
 
 export const authValidation = {
-  register: {
-    body: Joi.object().keys({
-      email: Joi.string().required().email(),
-      password: Joi.string().required().custom(password),
-      name: Joi.string().required(),
-    }),
-  },
-  login: {
-    body: Joi.object().keys({
-      email: Joi.string().required(),
-      password: Joi.string().required(),
-    }),
-  },
-  logout: {
-    body: Joi.object().keys({
-      refreshToken: Joi.string().required(),
-    }),
-  },
-  refreshTokens: {
-    body: Joi.object().keys({
-      refreshToken: Joi.string().required(),
-    }),
-  },
-  forgotPassword: {
-    body: Joi.object().keys({
-      email: Joi.string().email().required(),
-    }),
-  },
-  resetPassword: {
-    query: Joi.object().keys({
-      token: Joi.string().required(),
-    }),
-    body: Joi.object().keys({
-      password: Joi.string().required().custom(password),
-    }),
-  },
-  verifyEmail: {
-    query: Joi.object().keys({
-      token: Joi.string().required(),
-    }),
-  },
+  register: z.object({
+    body: userSchema
+      .pick({ name: true, email: true, password: true })
+      .strict(),
+  }),
+  login: z.object({
+    body: userSchema
+      .pick({ password: true, email: true })
+      .strict(),
+  }),
+  forgotPassword: z.object({
+    body: userSchema.pick({ email: true }).strict(),
+  }),
+  resetPassword: z.object({
+    query: tokenSchema.pick({ token: true }).strict(),
+    body: userSchema.pick({ password: true }).strict(),
+  }),
+  verifyEmail: z.object({
+    query: tokenSchema.pick({ token: true }).strict(),
+  }),
 };

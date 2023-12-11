@@ -1,8 +1,8 @@
 import { ClientSession, ObjectId } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
+import { CreateUserPayload, UpdateUserPayload } from '@/interfaces/models/user';
 import { User } from '@/models';
 import { ApiError } from '@/utils/ApiError';
-import { CreateUserPayload, UpdateUserPayload } from '@/interfaces/common/user';
 
 /**
  * Create a user
@@ -18,7 +18,7 @@ const createUser = async (userBody: CreateUserPayload, session?: ClientSession) 
 /**
  * Get user by id
  */
-const getUserById = async (id: ObjectId) => {
+const getUserById = async <T>(id: T) => {
   return User.findById(id);
 };
 

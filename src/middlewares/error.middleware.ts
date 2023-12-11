@@ -23,6 +23,7 @@ export const errorConverter = (
   next(error);
 };
 
+// require _next to execute this fn, even unused.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const errorHandler = (err: ApiError, _req: Request, res: Response, _next: NextFunction) => {
   let { statusCode, message } = err;

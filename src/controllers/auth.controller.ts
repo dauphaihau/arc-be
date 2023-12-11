@@ -1,12 +1,12 @@
 import { Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { TokensResponse } from '@/interfaces/models/token';
 import { IBodyRequest } from '@/interfaces/common/request';
 import { transactionWrapper, catchAsync } from '@/utils';
 import {
   emailService, authService, userService, tokenService
 } from '@/services';
 import { LoginPayload } from '@/interfaces/common/auth';
-import { TokensResponse } from '@/interfaces/common/token';
 import { TOKEN_TYPES } from '@/config/enums/token';
 
 const setCookie = (res: Response, tokens: TokensResponse) => {

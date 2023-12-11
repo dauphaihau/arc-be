@@ -1,6 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-/* eslint-disable no-param-reassign */
 import { Schema } from 'mongoose';
 
 /**

@@ -1,46 +1,49 @@
 import path from 'path';
 import dotenv from 'dotenv';
-import Joi from 'joi';
+import { z } from 'zod';
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
-const envVarsSchema = Joi.object()
-  .keys({
-    NODE_ENV: Joi.string().valid('production', 'development', 'test').required(),
-    PORT: Joi.number().default(1111),
-    CORS_ORIGIN: Joi.string().required().default('*'),
-    MONGODB_URL: Joi.string().required().description('Mongo DB url'),
-    JWT_SECRET: Joi.string().required().description('JWT secret key'),
-    JWT_ACCESS_EXPIRATION_MINUTES: Joi.number()
-      .default(30)
-      .description('minutes after which access tokens expire'),
-    JWT_REFRESH_EXPIRATION_DAYS: Joi.number()
-      .default(30)
-      .description('days after which refresh tokens expire'),
-    JWT_RESET_PASSWORD_EXPIRATION_MINUTES: Joi.number()
-      .default(10)
-      .description('minutes after which reset password token expires'),
-    JWT_VERIFY_EMAIL_EXPIRATION_MINUTES: Joi.number()
-      .default(10)
-      .description('minutes after which verify email token expires'),
-    SMTP_SERVICE: Joi.string()
-      .description('service that will send the emails')
-      .default(null),
-    SMTP_HOST: Joi.string().description('server that will send the emails'),
-    SMTP_PORT: Joi.number().description('port to connect to the email server'),
-    SMTP_USERNAME: Joi.string().description('username for email server'),
-    SMTP_PASSWORD: Joi.string().description('password for email server'),
-    EMAIL_FROM: Joi.string().description('the from field in the emails sent by the app'),
-  })
-  .unknown();
+const envVarsZodSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.preprocess(Number, z.number()).default(3000),
+  CORS_ORIGIN: z.string().url().default('*'),
+  MONGODB_URL: z.string().url().describe('Mongo DB url'),
+  JWT_SECRET: z.string().describe('JWT secret key'),
+  JWT_ACCESS_EXPIRATION_MINUTES: z.preprocess(Number, z.number())
+    .default(30)
+    .describe('minutes after which access tokens expire'),
+  JWT_REFRESH_EXPIRATION_DAYS: z
+    .preprocess(Number, z.number())
+    .default(30)
+    .describe('days after which refresh tokens expire'),
+  JWT_RESET_PASSWORD_EXPIRATION_MINUTES: z
+    .preprocess(Number, z.number())
+    .default(10)
+    .describe('minutes after which reset password token expires'),
+  JWT_VERIFY_EMAIL_EXPIRATION_MINUTES: z
+    .preprocess(Number, z.number())
+    .default(10)
+    .describe('minutes after which verify email token expires'),
+  SMTP_SERVICE: z.string()
+    .describe('service that will send the emails')
+    .nullable(),
+  SMTP_HOST: z.string().describe('server that will send the emails'),
+  SMTP_PORT: z
+    .preprocess(Number, z.number())
+    .describe('port to connect to the email server'),
+  SMTP_USERNAME: z.string().describe('username for email server'),
+  SMTP_PASSWORD: z.string().describe('password for email server'),
+  EMAIL_FROM: z.string().describe('the from field in the emails sent by the app'),
+});
 
-const { value: envVars, error } = envVarsSchema
-  .prefs({ errors: { label: 'key' } })
-  .validate(process.env);
-
-if (error) {
-  throw new Error(`Config validation error: ${error.message}`);
+const result = envVarsZodSchema.safeParse(process.env);
+if (!result.success) {
+  throw new Error(
+    `Config Envs validation error: ${result.error.issues.map(item => item.path[0]).join(', ')}`
+  );
 }
+const envVars = result.data;
 
 export const env = {
   node: envVars.NODE_ENV,

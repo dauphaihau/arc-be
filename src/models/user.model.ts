@@ -48,7 +48,6 @@ const userSchema = new Schema<IUser, IUserModel>(
 
 // add plugin that converts mongoose to json
 userSchema.plugin(toJSON);
-// userSchema.plugin(paginate);
 
 // Validations
 userSchema.path('name').required(true, 'User name cannot be blank.');

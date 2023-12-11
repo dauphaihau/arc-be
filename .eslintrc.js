@@ -75,7 +75,6 @@ module.exports = {
     '@stylistic/space-in-parens': ['error', 'never'],
     '@stylistic/type-annotation-spacing': 'error',
 
-
     // plugin: import
     'import/order': [
       'error',

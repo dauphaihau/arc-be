@@ -1,22 +1,21 @@
-import Joi from 'joi';
-import httpStatus from 'http-status-codes';
-import type { RequestHandler } from 'express';
-import { pick } from '@/utils/pick';
-import { ApiError } from '@/utils/ApiError';
+import { RequestHandler } from 'express';
+import { StatusCodes } from 'http-status-codes';
+import { z } from 'zod';
+import { ApiError } from '@/utils';
 
-export const validate = (schema: Joi.SchemaLike): RequestHandler => {
-  return (req, _res, next) => {
-    const validSchema = pick(schema, ['params', 'query', 'body']);
-    const object = pick(req, Object.keys(validSchema));
-    const { value, error } = Joi.compile(validSchema)
-      .prefs({ errors: { label: 'key' }, abortEarly: false })
-      .validate(object);
-
-    if (error) {
-      const errorMessage = error.details.map((details) => details.message).join(', ');
-      return next(new ApiError(httpStatus.BAD_REQUEST, errorMessage));
+export const validate = (
+  schema: z.AnyZodObject | z.ZodOptional<z.AnyZodObject>
+): RequestHandler => {
+  return async (req, _res, next) => {
+    const result = await schema.safeParse({
+      body: req.body,
+      query: req.query,
+      params: req.params,
+    });
+    if (!result.success) {
+      const errorMessage = result.error.issues.map(detail => detail.message).join(', ');
+      return next(new ApiError(StatusCodes.BAD_REQUEST, errorMessage as string));
     }
-    Object.assign(req, value);
-    return next();
+    next();
   };
 };
