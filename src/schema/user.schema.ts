@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const REG_PASSWORD = /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*\W)(?!.* ).{8,16}$/;
+export const REG_PASSWORD = /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*\W)(?!.* ).{8,16}$/;
 
 export const userSchema = z.object({
   name: z
@@ -9,8 +9,8 @@ export const userSchema = z.object({
       invalid_type_error: 'invalid type name',
     })
     .trim()
-    .min(3, 'name must be at least 3 characters'),
-  // .max(20, 'name must be no longer than 20 characters'),
+    .min(3, 'name must be at least 3 characters')
+    .max(60, 'name must be no longer than 60 characters'),
   email: z
     .string({
       required_error: 'email is required',
@@ -24,5 +24,5 @@ export const userSchema = z.object({
     .min(8, 'password must be at least 8 characters')
     .regex(new RegExp(REG_PASSWORD), 'password must contain at least 1 lower letter, 1 uppercase letter, 1 number and 1 special character')
   ,
-  is_email_verified: z.boolean(),
+  is_email_verified: z.boolean().optional(),
 });

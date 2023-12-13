@@ -48,6 +48,7 @@ specifiers:
   nodemailer: 6.9.1
   passport: ^0.7.0
   passport-jwt: ^4.0.1
+  slugify: ^1.6.6
   supertest: ^6.3.3
   swagger-jsdoc: ^6.2.8
   swagger-ui-express: ^5.0.0
@@ -78,6 +79,7 @@ dependencies:
   nodemailer: 6.9.1
   passport: 0.7.0
   passport-jwt: 4.0.1
+  slugify: 1.6.6
   supertest: 6.3.3
   swagger-jsdoc: 6.2.8_openapi-types@12.1.3
   swagger-ui-express: 5.0.0_express@5.0.0-beta.1
@@ -3861,6 +3863,11 @@ packages:
       ansi-styles: 6.2.1
       is-fullwidth-code-point: 5.0.0
     dev: true
+
+  /slugify/1.6.6:
+    resolution: {integrity: sha512-h+z7HKHYXj6wJU+AnS/+IH8Uh9fdcX1Lrhg1/VMdf9PwoBQXFcXiAdsy2tSK0P6gKwJLXp02r90ahUCqHk9rrw==}
+    engines: {node: '>=8.0.0'}
+    dev: false
 
   /smart-buffer/4.2.0:
     resolution: {integrity: sha512-94hK0Hh8rPqQl2xXc3HsaBoOXKV20MToPkcXvwbISWLEs+64sBq5kFgn2kJDHb1Pry9yrP0dxrCI9RRci7RXKg==}

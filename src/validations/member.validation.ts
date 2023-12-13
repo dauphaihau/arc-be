@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { memberSchema } from '@/interfaces/schema/member';
+import { memberSchema } from '@/schema';
 
 export const memberValidation = {
   addMember: z.object({
     body: memberSchema.pick({ user_id: true, role: true }),
   }),
   deleteMember: z.object({
-    params: memberSchema.pick({ user_id: true }),
+    params: memberSchema.pick({ shop_id: true, user_id: true }),
   }),
   updateMember: z.object({
     params: memberSchema.pick({ shop_id: true, user_id: true }),
@@ -15,9 +15,10 @@ export const memberValidation = {
   getMembers: z.object({
     params: memberSchema.pick({ shop_id: true }),
     query: z.strictObject({
-      limit: z.string().optional(),
-      page: z.string().optional(),
-      sortBy: z.string().optional(),
-    }),
+      limit: z.string(),
+      page: z.string(),
+      sortBy: z.string(),
+      role: z.string(),
+    }).partial(),
   }),
 };

@@ -13,7 +13,9 @@ export const validate = (
       params: req.params,
     });
     if (!result.success) {
-      const errorMessage = result.error.issues.map(detail => detail.message).join(', ');
+      const errorMessage = result.error.issues.map(detail => {
+        return `${detail.path.at(-1)} ${detail.message}`;
+      }).join(', ');
       return next(new ApiError(StatusCodes.BAD_REQUEST, errorMessage as string));
     }
     next();

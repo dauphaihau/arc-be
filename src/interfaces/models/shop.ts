@@ -1,6 +1,6 @@
 import { Model, ObjectId, Document } from 'mongoose';
 import { z } from 'zod';
-import { shopSchema } from '@/interfaces/schema/shop';
+import { shopSchema } from '@/interfaces/schema/shop.schema';
 
 export type IShop = z.infer<typeof shopSchema> & Document;
 

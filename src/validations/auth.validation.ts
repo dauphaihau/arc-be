@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { tokenSchema } from '@/interfaces/schema/token';
-import { userSchema } from '@/interfaces/schema/user';
+import { tokenSchema, userSchema } from '@/schema';
 
 export const authValidation = {
   register: z.object({

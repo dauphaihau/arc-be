@@ -1,6 +1,7 @@
 import express from 'express';
+import { productValidation } from '@/validations/product.validation';
 import { shopValidation, memberValidation } from '@/validations';
-import { shopController, memberController } from '@/controllers';
+import { productController, shopController, memberController } from '@/controllers';
 import { auth, validate } from '@/middlewares';
 
 const router = express.Router();
@@ -41,6 +42,29 @@ router
     auth('updateMembers'),
     validate(memberValidation.updateMember),
     memberController.updateMember
+  );
+
+// Product
+router
+  .route('/:shop_id/products')
+  .post(
+    auth('createProduct'),
+    validate(productValidation.createProduct),
+    productController.createProduct
+  )
+  .get(validate(productValidation.getProducts), productController.getProducts);
+
+router
+  .route('/:shop_id/products/:id')
+  .patch(
+    auth('updateProduct'),
+    validate(productValidation.updateProduct),
+    productController.updateProduct
+  )
+  .delete(
+    auth('deleteProduct'),
+    validate(productValidation.deleteProduct),
+    productController.deleteProduct
   );
 
 export default router;

@@ -3,17 +3,22 @@ import bcrypt from 'bcryptjs';
 import validator from 'validator';
 import { IUser, IUserModel } from '@/interfaces/models/user';
 import { toJSON } from '@/models/plugins';
+import { REG_PASSWORD } from '@/schema/user.schema';
 
 // Define schema.
 const userSchema = new Schema<IUser, IUserModel>(
   {
     name: {
       type: String,
-      required: true,
+      min: 3,
+      max: 60,
       trim: true,
+      required: true,
     },
     email: {
       type: String,
+      min: 6,
+      max: 254,
       required: true,
       unique: true,
       trim: true,
@@ -30,8 +35,8 @@ const userSchema = new Schema<IUser, IUserModel>(
       trim: true,
       minlength: 8,
       validate(value: string) {
-        if (!value.match(/\d/) || !value.match(/[a-zA-Z]/)) {
-          throw new Error('Password must contain at least one letter and one number');
+        if (!value.match(REG_PASSWORD)) {
+          throw new Error('password must contain at least 1 lower letter, 1 uppercase letter, 1 number and 1 special character');
         }
       },
       private: true, // used by the toJSON plugin
@@ -46,7 +51,7 @@ const userSchema = new Schema<IUser, IUserModel>(
   }
 );
 
-// add plugin that converts mongoose to json
+// Plugins
 userSchema.plugin(toJSON);
 
 // Validations

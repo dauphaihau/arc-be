@@ -26,11 +26,11 @@ const findMemberShop = async <T>(shopId: T, userId: T) => {
 
 /**
  * Query for members
- * @param {Object} filter - Mongo filter
- * @param {Object} options - Query options
- * @param {string} [options.sortBy] - Sort option in the format: sortField:(desc|asc)
- * @param {number} [options.limit] - Maximum number of results per page (default = 10)
- * @param {number} [options.page] - Current page (default = 1)
+ * @param  filter - Mongo filter
+ * @param  options - Query options
+ * @param [options.sortBy] - Sort option in the format: sortField:(desc|asc)
+ * @param [options.limit] - Maximum number of results per page (default = 10)
+ * @param [options.page] - Current page (default = 1)
  * @returns {Promise<QueryResult>}
  */
 const queryMembers = async (filter: FilterQuery<Schema>, options: QueryOptions) => {

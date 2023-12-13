@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Model, ObjectId, Document } from 'mongoose';
-import { userSchema } from '@/interfaces/schema/user';
+import { userSchema } from '@/schema';
 
 export interface IUserMethods {
   isPasswordMatch: (password: string) => Promise<boolean>;

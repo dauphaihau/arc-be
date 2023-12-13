@@ -4,7 +4,7 @@ import { faker } from '@faker-js/faker';
 import { IUser } from '@/interfaces/models/user';
 import { User } from '@/models';
 
-const password = 'password1';
+const password = 'passworD1.';
 const salt = bcrypt.genSaltSync(8);
 const hashedPassword = bcrypt.hashSync(password, salt);
 

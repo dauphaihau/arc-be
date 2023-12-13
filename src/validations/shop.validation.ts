@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { shopSchema } from '@/interfaces/schema/shop';
+import { shopSchema } from '@/schema';
 
 export const shopValidation = {
   createShop: z.object({
