@@ -1,6 +1,6 @@
 import { RequestHandler } from 'express';
-import { StatusCodes } from 'http-status-codes';
 import { z } from 'zod';
+import { StatusCodes } from 'http-status-codes';
 import { ApiError } from '@/utils';
 
 export const validate = (

@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+/**
+ * get keys from zod object
+ *
+ * @example
+ * const userSchema = z.object({ id: z.string(), name: z.string()}
+ * zodKeys(userSchema) // Returns ['id', 'name']
+ */
+
 export const zodKeys = <T extends z.ZodTypeAny>(schema: T): string[] => {
   // make sure schema is not null or undefined
   if (schema === null || schema === undefined) return [];

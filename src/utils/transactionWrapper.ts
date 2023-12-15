@@ -1,6 +1,8 @@
 import mongoose, { ClientSession } from 'mongoose';
 
-export const transactionWrapper = async (callback: (session: ClientSession) => unknown) => {
+export const transactionWrapper = async (
+  callback: (session: ClientSession) => unknown
+) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {

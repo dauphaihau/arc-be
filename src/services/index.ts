@@ -6,3 +6,4 @@ export { shopService } from './shop.service';
 export { memberService } from './member.service';
 export { productService } from './product.service';
 export { inventoryService } from './inventory.service';
+export { awsS3Service } from './aws-s3.service';

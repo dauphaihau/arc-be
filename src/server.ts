@@ -1,7 +1,10 @@
 import app from './app';
-import { env, log, mongoose } from './config';
+import {
+  env, log, mongoose, aws
+} from './config';
 
 mongoose.run();
+aws.testConnectionS3();
 
 const server = app.listen(env.port, () => {
   log.info(`Listening to port ${env.port}`);

@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { productSchema } from '@/schema';
+import { mixBaseQueryListSchema } from '@/schema/sub/queryList.schema';
+import { productSchema, productImageSchema } from '@/schema';
+import { MAX_PRODUCT_IMAGES } from '@/config/enums/product';
 
 export const productValidation = {
   createProduct: z.object({
@@ -12,18 +14,31 @@ export const productValidation = {
         views: true,
         rating_average: true,
       })
+      // override prop images
+      .merge(
+        z.object({
+          images: z
+            .array(productImageSchema
+              .omit({ id: true })
+              .strict()
+            )
+            .max(MAX_PRODUCT_IMAGES),
+        })
+      )
       .strict(),
   }),
   getProducts: z.object({
     params: productSchema.pick({ shop_id: true }),
-    query: z.strictObject({
-      limit: z.string(),
-      page: z.string(),
-      sortBy: z.string(),
-      name: z.string(),
-      price: z.string(),
-      category: z.string(),
-    }).partial(),
+    query: mixBaseQueryListSchema(
+      productSchema.pick({
+        title: true,
+        price: true,
+        category: true,
+      })
+    ),
+  }),
+  getProduct: z.object({
+    params: productSchema.pick({ shop_id: true, id: true }),
   }),
   deleteProduct: z.object({
     params: productSchema
@@ -40,7 +55,16 @@ export const productValidation = {
         views: true,
         rating_average: true,
       })
+      // override prop images
+      .merge(
+        z.object({
+          images: z
+            .array(productImageSchema.partial().strict())
+            .max(MAX_PRODUCT_IMAGES),
+        })
+      )
       .strict()
       .partial(),
+    // .deepPartial(),
   }),
 };

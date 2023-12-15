@@ -26,6 +26,8 @@
     ]
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.473.0",
+    "@aws-sdk/s3-request-presigner": "^3.473.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
@@ -69,6 +71,7 @@
     "@types/supertest": "^2.0.16",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.6",
+    "@types/uuid": "^9.0.7",
     "@types/validator": "^13.11.7",
     "@typescript-eslint/eslint-plugin": "^6.13.1",
     "@typescript-eslint/parser": "^6.13.1",

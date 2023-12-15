@@ -35,10 +35,7 @@ const createShop = catchAsync(async (
   });
 });
 
-const deleteShop = catchAsync(async (
-  req,
-  res
-) => {
+const deleteShop = catchAsync(async (req, res) => {
   await transactionWrapper(async (session) => {
     const user_id = req.user.id;
 

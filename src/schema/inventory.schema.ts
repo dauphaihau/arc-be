@@ -1,10 +1,9 @@
-import mongoose from 'mongoose';
 import { z } from 'zod';
+import { objectIdSchema } from '@/schema/sub/objectId.schema';
 
 export const inventorySchema = z.object({
-  // id: z.union([z.instanceof(mongoose.Types.ObjectId), z.string()]),
-  shop_id: z.union([z.instanceof(mongoose.Types.ObjectId), z.string()]),
-  product_id: z.union([z.instanceof(mongoose.Types.ObjectId), z.string()]),
+  shop_id: objectIdSchema,
+  product_id: objectIdSchema,
   stock: z.number(),
   reservations: z.array(z.any()),
 });

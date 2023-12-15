@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRoute from './auth.route';
 import docsRoute from './docs.route';
 import shopRoute from './shop.route';
+import uploadRoute from './upload.route';
 import { env } from '@/config';
 
 const router = Router();
@@ -14,6 +15,10 @@ const defaultRoutes = [
   {
     path: '/shops',
     route: shopRoute,
+  },
+  {
+    path: '/upload',
+    route: uploadRoute,
   },
 ];
 

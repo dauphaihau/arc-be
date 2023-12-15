@@ -1,9 +1,9 @@
-import mongoose from 'mongoose';
 import { z } from 'zod';
+import { objectIdSchema } from '@/schema/sub/objectId.schema';
 import { MEMBER_ROLES } from '@/config/enums/member';
 
 export const memberSchema = z.object({
-  user_id: z.union([z.instanceof(mongoose.Types.ObjectId), z.string()]),
-  shop_id: z.union([z.instanceof(mongoose.Types.ObjectId), z.string()]),
+  user_id: objectIdSchema,
+  shop_id: objectIdSchema,
   role: z.nativeEnum(MEMBER_ROLES),
 });

@@ -1,8 +1,7 @@
 import {
   Model,
   FilterQuery,
-  Schema, QueryOptions,
-  Document
+  Schema, QueryOptions
 } from 'mongoose';
 import { z } from 'zod';
 import {
@@ -11,8 +10,8 @@ import {
   productImageSchema
 } from '@/schema';
 
-export type IProduct = z.infer<typeof productSchema> & Document;
-export type IProductImage = z.infer<typeof productImageSchema> & Document;
+export type IProduct = z.infer<typeof productSchema>;
+export type IProductImage = z.infer<typeof productImageSchema>;
 export type IProductAttribute = z.infer<typeof productAttributeSchema>;
 
 export interface IProductModel extends Model<IProduct, unknown> {

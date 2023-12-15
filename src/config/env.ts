@@ -35,6 +35,10 @@ const envVarsZodSchema = z.object({
   SMTP_USERNAME: z.string().describe('username for email server'),
   SMTP_PASSWORD: z.string().describe('password for email server'),
   EMAIL_FROM: z.string().describe('the from field in the emails sent by the app'),
+  AWS_ACCESS_KEY_ID: z.string().describe('access key id for aws s3'),
+  AWS_SECRET_ACCESS_KEY: z.string().describe('secret access key for aws s3'),
+  AWS_S3_REGION: z.string().describe('region for aws s3'),
+  AWS_S3_BUCKET: z.string().describe('bucket for aws s3'),
 });
 
 const result = envVarsZodSchema.safeParse(process.env);
@@ -77,5 +81,14 @@ export const env = {
       // secure: true,
     },
     from: envVars.EMAIL_FROM,
+  },
+  aws_s3: {
+    credentials: {
+      accessKeyId: envVars.AWS_ACCESS_KEY_ID,
+      secretAccessKey: envVars.AWS_SECRET_ACCESS_KEY,
+      signatureVersion: 'v4',
+    },
+    region: envVars.AWS_S3_REGION,
+    bucket: envVars.AWS_S3_BUCKET,
   },
 };

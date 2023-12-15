@@ -1,33 +1,31 @@
-import mongoose from 'mongoose';
 import { z } from 'zod';
-import { productAttributeSchema } from './prod-attribute.schema';
+import { productAttributeSchema } from './sub/prod-attribute.schema';
 import {
   PRODUCT_STATES,
   PRODUCT_WHO_MADE,
-  PRODUCT_CATEGORIES
+  PRODUCT_CATEGORIES, MAX_PRODUCT_IMAGES
 } from '@/config/enums/product';
+import { objectIdSchema } from '@/schema/sub/objectId.schema';
 
-const REG_SLUG = /^[a-z0-9]+(?:(?:-|_)+[a-z0-9]+)*$/;
+export const REG_SLUG = /^[a-z0-9]+(?:(?:-|_)+[a-z0-9]+)*$/;
+export const REG_NOT_URL = /^(?!http.*$).*/;
 
 export const productImageSchema = z.object({
-  id: z.union([z.instanceof(mongoose.Types.ObjectId), z.string()]).optional(),
-  url: z.string(),
-  rank: z.number().max(10).default(1),
+  id: objectIdSchema,
+  relative_url: z
+    .string()
+    .startsWith('shop', 'must start with shop')
+    .regex(REG_NOT_URL, 'must not absolute url'),
+  rank: z
+    .number()
+    .min(1)
+    .max(10)
+    .default(1),
 });
 
 export const productSchema = z.object({
-  id: z.union(
-    [
-      z.instanceof(mongoose.Types.ObjectId),
-      z.string(),
-    ]
-  ),
-  shop_id: z.union(
-    [
-      z.instanceof(mongoose.Types.ObjectId),
-      z.string(),
-    ]
-  ),
+  id: objectIdSchema,
+  shop_id: objectIdSchema,
   title: z
     .string()
     .min(2)
@@ -46,7 +44,7 @@ export const productSchema = z.object({
     .max(999),
   slug: z
     .string()
-    .regex(new RegExp(REG_SLUG), 'invalid slug')
+    .regex(REG_SLUG, 'invalid slug')
     .optional(),
   tags: z.array(
     z.string()
@@ -69,7 +67,10 @@ export const productSchema = z.object({
     .default(false),
   category: z.nativeEnum(PRODUCT_CATEGORIES),
   attributes: productAttributeSchema,
-  images: z.array(productImageSchema),
+  images: z
+    .array(productImageSchema)
+    .min(1)
+    .max(MAX_PRODUCT_IMAGES),
   rating_average: z
     .number()
     .min(0, 'Rating must be more than 0')

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { mixBaseQueryListSchema } from '@/schema/sub/queryList.schema';
 import { memberSchema } from '@/schema';
 
 export const memberValidation = {
@@ -14,11 +15,8 @@ export const memberValidation = {
   }),
   getMembers: z.object({
     params: memberSchema.pick({ shop_id: true }),
-    query: z.strictObject({
-      limit: z.string(),
-      page: z.string(),
-      sortBy: z.string(),
-      role: z.string(),
-    }).partial(),
+    query: mixBaseQueryListSchema(
+      memberSchema.pick({ role: true })
+    ),
   }),
 };

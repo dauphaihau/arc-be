@@ -4,7 +4,7 @@ import {
   Schema, QueryOptions
 } from 'mongoose';
 import { z } from 'zod';
-import { memberSchema } from '@/interfaces/schema/member.schema';
+import { memberSchema } from '@/schema';
 
 export type IMember = z.infer<typeof memberSchema>;
 

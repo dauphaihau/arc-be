@@ -10,8 +10,8 @@ const router = express.Router();
 router
   .route('/')
   .post(
-    auth(),
     validate(shopValidation.createShop),
+    auth(),
     shopController.createShop
   )
   .delete(
@@ -23,8 +23,8 @@ router
 router
   .route('/:shop_id/members')
   .post(
-    auth('addMember'),
     validate(memberValidation.addMember),
+    auth('addMember'),
     memberController.addMember
   )
   .get(
@@ -34,13 +34,13 @@ router
 router
   .route('/:shop_id/members/:user_id')
   .delete(
-    auth('deleteMembers'),
     validate(memberValidation.deleteMember),
+    auth('deleteMembers'),
     memberController.deleteMember
   )
   .patch(
-    auth('updateMembers'),
     validate(memberValidation.updateMember),
+    auth('updateMembers'),
     memberController.updateMember
   );
 
@@ -48,22 +48,26 @@ router
 router
   .route('/:shop_id/products')
   .post(
-    auth('createProduct'),
     validate(productValidation.createProduct),
+    auth('createProduct'),
     productController.createProduct
   )
   .get(validate(productValidation.getProducts), productController.getProducts);
 
 router
   .route('/:shop_id/products/:id')
+  .get(
+    validate(productValidation.getProduct),
+    productController.getProduct
+  )
   .patch(
-    auth('updateProduct'),
     validate(productValidation.updateProduct),
+    auth('updateProduct'),
     productController.updateProduct
   )
   .delete(
-    auth('deleteProduct'),
     validate(productValidation.deleteProduct),
+    auth('deleteProduct'),
     productController.deleteProduct
   );
 

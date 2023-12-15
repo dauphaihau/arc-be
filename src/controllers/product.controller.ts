@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { productService, inventoryService } from '@/services';
+import { productService, inventoryService, awsS3Service } from '@/services';
 import { catchAsync, pick, transactionWrapper } from '@/utils';
 import {
   CreateProductPayload,
@@ -35,6 +35,14 @@ const createProduct = catchAsync(async (
   });
 });
 
+const getProduct = catchAsync(async (
+  req: Request<GetProductParams>,
+  res
+) => {
+  const product = await productService.getProductById(req.params.id);
+  res.status(StatusCodes.OK).send({ product });
+});
+
 const getProducts = catchAsync(async (
   req: Request<GetProductParams>,
   res
@@ -59,12 +67,11 @@ const deleteProduct = catchAsync(async (
   const product_id = req.params.id;
 
   await transactionWrapper(async (session) => {
-    await productService.deleteProductById(product_id, session);
-    // delete all image aws s3
+    const result = await productService.deleteProductById(product_id, session);
 
-    // product.product_images.forEach((image) => {
-    //   awsS3Service.deleteObject(image.url);
-    // });
+    result.images.forEach((image) => {
+      awsS3Service.deleteObject(image.relative_url);
+    });
 
     await Inventory.deleteOne({ product_id }, { session });
     res.status(StatusCodes.NO_CONTENT).send();
@@ -75,10 +82,10 @@ const updateProduct = catchAsync(async (
   req: Request<UpdateProductParams, unknown, UpdateProductPayload>,
   res
 ) => {
-  const product_id = req.params.id;
+  const product_id = req.params.id as string;
 
   await transactionWrapper(async (session) => {
-    const product = await productService.updateProduct(req.params.id, req.body);
+    const product = await productService.updateProduct(product_id, req.body, session);
 
     // update stock
     if (req.body?.quantity) {
@@ -97,6 +104,7 @@ const updateProduct = catchAsync(async (
 
 export const productController = {
   createProduct,
+  getProduct,
   getProducts,
   deleteProduct,
   updateProduct,

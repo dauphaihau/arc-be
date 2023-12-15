@@ -17,6 +17,8 @@ export enum PRODUCT_WHO_MADE {
   SOMEONE_ELSE = 'someone_else'
 }
 
+export const MAX_PRODUCT_IMAGES = 10;
+
 export const productCategories = Object.values(PRODUCT_CATEGORIES);
 export const productStates = Object.values(PRODUCT_STATES);
 export const productWhoMade = Object.values(PRODUCT_WHO_MADE);

@@ -1,5 +1,5 @@
 import { Schema, z } from 'zod';
-import { zodKeys } from './utils/zodKeys';
+import { zodKeys } from '@/utils';
 import { PRODUCT_CATEGORIES } from '@/config/enums/product';
 
 const baseAttributeSchema = z.object({
@@ -26,7 +26,7 @@ export const clothingSchema = z.object({
 
 export const furnitureSchema = z.object({
   category: z.literal(PRODUCT_CATEGORIES.FURNITURE),
-  shape: z.string(), // round
+  shape: z.string(), // round, circle
   room_type: z.string(), // bed_room
 });
 

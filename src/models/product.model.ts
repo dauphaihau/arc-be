@@ -3,18 +3,35 @@ import slugify from 'slugify';
 import { toJSON, paginate } from '@/models/plugins';
 import {
   productStates,
-  PRODUCT_STATES, productWhoMade, productCategories
+  PRODUCT_STATES, productWhoMade, productCategories, MAX_PRODUCT_IMAGES
 } from '@/config/enums/product';
 import {
   IProductModel,
   IProduct,
   IProductImage
 } from '@/interfaces/models/product';
+import { REG_NOT_URL, REG_SLUG } from '@/schema/product.schema';
 
-const imageSchema = new Schema<IProductImage>({
-  url: { type: String, required: true },
-  rank: { type: Number, default: 1 },
-});
+const imageSchema = new Schema<IProductImage>(
+  {
+    relative_url: {
+      type: String,
+      validate(value: string) {
+        if (!value.match(REG_NOT_URL)) {
+          throw new Error('should not absolute url');
+        }
+      },
+      required: true,
+    },
+    rank: {
+      type: Number,
+      default: 1,
+    },
+  }, {
+    timestamps: true,
+  }
+);
+imageSchema.plugin(toJSON);
 
 const productSchema = new Schema<IProduct, IProductModel>(
   {
@@ -48,7 +65,14 @@ const productSchema = new Schema<IProduct, IProductModel>(
       required: true,
       default: 0,
     },
-    slug: String,
+    slug: {
+      type: String,
+      validate(value: string) {
+        if (!value.match(REG_SLUG)) {
+          throw new Error('invalid slug type');
+        }
+      },
+    },
     tags: { type: [String], default: [] },
     state: {
       type: String,
@@ -60,7 +84,10 @@ const productSchema = new Schema<IProduct, IProductModel>(
       enum: productCategories,
       required: true,
     },
-    attributes: { type: Schema.Types.Mixed, required: true },
+    attributes: {
+      type: Schema.Types.Mixed,
+      required: true,
+    },
     who_made: {
       type: String,
       enum: productWhoMade,
@@ -78,7 +105,11 @@ const productSchema = new Schema<IProduct, IProductModel>(
       type: [imageSchema],
       default: [],
       min: 1,
-      max: 10,
+      validate(value: object[]) {
+        if (value.length > MAX_PRODUCT_IMAGES) {
+          throw new Error(`exceeds the limit of ${MAX_PRODUCT_IMAGES}`);
+        }
+      },
       required: true,
     },
     rating_average: {
