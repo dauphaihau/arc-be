@@ -1,7 +1,9 @@
 import express from 'express';
 import { productValidation } from '@/validations/product.validation';
-import { shopValidation, memberValidation } from '@/validations';
-import { productController, shopController, memberController } from '@/controllers';
+import { shopValidation, memberValidation, couponValidation } from '@/validations';
+import {
+  productController, shopController, memberController, couponController
+} from '@/controllers';
 import { auth, validate } from '@/middlewares';
 
 const router = express.Router();
@@ -69,6 +71,33 @@ router
     validate(productValidation.deleteProduct),
     auth('deleteProduct'),
     productController.deleteProduct
+  );
+
+// Coupon
+router
+  .route('/:shop_id/coupons')
+  .post(
+    validate(couponValidation.createCoupon),
+    auth('createCoupon'),
+    couponController.createCoupon
+  )
+  .get(validate(couponValidation.getCoupons), couponController.getCoupons);
+
+router
+  .route('/:shop_id/coupons/:id')
+  .get(
+    validate(couponValidation.getCoupon),
+    couponController.getCoupon
+  )
+  .patch(
+    validate(couponValidation.updateCoupon),
+    auth('updateProduct'),
+    couponController.updateCoupon
+  )
+  .delete(
+    validate(couponValidation.deleteCoupon),
+    auth('deleteProduct'),
+    couponController.deleteCoupon
   );
 
 export default router;

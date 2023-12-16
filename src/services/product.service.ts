@@ -4,7 +4,7 @@ import {
 } from 'mongoose';
 import {
   CreateProductPayload,
-  UpdateProductPayload, IProductAttribute, IProductImage
+  UpdateProductPayload, IProductAttribute, IProductImage, IProduct
 } from '@/interfaces/models/product';
 import { Product } from '@/models';
 import { ApiError } from '@/utils';
@@ -25,7 +25,7 @@ const validateAttributes = (attributes: IProductAttribute) => {
   }
 };
 
-const getProductById = async <T>(id: T) => {
+const getProductById = async (id: IProduct['id']) => {
   return Product.findById(id);
 };
 
@@ -40,8 +40,8 @@ const getProductById = async <T>(id: T) => {
  *      add: props + exclude id
  *      update: require id, relative_url + props
  */
-const updateProduct = async <T>(
-  productId: T,
+const updateProduct = async (
+  productId: IProduct['id'],
   updateBody: UpdateProductPayload,
   session: ClientSession
 ) => {
@@ -135,7 +135,7 @@ const queryProducts = async (filter: FilterQuery<Schema>, options: QueryOptions)
   return products;
 };
 
-const deleteProductById = async <T>(productId: T, session: ClientSession) => {
+const deleteProductById = async (productId: IProduct['id'], session: ClientSession) => {
   const product = await getProductById(productId);
   if (!product) throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
   return product.remove({ session });

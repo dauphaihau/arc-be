@@ -2,6 +2,7 @@ import { model, Schema, SchemaTypes } from 'mongoose';
 import { IShop, IShopModel } from '@/interfaces/models/shop';
 import { toJSON } from '@/models/plugins';
 
+// Define schema.
 const shopSchema = new Schema<IShop, IShopModel>(
   {
     shop_name: {
@@ -16,21 +17,16 @@ const shopSchema = new Schema<IShop, IShopModel>(
       ref: 'User',
       required: true,
     },
-    // members: {
-    //   type: Schema.Types.Mixed,
-    // },
   },
   {
     timestamps: true,
   }
 );
 
-// add plugin that converts mongoose to json
+// Plugins
 shopSchema.plugin(toJSON);
 
-/**
- * Check if name is taken
- */
+// Statics
 shopSchema.statics = {
   isNameShopTaken: async function (shop_name, excludeUserId) {
     const shop = await this.findOne({ shop_name, _id: { $ne: excludeUserId } });

@@ -18,6 +18,7 @@ export enum PRODUCT_WHO_MADE {
 }
 
 export const MAX_PRODUCT_IMAGES = 10;
+export const MAX_PRODUCT_PRICE = 50000;
 
 export const productCategories = Object.values(PRODUCT_CATEGORIES);
 export const productStates = Object.values(PRODUCT_STATES);

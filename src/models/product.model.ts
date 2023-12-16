@@ -3,7 +3,11 @@ import slugify from 'slugify';
 import { toJSON, paginate } from '@/models/plugins';
 import {
   productStates,
-  PRODUCT_STATES, productWhoMade, productCategories, MAX_PRODUCT_IMAGES
+  PRODUCT_STATES,
+  productWhoMade,
+  productCategories,
+  MAX_PRODUCT_IMAGES,
+  MAX_PRODUCT_PRICE
 } from '@/config/enums/product';
 import {
   IProductModel,
@@ -54,6 +58,8 @@ const productSchema = new Schema<IProduct, IProductModel>(
     },
     price: {
       type: Number,
+      min: 1,
+      max: MAX_PRODUCT_PRICE,
       required: true,
     },
     quantity: {

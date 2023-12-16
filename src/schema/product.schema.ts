@@ -3,7 +3,7 @@ import { productAttributeSchema } from './sub/prod-attribute.schema';
 import {
   PRODUCT_STATES,
   PRODUCT_WHO_MADE,
-  PRODUCT_CATEGORIES, MAX_PRODUCT_IMAGES
+  PRODUCT_CATEGORIES, MAX_PRODUCT_IMAGES, MAX_PRODUCT_PRICE
 } from '@/config/enums/product';
 import { objectIdSchema } from '@/schema/sub/objectId.schema';
 
@@ -37,7 +37,7 @@ export const productSchema = z.object({
   price: z
     .number()
     .min(1)
-    .max(50000),
+    .max(MAX_PRODUCT_PRICE),
   quantity: z
     .number()
     .min(1)

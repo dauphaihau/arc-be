@@ -65,6 +65,5 @@ export const productValidation = {
       )
       .strict()
       .partial(),
-    // .deepPartial(),
   }),
 };

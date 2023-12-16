@@ -8,7 +8,8 @@ import {
   GetProductParams,
   DeleteProductParams,
   UpdateProductParams,
-  UpdateProductPayload
+  UpdateProductPayload,
+  GetProductsParams
 } from '@/interfaces/models/product';
 import { Inventory } from '@/models';
 import { ApiError } from '@/utils';
@@ -44,7 +45,7 @@ const getProduct = catchAsync(async (
 });
 
 const getProducts = catchAsync(async (
-  req: Request<GetProductParams>,
+  req: Request<GetProductsParams>,
   res
 ) => {
   const filter = pick(
