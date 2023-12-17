@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import validator from 'validator';
 import { IUser, IUserModel } from '@/interfaces/models/user';
 import { toJSON } from '@/models/plugins';
-import { REG_PASSWORD } from '@/schema/user.schema';
+import { USER_REG_PASSWORD } from '@/config/enums/user';
 
 // Define schema.
 const userSchema = new Schema<IUser, IUserModel>(
@@ -35,7 +35,7 @@ const userSchema = new Schema<IUser, IUserModel>(
       trim: true,
       minlength: 8,
       validate(value: string) {
-        if (!value.match(REG_PASSWORD)) {
+        if (!value.match(USER_REG_PASSWORD)) {
           throw new Error('password must contain at least 1 lower letter, 1 uppercase letter, 1 number and 1 special character');
         }
       },

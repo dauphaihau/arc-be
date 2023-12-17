@@ -3,19 +3,20 @@ import { productAttributeSchema } from './sub/prod-attribute.schema';
 import {
   PRODUCT_STATES,
   PRODUCT_WHO_MADE,
-  PRODUCT_CATEGORIES, MAX_PRODUCT_IMAGES, MAX_PRODUCT_PRICE
+  PRODUCT_CATEGORIES,
+  PRODUCT_MAX_IMAGES,
+  PRODUCT_MAX_PRICE,
+  PRODUCT_REG_SLUG,
+  PRODUCT_REG_NOT_URL
 } from '@/config/enums/product';
 import { objectIdSchema } from '@/schema/sub/objectId.schema';
-
-export const REG_SLUG = /^[a-z0-9]+(?:(?:-|_)+[a-z0-9]+)*$/;
-export const REG_NOT_URL = /^(?!http.*$).*/;
 
 export const productImageSchema = z.object({
   id: objectIdSchema,
   relative_url: z
     .string()
     .startsWith('shop', 'must start with shop')
-    .regex(REG_NOT_URL, 'must not absolute url'),
+    .regex(PRODUCT_REG_NOT_URL, 'must not absolute url'),
   rank: z
     .number()
     .min(1)
@@ -37,14 +38,14 @@ export const productSchema = z.object({
   price: z
     .number()
     .min(1)
-    .max(MAX_PRODUCT_PRICE),
+    .max(PRODUCT_MAX_PRICE),
   quantity: z
     .number()
     .min(1)
     .max(999),
   slug: z
     .string()
-    .regex(REG_SLUG, 'invalid slug')
+    .regex(PRODUCT_REG_SLUG, 'invalid slug')
     .optional(),
   tags: z.array(
     z.string()
@@ -70,7 +71,7 @@ export const productSchema = z.object({
   images: z
     .array(productImageSchema)
     .min(1)
-    .max(MAX_PRODUCT_IMAGES),
+    .max(PRODUCT_MAX_IMAGES),
   rating_average: z
     .number()
     .min(0, 'Rating must be more than 0')

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { mixBaseQueryListSchema } from '@/schema/sub/queryList.schema';
 import { productSchema, productImageSchema } from '@/schema';
-import { MAX_PRODUCT_IMAGES } from '@/config/enums/product';
+import { PRODUCT_MAX_IMAGES } from '@/config/enums/product';
 
 export const productValidation = {
   createProduct: z.object({
@@ -22,7 +22,7 @@ export const productValidation = {
               .omit({ id: true })
               .strict()
             )
-            .max(MAX_PRODUCT_IMAGES),
+            .max(PRODUCT_MAX_IMAGES),
         })
       )
       .strict(),
@@ -60,7 +60,7 @@ export const productValidation = {
         z.object({
           images: z
             .array(productImageSchema.partial().strict())
-            .max(MAX_PRODUCT_IMAGES),
+            .max(PRODUCT_MAX_IMAGES),
         })
       )
       .strict()

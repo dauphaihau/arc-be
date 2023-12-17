@@ -40,7 +40,7 @@ const getProduct = catchAsync(async (
   req: Request<GetProductParams>,
   res
 ) => {
-  const product = await productService.getProductById(req.params.id);
+  const product = await productService.getProductById(req.params.id as string);
   res.status(StatusCodes.OK).send({ product });
 });
 
@@ -65,7 +65,7 @@ const deleteProduct = catchAsync(async (
   req: Request<DeleteProductParams>,
   res
 ) => {
-  const product_id = req.params.id;
+  const product_id = req.params.id as string;
 
   await transactionWrapper(async (session) => {
     const result = await productService.deleteProductById(product_id, session);

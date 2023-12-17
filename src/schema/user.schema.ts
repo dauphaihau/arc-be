@@ -1,6 +1,5 @@
 import { z } from 'zod';
-
-export const REG_PASSWORD = /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*\W)(?!.* ).{8,16}$/;
+import { USER_REG_PASSWORD } from '@/config/enums/user';
 
 export const userSchema = z.object({
   name: z
@@ -22,7 +21,7 @@ export const userSchema = z.object({
     .email('invalid email'),
   password: z.string()
     .min(8, 'password must be at least 8 characters')
-    .regex(new RegExp(REG_PASSWORD), 'password must contain at least 1 lower letter, 1 uppercase letter, 1 number and 1 special character')
+    .regex(USER_REG_PASSWORD, 'password must contain at least 1 lower letter, 1 uppercase letter, 1 number and 1 special character')
   ,
   is_email_verified: z.boolean().optional(),
 });

@@ -17,8 +17,11 @@ export enum PRODUCT_WHO_MADE {
   SOMEONE_ELSE = 'someone_else'
 }
 
-export const MAX_PRODUCT_IMAGES = 10;
-export const MAX_PRODUCT_PRICE = 50000;
+export const PRODUCT_MAX_IMAGES = 10;
+export const PRODUCT_MAX_PRICE = 50000;
+
+export const PRODUCT_REG_SLUG = /^[a-z0-9]+(?:(?:-|_)+[a-z0-9]+)*$/;
+export const PRODUCT_REG_NOT_URL = /^(?!http.*$).*/;
 
 export const productCategories = Object.values(PRODUCT_CATEGORIES);
 export const productStates = Object.values(PRODUCT_STATES);

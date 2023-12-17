@@ -6,22 +6,21 @@ import {
   PRODUCT_STATES,
   productWhoMade,
   productCategories,
-  MAX_PRODUCT_IMAGES,
-  MAX_PRODUCT_PRICE
+  PRODUCT_MAX_IMAGES,
+  PRODUCT_MAX_PRICE, PRODUCT_REG_SLUG, PRODUCT_REG_NOT_URL
 } from '@/config/enums/product';
 import {
   IProductModel,
   IProduct,
   IProductImage
 } from '@/interfaces/models/product';
-import { REG_NOT_URL, REG_SLUG } from '@/schema/product.schema';
 
 const imageSchema = new Schema<IProductImage>(
   {
     relative_url: {
       type: String,
       validate(value: string) {
-        if (!value.match(REG_NOT_URL)) {
+        if (!value.match(PRODUCT_REG_NOT_URL)) {
           throw new Error('should not absolute url');
         }
       },
@@ -59,7 +58,7 @@ const productSchema = new Schema<IProduct, IProductModel>(
     price: {
       type: Number,
       min: 1,
-      max: MAX_PRODUCT_PRICE,
+      max: PRODUCT_MAX_PRICE,
       required: true,
     },
     quantity: {
@@ -74,7 +73,7 @@ const productSchema = new Schema<IProduct, IProductModel>(
     slug: {
       type: String,
       validate(value: string) {
-        if (!value.match(REG_SLUG)) {
+        if (!value.match(PRODUCT_REG_SLUG)) {
           throw new Error('invalid slug type');
         }
       },
@@ -112,8 +111,8 @@ const productSchema = new Schema<IProduct, IProductModel>(
       default: [],
       min: 1,
       validate(value: object[]) {
-        if (value.length > MAX_PRODUCT_IMAGES) {
-          throw new Error(`exceeds the limit of ${MAX_PRODUCT_IMAGES}`);
+        if (value.length > PRODUCT_MAX_IMAGES) {
+          throw new Error(`exceeds the limit of ${PRODUCT_MAX_IMAGES}`);
         }
       },
       required: true,

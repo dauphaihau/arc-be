@@ -3,6 +3,7 @@ import authRoute from './auth.route';
 import docsRoute from './docs.route';
 import shopRoute from './shop.route';
 import uploadRoute from './upload.route';
+import cartRoute from './cart.route';
 import { env } from '@/config';
 
 const router = Router();
@@ -19,6 +20,10 @@ const defaultRoutes = [
   {
     path: '/upload',
     route: uploadRoute,
+  },
+  {
+    path: '/cart',
+    route: cartRoute,
   },
 ];
 
