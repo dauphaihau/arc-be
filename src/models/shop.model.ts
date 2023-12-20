@@ -1,8 +1,8 @@
 import { model, Schema, SchemaTypes } from 'mongoose';
 import { IShop, IShopModel } from '@/interfaces/models/shop';
-import { toJSON } from '@/models/plugins';
+import { toJSON, paginate } from '@/models/plugins';
 
-// Define schema.
+// define Schema.
 const shopSchema = new Schema<IShop, IShopModel>(
   {
     shop_name: {
@@ -23,9 +23,6 @@ const shopSchema = new Schema<IShop, IShopModel>(
   }
 );
 
-// Plugins
-shopSchema.plugin(toJSON);
-
 // Statics
 shopSchema.statics = {
   isNameShopTaken: async function (shop_name, excludeUserId) {
@@ -34,7 +31,8 @@ shopSchema.statics = {
   },
 };
 
-/**
- * @typedef Shop
- */
+// Plugins
+shopSchema.plugin(toJSON);
+shopSchema.plugin(paginate);
+
 export const Shop: IShopModel = model<IShop, IShopModel>('Shop', shopSchema);

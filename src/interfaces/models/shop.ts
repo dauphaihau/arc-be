@@ -1,11 +1,17 @@
-import { Model, ObjectId, Document } from 'mongoose';
+import {
+  Model,
+  ObjectId,
+  FilterQuery
+} from 'mongoose';
 import { z } from 'zod';
 import { shopSchema } from '@/schema';
+import { IBaseQueryOptions } from '@/models/plugins/paginate.plugin';
 
-export type IShop = z.infer<typeof shopSchema> & Document;
+export type IShop = z.infer<typeof shopSchema>;
 
 export interface IShopModel extends Model<IShop, unknown> {
-  isNameShopTaken: (email: string, excludeUserId?: ObjectId) => Promise<boolean>;
+  isNameShopTaken: (email: string, excludeUserId?: ObjectId) => Promise<boolean>
+  paginate: (filter: FilterQuery<IShop>, options: IBaseQueryOptions) => Promise<IShop[]>;
 }
 
 export type CreateShopPayload = Pick<IShop, 'user_id' | 'shop_name'>;

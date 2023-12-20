@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { mixBaseQueryListSchema } from '@/schema/sub/queryList.schema';
+import { mixBaseQueryOptionsSchema } from '@/schema/sub/queryOptions.schema';
 import { memberSchema } from '@/schema';
 
 export const memberValidation = {
@@ -15,7 +15,7 @@ export const memberValidation = {
   }),
   getMembers: z.object({
     params: memberSchema.pick({ shop_id: true }),
-    query: mixBaseQueryListSchema(
+    query: mixBaseQueryOptionsSchema(
       memberSchema.pick({ role: true })
     ),
   }),

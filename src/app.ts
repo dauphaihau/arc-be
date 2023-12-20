@@ -9,6 +9,7 @@ import routes from './routes/v1';
 import { env, jwtStrategy } from '@/config';
 import { authLimiter, errorConverter, errorHandler } from '@/middlewares';
 import { ApiError } from '@/utils';
+import webhookRoute from '@/routes/webhook.route';
 
 const app: Express = express();
 
@@ -17,6 +18,8 @@ app.use(helmet());
 
 // used to reduce the size of the response body
 app.use(compression());
+
+app.use('/webhook', webhookRoute);
 
 // parse urlencoded request body
 app.use(express.urlencoded({ limit: '10mb', extended: true }));

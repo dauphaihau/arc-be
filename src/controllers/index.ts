@@ -5,3 +5,6 @@ export { productController } from './product.controller';
 export { uploadController } from './upload.controller';
 export { couponController } from './coupon.controller';
 export { cartController } from './cart.controller';
+export { addressController } from './address.controller';
+export { orderController } from './order.controller';
+export { userController } from './user.controller';

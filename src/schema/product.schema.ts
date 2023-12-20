@@ -7,7 +7,7 @@ import {
   PRODUCT_MAX_IMAGES,
   PRODUCT_MAX_PRICE,
   PRODUCT_REG_SLUG,
-  PRODUCT_REG_NOT_URL
+  PRODUCT_REG_NOT_URL, PRODUCT_MAX_QUANTITY
 } from '@/config/enums/product';
 import { objectIdSchema } from '@/schema/sub/objectId.schema';
 
@@ -42,7 +42,7 @@ export const productSchema = z.object({
   quantity: z
     .number()
     .min(1)
-    .max(999),
+    .max(PRODUCT_MAX_QUANTITY),
   slug: z
     .string()
     .regex(PRODUCT_REG_SLUG, 'invalid slug')
@@ -55,7 +55,7 @@ export const productSchema = z.object({
     .max(11).optional(),
   state: z
     .nativeEnum(PRODUCT_STATES)
-    .default(PRODUCT_STATES.DRAFT),
+    .default(PRODUCT_STATES.ACTIVE),
   is_digital: z
     .boolean()
     .default(false),
@@ -78,4 +78,13 @@ export const productSchema = z.object({
     .max(5, 'Rating must be equal or less than 5.0')
     .default(0)
     .optional(),
+  sku: z
+    .string()
+    .optional(),
 });
+
+export const productStateUserCanModify = z.union([
+  z.literal(PRODUCT_STATES.ACTIVE),
+  z.literal(PRODUCT_STATES.INACTIVE),
+  z.literal(PRODUCT_STATES.DRAFT),
+]).default(PRODUCT_STATES.ACTIVE);

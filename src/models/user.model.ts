@@ -1,12 +1,12 @@
 import { model, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import validator from 'validator';
-import { IUser, IUserModel } from '@/interfaces/models/user';
+import { IUser, IUserMethods, IUserModel } from '@/interfaces/models/user';
 import { toJSON } from '@/models/plugins';
 import { USER_REG_PASSWORD } from '@/config/enums/user';
 
-// Define schema.
-const userSchema = new Schema<IUser, IUserModel>(
+// define Schema.
+const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
   {
     name: {
       type: String,
@@ -67,8 +67,8 @@ userSchema.statics = {
 
 // Methods
 userSchema.methods = {
-  isPasswordMatch: async function (password: string) {
-    return bcrypt.compare(password, this['password']);
+  isPasswordMatch: async function (this: IUser, password) {
+    return bcrypt.compare(password, this.password);
   },
 };
 

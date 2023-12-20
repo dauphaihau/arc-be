@@ -32,7 +32,7 @@ const getMembers = catchAsync(async (
     { ...req.query, shop_id: req.params.shop_id },
     ['shop_id']
   );
-  const options = pick(req.query, ['sortBy', 'limit', 'page']);
+  const options = pick(req.query, ['sortBy', 'limit', 'page', 'populate', 'select']);
   const result = await memberService.queryMembers(filter, options);
   res.send(result);
 });

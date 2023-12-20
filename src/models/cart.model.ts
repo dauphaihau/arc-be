@@ -15,6 +15,10 @@ const cartSchema = new Schema<ICart, ICartModel>(
         {
           product_id: Schema.Types.ObjectId,
           quantity: Number,
+          is_select_order: {
+            type: Boolean,
+            default: true,
+          },
         },
       ],
       max: 20,
@@ -28,9 +32,5 @@ const cartSchema = new Schema<ICart, ICartModel>(
 
 // Plugins
 cartSchema.plugin(toJSON);
-
-/**
- * @typedef Cart
- */
 
 export const Cart: ICartModel = model<ICart, ICartModel>('Cart', cartSchema);

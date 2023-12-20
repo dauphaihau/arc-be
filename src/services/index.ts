@@ -9,3 +9,5 @@ export { inventoryService } from './inventory.service';
 export { awsS3Service } from './aws-s3.service';
 export { couponService } from './coupon.service';
 export { cartService } from './cart.service';
+export { orderService } from './order.service';
+export { addressService } from './address.service';

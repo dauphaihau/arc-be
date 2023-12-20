@@ -11,6 +11,10 @@ const router = express.Router();
 // Shop
 router
   .route('/')
+  .get(
+    validate(shopValidation.getShops),
+    shopController.getListShops
+  )
   .post(
     validate(shopValidation.createShop),
     auth(),

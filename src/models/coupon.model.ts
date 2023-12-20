@@ -13,6 +13,7 @@ import {
   couponAppliesTo
 } from '@/config/enums/coupon';
 
+// define Schema
 const couponSchema = new Schema<ICoupon, ICouponModel>(
   {
     shop_id: {
@@ -105,6 +106,7 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
     },
     min_products: {
       type: Number,
+      default: 0,
       required: function (this: ICoupon) {
         return this.min_order_type === COUPON_MIN_ORDER_TYPES.NUMBER_OF_PRODUCTS;
       },
@@ -150,7 +152,4 @@ couponSchema.pre('save', function (next) {
   next();
 });
 
-/**
- * @typedef Coupon
- */
 export const Coupon: ICouponModel = model<ICoupon, ICouponModel>('Coupon', couponSchema);

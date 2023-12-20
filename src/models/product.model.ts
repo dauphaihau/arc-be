@@ -7,7 +7,10 @@ import {
   productWhoMade,
   productCategories,
   PRODUCT_MAX_IMAGES,
-  PRODUCT_MAX_PRICE, PRODUCT_REG_SLUG, PRODUCT_REG_NOT_URL
+  PRODUCT_MAX_PRICE,
+  PRODUCT_REG_SLUG,
+  PRODUCT_REG_NOT_URL,
+  PRODUCT_MAX_QUANTITY
 } from '@/config/enums/product';
 import {
   IProductModel,
@@ -15,6 +18,7 @@ import {
   IProductImage
 } from '@/interfaces/models/product';
 
+// define Schema
 const imageSchema = new Schema<IProductImage>(
   {
     relative_url: {
@@ -63,6 +67,7 @@ const productSchema = new Schema<IProduct, IProductModel>(
     },
     quantity: {
       type: Number,
+      max: PRODUCT_MAX_QUANTITY,
       required: true,
     },
     views: {
@@ -78,7 +83,10 @@ const productSchema = new Schema<IProduct, IProductModel>(
         }
       },
     },
-    tags: { type: [String], default: [] },
+    tags: {
+      type: [String],
+      default: [],
+    },
     state: {
       type: String,
       enum: productStates,
@@ -124,6 +132,7 @@ const productSchema = new Schema<IProduct, IProductModel>(
       max: [5, 'Rating must be equal or less than 5.0'],
       set: (val: number) => Math.round(val * 10) / 10,
     },
+    sku: String,
   },
   {
     timestamps: true,

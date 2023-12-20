@@ -5,10 +5,29 @@ import { auth, validate } from '@/middlewares';
 
 const router = express.Router();
 
-router.post('/login', validate(authValidation.login), authController.login);
-router.post('/register', validate(authValidation.register), authController.register);
-router.post('/logout', auth(), authController.logout);
-router.post('/refresh-tokens', auth(), authController.refreshTokens);
+router.post(
+  '/login',
+  validate(authValidation.login),
+  authController.login
+);
+
+router.post(
+  '/register',
+  validate(authValidation.register),
+  authController.register
+);
+
+router.post(
+  '/logout',
+  auth(),
+  authController.logout
+);
+
+router.post(
+  '/refresh-tokens',
+  auth(),
+  authController.refreshTokens
+);
 
 router.post(
   '/forgot-password',
@@ -33,8 +52,6 @@ router.post(
   validate(authValidation.verifyEmail),
   authController.verifyEmail
 );
-
-router.get('/me', auth(), authController.me);
 
 export default router;
 

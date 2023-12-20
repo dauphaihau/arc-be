@@ -1,12 +1,8 @@
-import {
-  ClientSession,
-  FilterQuery,
-  Schema,
-  QueryOptions
-} from 'mongoose';
+import { ClientSession } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
 import {
   AddMemberPayload,
+  IMemberModel,
   UpdateMemberPayload
 } from '@/interfaces/models/member';
 import { Member } from '@/models';
@@ -33,7 +29,7 @@ const findMemberShop = async <T>(shopId: T, userId: T) => {
  * @param [options.page] - Current page (default = 1)
  * @returns {Promise<QueryResult>}
  */
-const queryMembers = async (filter: FilterQuery<Schema>, options: QueryOptions) => {
+const queryMembers: IMemberModel['paginate'] = async (filter, options) => {
   const members = await Member.paginate(filter, options);
   return members;
 };

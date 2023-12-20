@@ -39,6 +39,15 @@ const envVarsZodSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string().describe('secret access key for aws s3'),
   AWS_S3_REGION: z.string().describe('region for aws s3'),
   AWS_S3_BUCKET: z.string().describe('bucket for aws s3'),
+  AWS_S3_HOST_BUCKET: z.string().url().describe('host bucket for aws s3'),
+  REDIS_HOST: z.string().describe('server redis server'),
+  REDIS_PORT: z
+    .preprocess(Number, z.number())
+    .default(6379).describe('port redis server'),
+  REDIS_USERNAME: z.string().optional().describe('username redis server'),
+  REDIS_PASSWORD: z.string().optional().describe('password redis server'),
+  STRIPE_SECRET_KEY: z.string().describe('Stripe secret key'),
+  STRIPE_WEBHOOK_SECRET_KEY: z.string().describe('Stripe webhook secret key'),
 });
 
 const result = envVarsZodSchema.safeParse(process.env);
@@ -90,5 +99,16 @@ export const env = {
     },
     region: envVars.AWS_S3_REGION,
     bucket: envVars.AWS_S3_BUCKET,
+    host_bucket: envVars.AWS_S3_HOST_BUCKET,
+  },
+  redis: {
+    host: envVars.REDIS_HOST,
+    port: envVars.REDIS_PORT,
+    username: envVars.REDIS_USERNAME,
+    password: envVars.REDIS_PASSWORD,
+  },
+  stripe: {
+    secret: envVars.STRIPE_SECRET_KEY,
+    webhook_secret: envVars.STRIPE_WEBHOOK_SECRET_KEY,
   },
 };

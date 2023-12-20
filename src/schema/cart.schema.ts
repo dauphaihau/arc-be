@@ -5,6 +5,10 @@ import { objectIdSchema } from '@/schema/sub/objectId.schema';
 export const productCartSchema = z.object({
   product_id: productSchema.shape.id,
   quantity: productSchema.shape.quantity,
+  is_select_order: z
+    .boolean()
+    .default(true)
+    .optional(),
 });
 
 export const cartSchema = z.object({

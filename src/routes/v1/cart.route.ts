@@ -1,25 +1,22 @@
 import express from 'express';
 import { cartController } from '@/controllers';
 import { cartValidation } from '@/validations';
-import { auth, validate } from '@/middlewares';
+import { validate } from '@/middlewares';
 
 const router = express.Router();
 
 router
   .route('/')
   .post(
-    validate(cartValidation.addOrUpdateToCart),
-    auth(),
-    cartController.addOrUpdateToCart
+    validate(cartValidation.addOrUpdateProduct),
+    cartController.addOrUpdateProduct
   )
   .get(
-    auth(),
     cartController.getCart
   )
   .delete(
-    validate(cartValidation.deleteProductInCart),
-    auth(),
-    cartController.deleteProductInCart
+    validate(cartValidation.deleteProduct),
+    cartController.deleteProduct
   );
 
 export default router;

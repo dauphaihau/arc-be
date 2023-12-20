@@ -73,10 +73,6 @@ const verifyEmail = catchAsync(async (req, res) => {
   res.status(StatusCodes.NO_CONTENT).send();
 });
 
-const me = catchAsync(async (req, res) => {
-  res.send({ user: req.user });
-});
-
 export const authController = {
   register,
   login,
@@ -86,5 +82,4 @@ export const authController = {
   resetPassword,
   sendVerificationEmail,
   verifyEmail,
-  me,
 };

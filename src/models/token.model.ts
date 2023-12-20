@@ -3,6 +3,7 @@ import { tokenTypes } from '@/config/enums/token';
 import { IToken, ITokenModel } from '@/interfaces/models/token';
 import { toJSON } from '@/models/plugins';
 
+// define Schema
 const tokenSchema = new Schema<IToken, ITokenModel>(
   {
     token: {
@@ -34,10 +35,7 @@ const tokenSchema = new Schema<IToken, ITokenModel>(
   }
 );
 
-// add plugin that converts mongoose to json
+// Plugins
 tokenSchema.plugin(toJSON);
 
-/**
- * @typedef Token
- */
 export const Token = model<IToken, ITokenModel>('Token', tokenSchema);

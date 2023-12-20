@@ -2,6 +2,7 @@ import { Schema, model } from 'mongoose';
 import { toJSON } from '@/models/plugins';
 import { IInventory, IInventoryModel } from '@/interfaces/models/inventory';
 
+// define Schema
 const inventorySchema = new Schema<IInventory, IInventoryModel>(
   {
     product_id: {

@@ -3,8 +3,12 @@ import { IBodyRequest } from '@/interfaces/common/request';
 import { CreateShopPayload } from '@/interfaces/models/shop';
 import { shopService, memberService } from '@/services';
 import { MEMBER_ROLES } from '@/config/enums/member';
-import { catchAsync, transactionWrapper, ApiError } from '@/utils';
-import { Shop, Member } from '@/models';
+import {
+  catchAsync, transactionWrapper, ApiError, pick
+} from '@/utils';
+import {
+  Shop, Member, Product, Coupon, Inventory 
+} from '@/models';
 
 const createShop = catchAsync(async (
   req: IBodyRequest<CreateShopPayload>,
@@ -15,7 +19,7 @@ const createShop = catchAsync(async (
 
     // Validate user own any shop
     if (await Shop.exists({ user_id })) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'each account can only have one shop');
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'each account can only own one store');
     }
 
     // Create Shop
@@ -24,7 +28,7 @@ const createShop = catchAsync(async (
       shop_name: req.body.shop_name,
     }, session);
 
-    // Init owner shop
+    // Init owner member shop
     const member = await memberService.addMember({
       shop_id: shop.id,
       user_id,
@@ -45,6 +49,22 @@ const deleteShop = catchAsync(async (req, res) => {
       throw new ApiError(StatusCodes.FORBIDDEN, 'Forbidden');
     }
 
+    // Remove all inventory
+    const isDeletedInventories = await Inventory.deleteMany({ shop_id: shop.id }, { session });
+    if (!isDeletedInventories.deletedCount) throw new Error();
+
+    // Remove all products
+    const isDeletedProducts = await Product.deleteMany({ shop_id: shop.id }, { session });
+    if (!isDeletedProducts.deletedCount) throw new Error();
+    
+    // Remove all products in cart
+    // const isDeletedInventories = await Cart.updateMany({ shop_id: shop.id }, { session });
+    // if (!isDeletedInventories.deletedCount) throw new Error();
+
+    // Remove all coupons
+    const isDeletedCoupons = await Coupon.deleteMany({ shop_id: shop.id }, { session });
+    if (!isDeletedCoupons.deletedCount) throw new Error();
+
     // Remove all members
     const isDeletedMembers = await Member.deleteMany({ shop_id: shop.id }, { session });
     if (!isDeletedMembers.deletedCount) throw new Error();
@@ -55,7 +75,15 @@ const deleteShop = catchAsync(async (req, res) => {
   });
 });
 
+const getListShops = catchAsync(async (req, res) => {
+  const filter = pick(req.query, ['shop_name']);
+  const options = pick(req.query, ['sortBy', 'limit', 'page']);
+  const result = await shopService.queryShops(filter, options);
+  res.send(result);
+});
+
 export const shopController = {
   createShop,
+  getListShops,
   deleteShop,
 };

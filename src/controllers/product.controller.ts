@@ -55,8 +55,7 @@ const getProducts = catchAsync(async (
     },
     ['shop_id', 'price', 'name', 'category']
   );
-  const options = pick(req.query, ['sortBy', 'limit', 'page']);
-  options['select'] = { attributes: 0 };
+  const options = pick(req.query, ['sortBy', 'limit', 'page', 'populate', 'select']);
   const result = await productService.queryProducts(filter, options);
   res.send(result);
 });

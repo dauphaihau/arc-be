@@ -6,11 +6,13 @@ export interface IUserMethods {
   isPasswordMatch: (password: string) => Promise<boolean>;
 }
 
-export type IUser = z.infer<typeof userSchema> & Document & IUserMethods;
-
-export interface IUserModel extends Model<IUser, unknown, IUserMethods> {
+interface IUserStatics {
   isEmailTaken: (email: string, excludeUserId?: ObjectId) => Promise<boolean>;
 }
+
+export type IUser = z.infer<typeof userSchema> & Document & IUserMethods;
+
+export interface IUserModel extends Model<IUser, unknown, IUserMethods>, IUserStatics {}
 
 export type CreateUserPayload = Pick<IUser, 'email' | 'password'>;
 

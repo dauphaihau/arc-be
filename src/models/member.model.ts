@@ -3,11 +3,12 @@ import { toJSON, paginate } from './plugins';
 import { memberRoles } from '@/config/enums/member';
 import { IMember, IMemberModel } from '@/interfaces/models/member';
 
+// define Schema
 const memberSchema = new Schema<IMember, IMemberModel>(
   {
     shop_id: {
       type: SchemaTypes.ObjectId,
-      ref: 'shop',
+      ref: 'Shop',
       required: true,
     },
     user_id: {
@@ -30,7 +31,4 @@ const memberSchema = new Schema<IMember, IMemberModel>(
 memberSchema.plugin(toJSON);
 memberSchema.plugin(paginate);
 
-/**
- * @typedef Member
- */
 export const Member: IMemberModel = model<IMember, IMemberModel>('Shop_Member', memberSchema);

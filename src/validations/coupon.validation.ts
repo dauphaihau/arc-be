@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { COUPON_TYPES } from '@/config/enums/coupon';
 import { couponSchema } from '@/schema/coupon.schema';
-import { mixBaseQueryListSchema } from '@/schema/sub/queryList.schema';
+import { mixBaseQueryOptionsSchema } from '@/schema/sub/queryOptions.schema';
 
 export const couponValidation = {
   createCoupon: z.object({
@@ -76,7 +76,7 @@ export const couponValidation = {
   }),
   getCoupons: z.object({
     params: couponSchema.pick({ shop_id: true }),
-    query: mixBaseQueryListSchema(
+    query: mixBaseQueryOptionsSchema(
       couponSchema.pick({
         code: true,
       })

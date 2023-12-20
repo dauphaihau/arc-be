@@ -1,5 +1,8 @@
 /**
  * Create an object composed of the picked object properties
+ * @example { pick name key }
+ * pick({ id: 1, name: 'A', role: 'admin' }, ['name']) // prints { name: 'A' }
+ * 
  */
 type NewObject = {
   [index: string]: unknown;

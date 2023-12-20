@@ -7,10 +7,13 @@ services:
     image: express-ts
     environment:
       - MONGODB_URL=mongodb://mongo1:30001/arc
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     ports:
       - '3000:3000'
     depends_on:
       - mongo1
+      - redis
     volumes:
       - .:/usr/src/node-app
     networks:
@@ -56,6 +59,19 @@ services:
       - ./data/mongo-3:/data/db
     ports:
       - "30003:30003"
+    networks:
+      - node-network
+
+  redis:
+    image: 'redis'
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 1s
+      timeout: 2s
+      retries: 10
+    container_name: redis-server
     networks:
       - node-network
 

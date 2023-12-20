@@ -1,15 +1,14 @@
 import { StatusCodes } from 'http-status-codes';
-import {
-  ClientSession, FilterQuery, Schema, QueryOptions
-} from 'mongoose';
+import { ClientSession } from 'mongoose';
+import { ILineItemOrder } from '@/interfaces/models/order';
 import {
   CreateProductPayload,
-  UpdateProductPayload, IProductAttribute, IProductImage, IProduct
+  UpdateProductPayload, IProductAttribute, IProductImage, IProduct, IProductModel
 } from '@/interfaces/models/product';
 import { Product } from '@/models';
 import { ApiError } from '@/utils';
 import { getValidKeysAttrByCategory } from '@/schema';
-import { log } from '@/config';
+import { log, env } from '@/config';
 import { awsS3Service } from '@/services/aws-s3.service';
 
 const validateAttributes = (attributes: IProductAttribute) => {
@@ -130,7 +129,7 @@ const createProduct = async (payload: CreateProductPayload, session: ClientSessi
  * @param [options.page] - Current page (default = 1)
  * @returns {Promise<QueryResult>}
  */
-const queryProducts = async (filter: FilterQuery<Schema>, options: QueryOptions) => {
+const queryProducts: IProductModel['paginate'] = async (filter, options) => {
   const products = await Product.paginate(filter, options);
   return products;
 };
@@ -141,10 +140,60 @@ const deleteProductById = async (productId: IProduct['id'], session: ClientSessi
   return product.remove({ session });
 };
 
+const checkAndGetShopProducts = async (
+  shop_id: IProduct['shop_id'],
+  products: ILineItemOrder['products']
+) => {
+  return Promise.all(
+    products.map(async (prod) => {
+      const productInDB = await getProductById(prod.id);
+      if (!productInDB) {
+        throw new ApiError(StatusCodes.NOT_FOUND, `product ${prod.id} not found`);
+      }
+      if (productInDB.quantity < prod.quantity) {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST, `quantity product ${prod.id} is exceed stock`
+        );
+      }
+      if (productInDB.shop_id.toString() !== shop_id) {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST, `product ${productInDB.id} not match with ${shop_id}`
+        );
+      }
+      return {
+        id: prod.id,
+        shop_id,
+        title: productInDB.title,
+        price: productInDB.price,
+        image_url: env.aws_s3.host_bucket + '/' + productInDB.images[0].relative_url,
+        quantity: prod.quantity,
+      };
+    })
+  );
+};
+
+const minusQuantityProduct = async (
+  productId: IProduct['id'],
+  quantity: IProduct['quantity'],
+  session: ClientSession
+) => {
+  return Product.updateOne(
+    { _id: productId },
+    {
+      $inc: {
+        product_quantity: -quantity,
+      },
+    },
+    { session }
+  );
+};
+
 export const productService = {
   createProduct,
   getProductById,
   queryProducts,
   deleteProductById,
   updateProduct,
+  checkAndGetShopProducts,
+  minusQuantityProduct,
 };

@@ -14,6 +14,8 @@ export enum COUPON_MIN_ORDER_TYPES {
   ORDER_TOTAL = 'order_total'
 }
 
+export const COUPONS_MAX_USE_PER_ORDER = 2;
+
 export const couponAppliesTo = Object.values(COUPON_APPLIES_TO);
 export const couponTypes = Object.values(COUPON_TYPES);
 export const couponMinOrderTypes = Object.values(COUPON_MIN_ORDER_TYPES);

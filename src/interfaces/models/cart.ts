@@ -9,3 +9,8 @@ export interface ICartModel extends Model<ICart, unknown> {
 }
 
 export type DeleteProductCartBody = Pick<IProductCart, 'product_id'>;
+
+export type UpdateProductCartBody =
+  Pick<IProductCart, 'product_id'> &
+  Partial<Pick<IProductCart, 'is_select_order' | 'quantity'>>
+;

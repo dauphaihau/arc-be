@@ -1,6 +1,6 @@
-import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
-import { CreateShopPayload } from '@/interfaces/models/shop';
+import { StatusCodes } from 'http-status-codes';
+import { CreateShopPayload, IShopModel } from '@/interfaces/models/shop';
 import { Shop } from '@/models';
 import { ApiError } from '@/utils';
 
@@ -15,6 +15,20 @@ const createShop = async (payload: CreateShopPayload, session: ClientSession) =>
   return shop[0];
 };
 
+/**
+ * Query for shops
+ * @param filter - Mongo filter
+ * @param options - Query options
+ * @param [options.sortBy] - Sort option in the format: sortField:(desc|asc)
+ * @param [options.limit] - Maximum number of results per page (default = 10)
+ * @param [options.page] - Current page (default = 1)
+ * @returns {Promise<QueryResult>}
+ */
+const queryShops: IShopModel['paginate'] = async (filter, options) => {
+  return Shop.paginate(filter, options);
+};
+
 export const shopService = {
   createShop,
+  queryShops,
 };

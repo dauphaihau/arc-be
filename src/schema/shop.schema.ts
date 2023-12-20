@@ -10,6 +10,6 @@ export const shopSchema = z.object({
       invalid_type_error: 'invalid type shop name',
     })
     .trim()
-    .min(6, 'shop_name must be at least 6 characters')
-    .max(20, 'shop_name must be no longer than 20 characters'),
+    .min(6, 'must be at least 6 characters')
+    .max(20, 'must be no longer than 20 characters'),
 });

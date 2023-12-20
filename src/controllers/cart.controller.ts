@@ -9,27 +9,27 @@ const getCart = catchAsync(async (req, res) => {
   res.status(StatusCodes.OK).send({ cart });
 });
 
-const addOrUpdateToCart = catchAsync(async (req, res) => {
-  const cart = await cartService.addOrUpdateToCart(req.user.id, req.body);
+const addOrUpdateProduct = catchAsync(async (req, res) => {
+  const cart = await cartService.addOrUpdateProduct(req.user.id, req.body);
   res.status(StatusCodes.OK).send({ cart });
 });
 
-const updateQuantityProduct = catchAsync(async (req, res) => {
-  const cart = await cartService.updateQuantityProduct(req.user.id, req.body);
+const updateProduct = catchAsync(async (req, res) => {
+  const cart = await cartService.updateProduct(req.user.id, req.body);
   res.status(StatusCodes.OK).send({ cart });
 });
 
-const deleteProductInCart = catchAsync(async (
+const deleteProduct = catchAsync(async (
   req: Request<unknown, unknown, DeleteProductCartBody>,
   res
 ) => {
-  await cartService.deleteProductInCart(req.user.id, req.body.product_id);
+  await cartService.deleteProduct(req.user.id, req.body.product_id);
   res.status(StatusCodes.NO_CONTENT).send();
 });
 
 export const cartController = {
-  addOrUpdateToCart,
+  addOrUpdateProduct,
   getCart,
-  updateQuantityProduct,
-  deleteProductInCart,
+  deleteProduct,
+  updateProduct,
 };

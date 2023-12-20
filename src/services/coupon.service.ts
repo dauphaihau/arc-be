@@ -1,5 +1,5 @@
 import { StatusCodes } from 'http-status-codes';
-import { FilterQuery, Schema, QueryOptions } from 'mongoose';
+import { ClientSession } from 'mongoose';
 import {
   COUPON_TYPES,
   COUPON_MIN_ORDER_TYPES,
@@ -9,7 +9,7 @@ import {
   CreateCouponPayload,
   ICoupon,
   GetCouponByCode,
-  UpdateCouponPayload
+  UpdateCouponPayload, UpdateCouponShopAfterUsed, ICouponModel
 } from '@/interfaces/models/coupon';
 import { productService } from '@/services/product.service';
 import { Coupon } from '@/models/coupon.model';
@@ -45,10 +45,13 @@ const createCoupon = async (createBody: CreateCouponPayload) => {
   if (couponExist && couponExist.is_active) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Code already taken');
   }
+
   if (createBody?.amount_off) type = COUPON_TYPES.FIXED_AMOUNT;
   if (createBody?.percent_off) type = COUPON_TYPES.PERCENTAGE;
+
   if (createBody?.min_order_value) min_order_type = COUPON_MIN_ORDER_TYPES.ORDER_TOTAL;
   if (createBody?.min_products) min_order_type = COUPON_MIN_ORDER_TYPES.NUMBER_OF_PRODUCTS;
+
   if (Array.isArray(createBody.applies_product_ids) && createBody.applies_product_ids.length > 0) {
     applies_to = COUPON_APPLIES_TO.SPECIFIC;
     for (const product_id of applies_product_ids) {
@@ -88,7 +91,8 @@ const createCoupon = async (createBody: CreateCouponPayload) => {
  * @param [options.page] - Current page (default = 1)
  * @returns {Promise<QueryResult>}
  */
-const queryCoupons = async (filter: FilterQuery<Schema>, options: QueryOptions) => {
+
+const queryCoupons: ICouponModel['paginate'] = async (filter, options) => {
   const coupons = await Coupon.paginate(filter, options);
   return coupons;
 };
@@ -143,10 +147,29 @@ const updateCoupon = async (
   return coupon;
 };
 
+const updateCouponShopAfterUsed = async (
+  { shop_id, user_id, code }: UpdateCouponShopAfterUsed,
+  session: ClientSession
+) => {
+  const filter = { shop_id, code };
+  const update = {
+    $set: {
+      users_used: user_id,
+    },
+    $inc: {
+      uses_count: 1,
+    },
+  };
+  const options = { upsert: false, session };
+  await Coupon.findOneAndUpdate(filter, update, options);
+};
+
 export const couponService = {
   createCoupon,
   queryCoupons,
   deleteCouponById,
   getCouponById,
+  getCouponByCode,
   updateCoupon,
+  updateCouponShopAfterUsed,
 };

@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { mixBaseQueryListSchema } from '@/schema/sub/queryList.schema';
-import { productSchema, productImageSchema } from '@/schema';
 import { PRODUCT_MAX_IMAGES } from '@/config/enums/product';
+import { productSchema, productImageSchema } from '@/schema';
+import { productStateUserCanModify } from '@/schema/product.schema';
+import { mixBaseQueryOptionsSchema } from '@/schema/sub/queryOptions.schema';
 
 export const productValidation = {
   createProduct: z.object({
@@ -23,13 +24,14 @@ export const productValidation = {
               .strict()
             )
             .max(PRODUCT_MAX_IMAGES),
+          state: productStateUserCanModify,
         })
       )
       .strict(),
   }),
   getProducts: z.object({
     params: productSchema.pick({ shop_id: true }),
-    query: mixBaseQueryListSchema(
+    query: mixBaseQueryOptionsSchema(
       productSchema.pick({
         title: true,
         price: true,
@@ -61,6 +63,7 @@ export const productValidation = {
           images: z
             .array(productImageSchema.partial().strict())
             .max(PRODUCT_MAX_IMAGES),
+          state: productStateUserCanModify,
         })
       )
       .strict()
