@@ -53,7 +53,7 @@ router
 router
   .route('/order/review')
   .post(
-    validate(orderValidation.review),
+    validate(orderValidation.reviewOrder),
     auth(),
     orderController.reviewOrder
   );

@@ -5,7 +5,7 @@ import {
 } from '@/schema';
 
 export const orderValidation = {
-  review: z.object({
+  reviewOrder: z.object({
     body: z.object({
       cart_items: z.array(lineItemSchema.strict()),
     }).strict(),

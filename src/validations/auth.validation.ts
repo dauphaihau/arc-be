@@ -19,6 +19,9 @@ export const authValidation = {
     query: tokenSchema.pick({ token: true }).strict(),
     body: userSchema.pick({ password: true }).strict(),
   }),
+  verifyToken: z.object({
+    query: tokenSchema.pick({ token: true, type: true }).strict(),
+  }),
   verifyEmail: z.object({
     query: tokenSchema.pick({ token: true }).strict(),
   }),

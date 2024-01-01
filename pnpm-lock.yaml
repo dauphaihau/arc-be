@@ -4755,12 +4755,12 @@ packages:
   /redis/4.6.11:
     resolution: {integrity: sha512-kg1Lt4NZLYkAjPOj/WcyIGWfZfnyfKo1Wg9YKVSlzhFwxpFIl3LYI8BWy1Ab963LLDsTz2+OwdsesHKljB3WMQ==}
     dependencies:
-      '@redis/bloom': 1.2.0_@redis+client@1.5.12
+      '@redis/bloom': 1.2.0_@redis+frontend@1.5.12
       '@redis/client': 1.5.12
-      '@redis/graph': 1.1.1_@redis+client@1.5.12
-      '@redis/json': 1.0.6_@redis+client@1.5.12
-      '@redis/search': 1.1.6_@redis+client@1.5.12
-      '@redis/time-series': 1.0.5_@redis+client@1.5.12
+      '@redis/graph': 1.1.1_@redis+frontend@1.5.12
+      '@redis/json': 1.0.6_@redis+frontend@1.5.12
+      '@redis/search': 1.1.6_@redis+frontend@1.5.12
+      '@redis/time-series': 1.0.5_@redis+frontend@1.5.12
     dev: false
 
   /redlock/5.0.0-beta.2:

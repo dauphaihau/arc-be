@@ -1,4 +1,5 @@
 import httpStatus from 'http-status-codes';
+import { ClientSession } from 'mongoose';
 import { tokenService, userService } from '@/services';
 import { transactionWrapper } from '@/utils';
 import { Token } from '@/models';
@@ -37,6 +38,7 @@ const logout = async (refreshToken: string) => {
  */
 const refreshAuth = async (refreshToken: string) => {
   try {
+
     const refreshTokenDoc = await tokenService.verifyToken(refreshToken, TOKEN_TYPES.REFRESH);
     const user = await userService.getUserById(refreshTokenDoc.user_id);
     if (!user) {
@@ -52,27 +54,32 @@ const refreshAuth = async (refreshToken: string) => {
 /**
  * Reset password
  */
-const resetPassword = async (resetPasswordToken: string, newPassword: string) => {
-  await transactionWrapper(async (session) => {
-    try {
-      const resetPasswordTokenDoc = await tokenService.verifyToken(
-        resetPasswordToken,
-        TOKEN_TYPES.RESET_PASSWORD
-      );
-      const user = await userService.getUserById(resetPasswordTokenDoc.user_id);
-      if (!user) {
-        throw new Error();
-      }
-      await userService.updateUserById(user.id, { password: newPassword }, session);
-      const deleted = await Token.deleteMany({
-        user_id: user.id,
-        type: TOKEN_TYPES.RESET_PASSWORD,
-      }, { session });
-      if (!deleted.deletedCount) throw new Error();
-    } catch (error) {
-      throw new ApiError(httpStatus.UNAUTHORIZED, 'Password reset failed');
+const resetPassword = async (
+  resetPasswordToken: string,
+  newPassword: string,
+  session: ClientSession
+) => {
+  try {
+    const resetPasswordTokenDoc = await tokenService.verifyToken(
+      resetPasswordToken,
+      TOKEN_TYPES.RESET_PASSWORD
+    );
+    const user = await userService.getUserById(resetPasswordTokenDoc.user_id);
+    if (!user) {
+      throw new Error();
     }
-  });
+    const userUpdated = await userService.updateUserById(
+      user.id, { password: newPassword }, session
+    );
+    const deleted = await Token.deleteMany({
+      user_id: user.id,
+      type: TOKEN_TYPES.RESET_PASSWORD,
+    }, { session });
+    if (!deleted.deletedCount) throw new Error();
+    return userUpdated;
+  } catch (error) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Password reset failed');
+  }
 };
 
 /**

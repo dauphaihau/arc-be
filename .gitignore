@@ -3,6 +3,10 @@ node_modules
 .env*
 !.env*.example
 
+# Express dev/build outputs
+.data
+dist
+
 # IDE
 .idea
 

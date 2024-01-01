@@ -25,7 +25,6 @@ router.post(
 
 router.post(
   '/refresh-tokens',
-  auth(),
   authController.refreshTokens
 );
 
@@ -51,6 +50,12 @@ router.post(
   '/verify-email',
   validate(authValidation.verifyEmail),
   authController.verifyEmail
+);
+
+router.get(
+  '/verify-token',
+  validate(authValidation.verifyToken),
+  authController.verifyToken
 );
 
 export default router;
@@ -317,22 +322,4 @@ export default router;
  *             example:
  *               code: 401
  *               message: verify email failed
- */
-
-/**
- * @swagger
- * /auth/me:
- *   get:
- *     summary: get current user info
- *     tags: [Auth]
- *     responses:
- *       "200":
- *         description: Return user info
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 user:
- *                   $ref: '#/components/schemas/User'
  */

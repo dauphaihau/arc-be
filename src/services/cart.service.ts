@@ -136,7 +136,6 @@ async function minusQuantityProduct(
   const update = {
     $inc: {
       'cart_products.$.quantity': quantity,
-      // cart_count_products: quantity,
     },
   };
   const options = { new: true, session };

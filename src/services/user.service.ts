@@ -10,7 +10,7 @@ import { ApiError } from '@/utils/ApiError';
 
 const createUser = async (userBody: CreateUserPayload, session?: ClientSession) => {
   if (await User.isEmailTaken(userBody.email)) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, 'Email already taken');
+    throw new ApiError(StatusCodes.CONFLICT, 'Email already taken');
   }
   const user = await User.create([userBody], { session });
   return user[0];
