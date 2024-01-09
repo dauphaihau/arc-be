@@ -1,7 +1,8 @@
 export enum PRODUCT_CATEGORIES {
   ELECTRONIC = 'electronic',
   CLOTHING = 'clothing',
-  FURNITURE = 'furniture'
+  HOME = 'home'
+  // FURNITURE = 'furniture'
 }
 
 export enum PRODUCT_STATES {
@@ -19,6 +20,20 @@ export enum PRODUCT_WHO_MADE {
   COLLECTIVE = 'collective',
   SOMEONE_ELSE = 'someone_else'
 }
+
+export enum PRODUCT_ATTR_CLOTHING_SIZE { S = 'S', M = 'M', L = 'L', XL = 'XL' }
+
+export enum PRODUCT_ATTR_CLOTHING_GENDER { MALE = 'male', FEMALE = 'female' }
+
+export enum PRODUCT_ATTR_COLORS {
+  BLACK= 'black',
+  WHITE = 'white',
+  RED = 'red',
+  YELLOW = 'yellow',
+  BLUE = 'blue',
+  GREEN = 'green'
+}
+
 
 export const PRODUCT_MAX_IMAGES = 10;
 export const PRODUCT_MAX_PRICE = 50000;

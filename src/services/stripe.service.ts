@@ -22,7 +22,7 @@ async function getCheckoutSessionUrl(
   const { newOrder, productsFlattened, userAddress } = payload;
 
   if (!productsFlattened) {
-    throw new ApiError(StatusCodes.EXPECTATION_FAILED, 'Something wrong');
+    throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Something wrong');
   }
 
   const line_items = productsFlattened.map((product) => (
@@ -103,7 +103,7 @@ async function getCheckoutSessionUrl(
       },
     });
     if (!coupon) {
-      throw new ApiError(StatusCodes.EXPECTATION_FAILED, 'Create stripe coupon failed');
+      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Create stripe coupon failed');
     }
     params.discounts = [{ coupon: coupon.id }];
   }

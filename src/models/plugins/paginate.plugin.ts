@@ -40,7 +40,7 @@ export const paginate = (schema: Schema) => {
       });
       sort = sortingCriteria.join(' ');
     } else {
-      sort = 'createdAt';
+      sort = '-createdAt';
     }
 
     const limit = options.limit &&
@@ -55,7 +55,6 @@ export const paginate = (schema: Schema) => {
 
     const skip = (page - 1) * limit;
     const select = options.select ? options.select.replaceAll(',', ' ') : {};
-
 
     const countPromise = this.countDocuments(filter).exec();
     let docsPromise = this.find(filter).sort(sort).skip(skip).limit(limit).select(select);

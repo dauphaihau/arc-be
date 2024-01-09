@@ -1,4 +1,6 @@
-import { NextFunction, Request, Response } from 'express';
+import {
+  NextFunction, Request, Response, ErrorRequestHandler 
+} from 'express';
 import mongoose from 'mongoose';
 import { StatusCodes, ReasonPhrases, getReasonPhrase } from 'http-status-codes';
 import { log, env } from '@/config';
@@ -24,8 +26,13 @@ export const errorConverter = (
 };
 
 // require _next to execute this fn, even unused.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const errorHandler = (err: ApiError, _req: Request, res: Response, _next: NextFunction) => {
+export const errorHandler: ErrorRequestHandler = (
+  err: ApiError,
+  _req: Request,
+  res: Response,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _next: NextFunction
+) => {
   let { statusCode, message } = err;
   if (env.node === 'production' && !err.isOperational) {
     statusCode = StatusCodes.INTERNAL_SERVER_ERROR;

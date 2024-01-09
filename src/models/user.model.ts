@@ -1,4 +1,4 @@
-import { model, Schema } from 'mongoose';
+import { model, Schema, SchemaTypes } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import validator from 'validator';
 import { IUser, IUserMethods, IUserModel } from '@/interfaces/models/user';
@@ -49,6 +49,10 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
     is_email_verified: {
       type: Boolean,
       default: false,
+    },
+    shop: {
+      type: SchemaTypes.ObjectId,
+      ref: 'Shop',
     },
   },
   {

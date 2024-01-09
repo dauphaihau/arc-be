@@ -15,7 +15,7 @@ const login = async ({ email, password }: LoginPayload) => {
   if (!user || !(await user.isPasswordMatch(password))) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
   }
-  return user;
+  return user.populate('shop');
 };
 
 /**

@@ -11,8 +11,8 @@ import { getValidKeysAttrByCategory } from '@/schema';
 import { log, env } from '@/config';
 import { awsS3Service } from '@/services/aws-s3.service';
 
-const validateAttributes = (attributes: IProductAttribute) => {
-  const keysValid = getValidKeysAttrByCategory(attributes.category);
+const validateAttributes = (category: IProduct['category'], attributes: IProductAttribute) => {
+  const keysValid = getValidKeysAttrByCategory(category);
   const keyInvalid: string[] = [];
   Object.keys(attributes).forEach((key) => {
     if (!keysValid.includes(key)) {
@@ -48,7 +48,7 @@ const updateProduct = async (
   if (!product) throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
 
   if (updateBody?.attributes) {
-    validateAttributes(updateBody.attributes);
+    validateAttributes(updateBody.category, updateBody.attributes);
   }
 
   if (updateBody?.images && updateBody.images.length > 0) {
@@ -115,7 +115,7 @@ const updateProduct = async (
 };
 
 const createProduct = async (payload: CreateProductPayload, session: ClientSession) => {
-  validateAttributes(payload.attributes);
+  validateAttributes(payload.category, payload.attributes);
   const product = await Product.create([payload], { session });
   return product[0];
 };

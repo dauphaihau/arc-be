@@ -23,7 +23,9 @@ const jwtVerify = async (payload: JwtPayload, done: VerifiedCallback) => {
     if (payload['type'] !== TOKEN_TYPES.ACCESS) {
       throw new Error('Invalid token type');
     }
-    const user = await User.findById(payload.sub);
+    const user = await User
+      .findOne({ _id: payload.sub })
+      .populate('shop');
     if (!user) {
       return done(null, false);
     }

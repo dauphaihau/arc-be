@@ -22,7 +22,7 @@ async function getObject(Key: string) {
   } catch (err) {
     log.error(err);
     throw new ApiError(
-      StatusCodes.EXPECTATION_FAILED,
+      StatusCodes.INTERNAL_SERVER_ERROR,
       `AWS S3: get object by key: ${Key} failed`
     );
   }
@@ -52,7 +52,7 @@ async function deleteObject(key: string) {
   } catch (err) {
     log.error(err);
     throw new ApiError(
-      StatusCodes.EXPECTATION_FAILED,
+      StatusCodes.INTERNAL_SERVER_ERROR,
       `AWS S3: Delete object by key: ${key} failed`
     );
   }
@@ -73,7 +73,7 @@ async function deleteMultiObject(keys: string[]) {
   } catch (err) {
     log.error(err);
     throw new ApiError(
-      StatusCodes.EXPECTATION_FAILED,
+      StatusCodes.INTERNAL_SERVER_ERROR,
       'AWS S3: Delete object by keys failed'
     );
   }

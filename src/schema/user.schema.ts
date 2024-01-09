@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { objectIdSchema } from '@/schema/sub/objectId.schema';
 import { USER_REGEX_PASSWORD, USER_REGEX_NAME } from '@/config/enums/user';
 
 export const userSchema = z.object({
@@ -25,4 +26,5 @@ export const userSchema = z.object({
     .regex(USER_REGEX_PASSWORD, 'password must contain at least 1 lower letter, 1 uppercase letter, 1 number and 1 special character')
   ,
   is_email_verified: z.boolean().optional(),
+  shop: objectIdSchema.describe('the shop that user owns').optional(),
 });
