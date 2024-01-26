@@ -9,13 +9,13 @@ export interface IMemberModel extends Model<IMember, unknown> {
   paginate: (filter: FilterQuery<IMember>, options: IBaseQueryOptions) => Promise<IMember[]>;
 }
 
-export type AddMemberPayload = Pick<IMember, 'shop_id' | 'user_id' | 'role'>;
-export type AddMemberParams = Partial<Pick<IMember, 'shop_id'>>;
+export type AddMemberPayload = Pick<IMember, 'shop' | 'user' | 'role'>;
+export type AddMemberParams = Partial<Pick<IMember, 'shop'>>;
 
-export type DeleteMemberParams = Partial<Pick<IMember, 'shop_id' | 'user_id'>>;
+export type DeleteMemberParams = Partial<Pick<IMember, 'shop' | 'user'>>;
 
-export type UpdateMemberParams = Partial<Pick<IMember, 'shop_id' | 'user_id'>>;
+export type UpdateMemberParams = Partial<Pick<IMember, 'shop' | 'user'>>;
 export type UpdateMemberPayload = Pick<IMember, 'role'>;
 
-export type GetMemberParams = Partial<Pick<IMember, 'shop_id'>>;
-export type GetMemberQueries = Partial<Pick<IMember, 'shop_id'>>;
+export type GetMemberParams = Partial<Pick<IMember, 'shop'>>;
+export type GetMemberQueries = Partial<Pick<IMember, 'shop'>>;

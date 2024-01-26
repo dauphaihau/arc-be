@@ -52,13 +52,13 @@ router
 
 // Product
 router
-  .route('/:shop_id/products')
+  .route('/:shop/products')
   .post(
-    validate(productValidation.createProduct),
+    // validate(productValidation.createProduct),
     auth('createProduct'),
     productController.createProduct
   )
-  .get(validate(productValidation.getProducts), productController.getProducts);
+  .get(validate(productValidation.getProducts), productController.getProductsByShop);
 
 router
   .route('/:shop_id/products/:id')

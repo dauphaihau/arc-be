@@ -14,4 +14,4 @@ export interface IShopModel extends Model<IShop, unknown> {
   paginate: (filter: FilterQuery<IShop>, options: IBaseQueryOptions) => Promise<IShop[]>;
 }
 
-export type CreateShopPayload = Pick<IShop, 'user_id' | 'shop_name'>;
+export type CreateShopPayload = Pick<IShop, 'user' | 'shop_name'>;

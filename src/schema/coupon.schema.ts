@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PRODUCT_MAX_PRICE } from '@/config/enums/product';
+import { PRODUCT_CONFIG } from '@/config/enums/product';
 import {
   COUPON_APPLIES_TO,
   COUPON_TYPES,
@@ -55,7 +55,7 @@ export const couponSchema = z.object({
     .default(COUPON_MIN_ORDER_TYPES.ORDER_TOTAL),
   min_order_value: z
     .number()
-    .max(PRODUCT_MAX_PRICE)
+    .max(PRODUCT_CONFIG.MAX_PRICE)
     .default(0)
     .optional(),
   min_products: z

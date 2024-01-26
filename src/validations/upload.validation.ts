@@ -3,6 +3,6 @@ import { productSchema } from '@/schema';
 
 export const uploadValidation = {
   getPresignedUrl: z.object({
-    query: productSchema.pick({ shop_id: true }).partial(),
+    query: productSchema.pick({ shop: true }).partial(),
   }),
 };

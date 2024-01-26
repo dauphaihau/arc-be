@@ -2,20 +2,22 @@ import { Schema, z } from 'zod';
 import { zodKeys } from '@/utils';
 import {
   PRODUCT_CATEGORIES,
-  PRODUCT_ATTR_CLOTHING_SIZE,
+  // PRODUCT_ATTR_CLOTHING_SIZE,
+  // PRODUCT_ATTR_COLORS,
   // PRODUCT_ATTR_CLOTHING_GENDER,
-  PRODUCT_ATTR_COLORS, PRODUCT_ATTR_CLOTHING_GENDER
+  PRODUCT_ATTR_CLOTHING_TYPES,
+  PRODUCT_ATTR_CLOTHING_GENDER, PRODUCT_ATTR_CLOTHING_SHAPES
 } from '@/config/enums/product';
 
 const baseAttributeSchema = z.object({
   // manufacturer: z.string().min(2),
-  // brand: z.string().min(2),
+  brand: z.string().min(2),
   // model_number: z.string().min(2),
-  // color: z.array(z.string().min(2)).min(1),
   // material: z.array(z.string().min(2)).min(1),
   // package_dimensions: z.string().min(30), //  4.49 x 4.41 x 3.7 inches; 12.31 Ounces
   // weigh: z.string().min(2), // 3.41 pounds
-  colors: z.array(z.nativeEnum(PRODUCT_ATTR_COLORS)).min(1),
+  // color: z.array(z.string().min(2)).min(1),
+  // colors: z.array(z.nativeEnum(PRODUCT_ATTR_COLORS)).min(1),
 });
 
 export const electronicSchema = z.object({
@@ -26,9 +28,8 @@ export const electronicSchema = z.object({
 
 export const clothingSchema = z.object({
   category: z.literal(PRODUCT_CATEGORIES.CLOTHING),
-  // size: z.enum(['S', 'M', 'L', 'XL']),
-  // gender: z.enum(['male', 'female']),
-  size: z.nativeEnum(PRODUCT_ATTR_CLOTHING_SIZE),
+  type: z.nativeEnum(PRODUCT_ATTR_CLOTHING_TYPES),
+  shape: z.nativeEnum(PRODUCT_ATTR_CLOTHING_SHAPES),
   gender: z.nativeEnum(PRODUCT_ATTR_CLOTHING_GENDER),
 });
 

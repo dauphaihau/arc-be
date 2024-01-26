@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Schema } from 'mongoose';
+// import { productInventorySchema } from './product-inventory.schema';
 import { COUPONS_MAX_USE_PER_ORDER } from '@/config/enums/coupon';
 import { couponSchema } from '@/schema/coupon.schema';
 import { PAYMENT_TYPES, ORDER_STATUSES } from '@/config/enums/order';
@@ -8,11 +9,12 @@ import { objectIdSchema } from '@/schema/sub/objectId.schema';
 
 export const productOrderSchema = z.object({
   product_id: productSchema.shape.id,
-  quantity: productSchema.shape.quantity,
+  // quantity: productSchema.shape.quantity,
+  quantity: z.number(),
 });
 
 export const lineItemSchema = z.object({
-  shop_id: objectIdSchema,
+  shop: objectIdSchema,
   coupon_codes: z
     .array(couponSchema.shape.code)
     .min(1)
@@ -20,7 +22,12 @@ export const lineItemSchema = z.object({
     .optional()
   ,
   products: z
-    .array(productSchema.pick({ id: true, quantity: true }))
+    // .array(productSchema.pick({ id: true, quantity: true }))
+    // .array(productSchema.pick({ id: true }))
+    .array(z.object({
+      inventory: objectIdSchema,
+      quantity: z.number(),
+    }))
     .min(1)
     .max(20),
 });

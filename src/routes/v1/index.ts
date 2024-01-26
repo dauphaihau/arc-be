@@ -5,6 +5,7 @@ import shopRoute from './shop.route';
 import uploadRoute from './upload.route';
 import cartRoute from './cart.route';
 import userRoute from './user.route';
+import productRoute from './product.route';
 import { env } from '@/config';
 
 const router = Router();
@@ -29,6 +30,10 @@ const defaultRoutes = [
   {
     path: '/user',
     route: userRoute,
+  },
+  {
+    path: '/products',
+    route: productRoute,
   },
 ];
 

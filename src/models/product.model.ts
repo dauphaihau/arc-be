@@ -1,30 +1,29 @@
-import { Schema, model } from 'mongoose';
+import { Document, Schema, model } from 'mongoose';
 import slugify from 'slugify';
-import { toJSON, paginate } from '@/models/plugins';
 import {
   productStates,
   PRODUCT_STATES,
   productWhoMade,
   productCategories,
-  PRODUCT_MAX_IMAGES,
-  PRODUCT_MAX_PRICE,
-  PRODUCT_REG_SLUG,
-  PRODUCT_REG_NOT_URL,
-  PRODUCT_MAX_QUANTITY
+  PRODUCT_REGEX_SLUG,
+  PRODUCT_REGEX_NOT_URL,
+  PRODUCT_CONFIG,
+  PRODUCT_VARIANT_TYPES
 } from '@/config/enums/product';
 import {
   IProductModel,
   IProduct,
   IProductImage
 } from '@/interfaces/models/product';
+import { toJSON, paginate } from '@/models/plugins';
 
-// define Schema
+// define image Schema
 const imageSchema = new Schema<IProductImage>(
   {
     relative_url: {
       type: String,
       validate(value: string) {
-        if (!value.match(PRODUCT_REG_NOT_URL)) {
+        if (!value.match(PRODUCT_REGEX_NOT_URL)) {
           throw new Error('should not absolute url');
         }
       },
@@ -32,6 +31,8 @@ const imageSchema = new Schema<IProductImage>(
     },
     rank: {
       type: Number,
+      min: PRODUCT_CONFIG.MIN_IMAGES,
+      max: PRODUCT_CONFIG.MAX_IMAGES,
       default: 1,
     },
   }, {
@@ -40,34 +41,24 @@ const imageSchema = new Schema<IProductImage>(
 );
 imageSchema.plugin(toJSON);
 
+// define product Schema
 const productSchema = new Schema<IProduct, IProductModel>(
   {
-    shop_id: {
+    shop: {
       type: Schema.Types.ObjectId,
       ref: 'Shop',
       required: true,
     },
     title: {
       type: String,
-      min: 2,
-      max: 140,
+      min: PRODUCT_CONFIG.MIN_CHAR_TITLE,
+      max: PRODUCT_CONFIG.MAX_CHAR_TITLE,
       required: true,
     },
     description: {
       type: String,
-      min: 20,
-      max: 140,
-      required: true,
-    },
-    price: {
-      type: Number,
-      min: 1,
-      max: PRODUCT_MAX_PRICE,
-      required: true,
-    },
-    quantity: {
-      type: Number,
-      max: PRODUCT_MAX_QUANTITY,
+      min: PRODUCT_CONFIG.MIN_CHAR_DESCRIPTION,
+      max: PRODUCT_CONFIG.MAX_CHAR_DESCRIPTION,
       required: true,
     },
     views: {
@@ -78,13 +69,15 @@ const productSchema = new Schema<IProduct, IProductModel>(
     slug: {
       type: String,
       validate(value: string) {
-        if (!value.match(PRODUCT_REG_SLUG)) {
+        if (!value.match(PRODUCT_REGEX_SLUG)) {
           throw new Error('invalid slug type');
         }
       },
     },
     tags: {
       type: [String],
+      min: PRODUCT_CONFIG.MIN_TAGS,
+      max: PRODUCT_CONFIG.MAX_TAGS,
       default: [],
     },
     state: {
@@ -117,10 +110,11 @@ const productSchema = new Schema<IProduct, IProductModel>(
     images: {
       type: [imageSchema],
       default: [],
-      min: 1,
+      min: PRODUCT_CONFIG.MIN_IMAGES,
+      max: PRODUCT_CONFIG.MAX_IMAGES,
       validate(value: object[]) {
-        if (value.length > PRODUCT_MAX_IMAGES) {
-          throw new Error(`exceeds the limit of ${PRODUCT_MAX_IMAGES}`);
+        if (value.length > PRODUCT_CONFIG.MAX_IMAGES) {
+          throw new Error(`exceeds the limit of ${PRODUCT_CONFIG.MAX_IMAGES}`);
         }
       },
       required: true,
@@ -132,7 +126,18 @@ const productSchema = new Schema<IProduct, IProductModel>(
       max: [5, 'Rating must be equal or less than 5.0'],
       set: (val: number) => Math.round(val * 10) / 10,
     },
-    sku: String,
+    variant_type: {
+      type: String,
+      enum: Object.values(PRODUCT_VARIANT_TYPES),
+      default: PRODUCT_VARIANT_TYPES.NONE,
+    },
+    variants: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'product_variant' }],
+    },
+    inventory: {
+      type: Schema.Types.ObjectId,
+      ref: 'product_inventory',
+    },
   },
   {
     timestamps: true,
@@ -145,8 +150,26 @@ productSchema.pre('save', function (next) {
   next();
 });
 
+productSchema.post(['find', 'findOne', 'findOneAndUpdate'], function (res) {
+  if (!this.mongooseOptions().lean) {
+    return;
+  }
+  if (Array.isArray(res)) {
+    res.forEach(transformDoc);
+    return;
+  }
+  transformDoc(res);
+});
+
+
 // Plugins
 productSchema.plugin(toJSON);
 productSchema.plugin(paginate);
+
+function transformDoc(doc: Document) {
+  doc.id = doc._id;
+  delete doc._id;
+  delete doc.__v;
+}
 
 export const Product: IProductModel = model<IProduct, IProductModel>('Product', productSchema);

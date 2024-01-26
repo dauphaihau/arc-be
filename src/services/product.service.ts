@@ -1,15 +1,25 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheckk
 import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
 import { ILineItemOrder } from '@/interfaces/models/order';
+import { ProductVariant } from '@/models/product-variant.model';
 import {
   CreateProductPayload,
-  UpdateProductPayload, IProductAttribute, IProductImage, IProduct, IProductModel
+  UpdateProductPayload,
+  IProductAttribute,
+  IProductImage,
+  IProduct,
+  IProductModel,
+  IVariantCreateProduct, IProductVariant
 } from '@/interfaces/models/product';
+// import { inventoryService } from '@/services/inventory.service';
 import { Product } from '@/models';
 import { ApiError } from '@/utils';
 import { getValidKeysAttrByCategory } from '@/schema';
 import { log, env } from '@/config';
 import { awsS3Service } from '@/services/aws-s3.service';
+import { inventoryService } from '@/services/inventory.service';
 
 const validateAttributes = (category: IProduct['category'], attributes: IProductAttribute) => {
   const keysValid = getValidKeysAttrByCategory(category);
@@ -26,6 +36,10 @@ const validateAttributes = (category: IProduct['category'], attributes: IProduct
 
 const getProductById = async (id: IProduct['id']) => {
   return Product.findById(id);
+};
+
+const getProductVariantById = async (id: IProductVariant['id']) => {
+  return ProductVariant.findById(id);
 };
 
 /**
@@ -120,6 +134,15 @@ const createProduct = async (payload: CreateProductPayload, session: ClientSessi
   return product[0];
 };
 
+const createProductVariant = async (
+  payload: IVariantCreateProduct,
+  // payload: CreateProductVariantPayload,
+  session: ClientSession
+) => {
+  const productVariant = await ProductVariant.create([payload], { session });
+  return productVariant[0];
+};
+
 /**
  * Query for products
  * @param filter - Mongo filter
@@ -141,52 +164,68 @@ const deleteProductById = async (productId: IProduct['id'], session: ClientSessi
 };
 
 const checkAndGetShopProducts = async (
-  shop_id: IProduct['shop_id'],
+  shop: IProduct['shop'],
   products: ILineItemOrder['products']
 ) => {
   return Promise.all(
     products.map(async (prod) => {
-      const productInDB = await getProductById(prod.id);
-      if (!productInDB) {
-        throw new ApiError(StatusCodes.NOT_FOUND, `product ${prod.id} not found`);
+      const inventoryInDB = await inventoryService.getInventoryById(prod.inventory);
+      if (!inventoryInDB) {
+        throw new ApiError(StatusCodes.NOT_FOUND, `inventory ${prod.inventory} not found`);
       }
-      if (productInDB.quantity < prod.quantity) {
+      const productInDB = await getProductById(inventoryInDB.product);
+      if (!productInDB) {
+        throw new ApiError(StatusCodes.NOT_FOUND, `product ${inventoryInDB.product} not found`);
+      }
+      log.debug('invent-in-db %o', inventoryInDB);
+      // const productInDB = await getProductById(prod.id);
+      await inventoryInDB?.populate('product');
+      if (inventoryInDB.stock < prod.quantity) {
         throw new ApiError(
-          StatusCodes.BAD_REQUEST, `quantity product ${prod.id} is exceed stock`
+          StatusCodes.BAD_REQUEST, `quantity inventory ${inventoryInDB.id} is exceed stock`
         );
       }
-      if (productInDB.shop_id.toString() !== shop_id) {
+      if (inventoryInDB.shop.toString() !== shop) {
         throw new ApiError(
-          StatusCodes.BAD_REQUEST, `product ${productInDB.id} not match with ${shop_id}`
+          StatusCodes.BAD_REQUEST, `product ${inventoryInDB.id} not match with ${shop}`
         );
       }
       return {
-        id: prod.id,
-        shop_id,
-        title: productInDB.title,
-        price: productInDB.price,
-        image_url: env.aws_s3.host_bucket + '/' + productInDB.images[0].relative_url,
+        id: prod.inventory,
+        shop,
+        image_url: env.aws_s3.host_bucket + '/' + productInDB?.images[0].relative_url,
+        title: productInDB?.title,
+        price: inventoryInDB.stock,
+        // title: inventoryInDB.product.title,
+        // price: inventoryInDB.price,
         quantity: prod.quantity,
+
+        // id: prod.id,
+        // shop_id,
+        // title: productInDB.title,
+        // image_url: env.aws_s3.host_bucket + '/' + productInDB.images[0].relative_url,
+        // price: productInDB.price,
+        // quantity: prod.quantity,
       };
     })
   );
 };
 
-const minusQuantityProduct = async (
-  productId: IProduct['id'],
-  quantity: IProduct['quantity'],
-  session: ClientSession
-) => {
-  return Product.updateOne(
-    { _id: productId },
-    {
-      $inc: {
-        product_quantity: -quantity,
-      },
-    },
-    { session }
-  );
-};
+// const minusQuantityProduct = async (
+//   productId: IProduct['id'],
+//   quantity: IProduct['quantity'],
+//   session: ClientSession
+// ) => {
+//   return Product.updateOne(
+//     { _id: productId },
+//     {
+//       $inc: {
+//         product_quantity: -quantity,
+//       },
+//     },
+//     { session }
+//   );
+// };
 
 export const productService = {
   createProduct,
@@ -195,5 +234,7 @@ export const productService = {
   deleteProductById,
   updateProduct,
   checkAndGetShopProducts,
-  minusQuantityProduct,
+  // minusQuantityProduct,
+  getProductVariantById,
+  createProductVariant,
 };

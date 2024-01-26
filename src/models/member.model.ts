@@ -6,12 +6,12 @@ import { IMember, IMemberModel } from '@/interfaces/models/member';
 // define Schema
 const memberSchema = new Schema<IMember, IMemberModel>(
   {
-    shop_id: {
+    shop: {
       type: SchemaTypes.ObjectId,
       ref: 'Shop',
       required: true,
     },
-    user_id: {
+    user: {
       type: SchemaTypes.ObjectId,
       ref: 'User',
       required: true,

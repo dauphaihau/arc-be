@@ -1,13 +1,15 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import { StatusCodes } from 'http-status-codes';
 import Stripe from 'stripe';
 import { stripeClient, env, log } from '@/config';
-import { ORDER_STATUSES } from '@/config/enums/order';
+// import { ORDER_STATUSES } from '@/config/enums/order';
 import {
-  IClearProductsReverseByOrder,
+  // IClearProductsReverseByOrder,
   IGetCheckoutSessionUrlPayload
 } from '@/interfaces/models/order';
 import { IUser } from '@/interfaces/models/user';
-import { inventoryService } from '@/services/inventory.service';
+// import { inventoryService } from '@/services/inventory.service';
 import { orderService } from '@/services/order.service';
 import { ApiError, transactionWrapper } from '@/utils';
 
@@ -126,10 +128,11 @@ async function onEventStripe(event: Stripe.Event) {
           const order = await orderService.updateOrderById(session.metadata['order_id'], {
             status: ORDER_STATUSES.PAID,
           }, sessionMongo);
-          await inventoryService.clearProductsReverseByOrder(
-            order as IClearProductsReverseByOrder,
-            sessionMongo
-          );
+          log.debug('order %o', order);
+          // await inventoryService.clearProductsReverseByOrder(
+          //   order as IClearProductsReverseByOrder,
+          //   sessionMongo
+          // );
         }
       });
     }

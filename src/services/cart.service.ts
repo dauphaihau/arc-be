@@ -1,151 +1,234 @@
-import { ClientSession } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
+import { productService } from '@/services/product.service';
+import { log } from '@/config';
+import { inventoryService } from '@/services/inventory.service';
 import {
   ICart,
+  IItemCart,
   IProductCart,
   UpdateProductCartBody
 } from '@/interfaces/models/cart';
-import { Cart } from '@/models';
-import { productService } from '@/services/product.service';
+import { Cart, ProductInventory } from '@/models';
 import { ApiError } from '@/utils';
-import { IProduct } from '@/interfaces/models/product';
+import { IProductInventory } from '@/interfaces/models/product';
 
-const getCartByUserId = async (user_id: ICart['user_id']) => {
-  return Cart.findOne({ user_id });
+const getCartByUserId = async (userId: ICart['user']) => {
+  return Cart.findOne({ user: userId });
 };
 
-async function createUserCart(user_id: ICart['user_id'], product: IProductCart) {
-  const filter = { user_id };
+async function createUserCart(
+  userId: ICart['user'],
+  shopId: IItemCart['shop'],
+  product: IProductCart
+) {
+  const filter = { user: userId };
   const updateOrInsert = {
-    $addToSet: { products: product },
+    // $inc: {
+    //   count_products: product.quantity,
+    // },
+    $addToSet: {
+      items: {
+        shop: shopId,
+        products: [product],
+      },
+    },
   };
   const options = { upsert: true, new: true };
   return Cart.findOneAndUpdate(filter, updateOrInsert, options);
 }
 
-async function deleteProduct(user_id: ICart['user_id'], product_id: IProduct['id']) {
-  const filter = { user_id };
-  const update = {
-    $pull: {
-      products: { product_id },
-    },
-  };
-  return Cart.updateOne(filter, update);
-}
-
-async function updateQuantityProduct(user_id: ICart['user_id'], product: IProductCart) {
-  const { product_id, quantity } = product;
-  if (quantity === 0) {
-    return deleteProduct(user_id, product_id);
+async function deleteProduct(userId: ICart['user'], inventoryId: IProductInventory['id']) {
+  const inventoryInDB = await ProductInventory.findById(inventoryId);
+  if (!inventoryInDB) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
   }
   const filter = {
-    user_id,
-    'products.product_id': product_id,
+    user: userId,
+    'items.shop': inventoryInDB.shop,
   };
   const update = {
-    $set: {
-      'products.$.quantity': quantity,
+    $pull: {
+      'items.$.products': {
+        inventory: inventoryInDB.id,
+      },
     },
   };
   const options = { new: true };
-  return Cart.findOneAndUpdate(filter, update, options);
+  const cartUpdated = await Cart.findOneAndUpdate(filter, update, options);
+
+  if (cartUpdated) {
+    const itemCart = cartUpdated.items.find((item) => {
+      return item.shop.toString() === inventoryInDB.shop.toString();
+    });
+    log.debug('item-cart %o', itemCart);
+    if (itemCart && !itemCart.products.length) {
+      log.info('pull item-shop cause by products is empty');
+      const filter = { user: userId };
+      const update = {
+        $pull: {
+          items: {
+            shop: inventoryInDB.shop.toString(),
+          },
+        },
+      };
+      return Cart.updateOne(filter, update);
+    }
+  }
+  return cartUpdated;
 }
 
 async function updateProduct(
-  user_id: ICart['user_id'],
+  userId: ICart['user'],
   productUpdate: UpdateProductCartBody
 ) {
-  const { product_id, quantity } = productUpdate;
-  const productInDB = await productService.getProductById(product_id);
+  const { quantity, inventory } = productUpdate;
 
-  if (!productInDB) {
+  if (quantity === 0) {
+    return deleteProduct(userId, inventory as string);
+  }
+
+  const foundPI = await inventoryService.getInventoryById(inventory);
+
+  if (!foundPI) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
   }
 
-  if (quantity && quantity > productInDB.quantity) {
+  if (quantity && quantity > foundPI.stock) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Quantity of product have been exceed stock');
   }
 
-  if (quantity === 0) {
-    return deleteProduct(user_id, product_id);
-  }
-
   const filter = {
-    user_id,
-    'products.product_id': product_id,
+    user: userId,
+    'items.shop': foundPI.shop,
   };
   const set: { [key: string]: unknown } = {};
   Object.keys(productUpdate).forEach((key) => {
-    set[`products.$.${key}`] = productUpdate[key as keyof typeof productUpdate];
+    set[`items.$[e1].products.$[e2].${key}`] = productUpdate[key as keyof typeof productUpdate];
   });
   const update = {
     $set: set,
   };
-  const options = { new: true };
+  const options = {
+    arrayFilters: [
+      { 'e1.shop': foundPI.shop },
+      { 'e2.inventory': foundPI.id },
+    ],
+    new: true,
+  };
   return Cart.findOneAndUpdate(filter, update, options);
 }
 
 /**
  * Add/Update to cart
  *
- * 1. create cart if user cart not exist
+ * create cart, add item if user cart not exist
  *
- * 2. cart exists add product into cart
+ * cart exists add item into cart
  *
- * 3. update quantity product if product already in cart
+ * if cart exist, item cart not exist, add new item into cart
+ *
+ * if cart, item exist, add new product into item
+ *
  */
-async function addOrUpdateProduct(user_id: ICart['user_id'], product: IProductCart) {
-  const productInDB = await productService.getProductById(product.product_id);
-  if (!productInDB) {
+async function addProduct(userId: ICart['user'], payload: IProductCart) {
+
+  const inventoryInDB = await inventoryService.getInventoryById(payload.inventory);
+  if (payload?.variant) {
+    const variantInDB = await productService.getProductVariantById(payload.variant);
+    log.debug('variant-in-db %o', variantInDB);
+    if (
+      !inventoryInDB || !variantInDB ||
+      (variantInDB.product.toString() !== inventoryInDB.product.toString())
+    ) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Product is invalid');
+    }
+  }
+  log.debug('inventory-in-db %o', inventoryInDB);
+
+  if (!inventoryInDB) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
   }
-  if (product.quantity > productInDB.quantity) {
+  if (payload.quantity > inventoryInDB.stock) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Quantity of product have been exceed stock');
   }
 
-  const userCart = await getCartByUserId(user_id);
-  if (!userCart || !userCart.products.length) {
-    return createUserCart(user_id, product);
+  const userCart = await getCartByUserId(userId);
+  log.debug('user-cart %o', userCart);
+  if (!userCart || !userCart.items.length) {
+    log.info('none-user-cart');
+    return createUserCart(userId, inventoryInDB.shop, payload);
   }
 
-  const isProductExistsInCart = userCart.products.some((prod) => {
-    return prod.product_id.toString() === product.product_id;
+  const itemCart = userCart.items.find((item) => {
+    return item.shop.toString() === inventoryInDB.shop.toString();
   });
-  if (!isProductExistsInCart) {
-    return userCart.update(
-      { $addToSet: { products: product } },
-      { returnDocument: 'after' }
+  log.debug('item-cart %o', itemCart);
+  if (!itemCart) {
+    return createUserCart(userId, inventoryInDB.shop, payload);
+  }
+
+  const productCart = itemCart.products.find((prod) => {
+    return prod.inventory.toString() === inventoryInDB.id.toString();
+  });
+  log.debug('product-cart %o', productCart);
+  if (!productCart) {
+    return Cart.findOneAndUpdate(
+      {
+        user: userId,
+        'items.shop': inventoryInDB.shop,
+      },
+      {
+        $addToSet: {
+          'items.$.products': payload,
+        },
+      }
     );
   }
-  return updateQuantityProduct(user_id, product);
+
+  if ((payload.quantity + productCart.quantity) > inventoryInDB.stock) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Quantity of product have been exceed stock');
+  }
+  return userCart.update(
+    {
+      $inc: {
+        'items.$[e1].products.$[e2].quantity': payload.quantity,
+      },
+    },
+    {
+      arrayFilters: [
+        { 'e1.shop': inventoryInDB.shop },
+        { 'e2.inventory': inventoryInDB.id },
+      ],
+    }
+  );
 }
 
-async function minusQuantityProduct(
-  user_id: ICart['user_id'],
-  product: IProductCart,
-  session: ClientSession
-) {
-  const { product_id, quantity } = product;
-  if (quantity === 0) {
-    return deleteProduct(user_id, product_id);
-  }
-  const filter = {
-    user_id,
-    'products.product_id': product_id,
-  };
-  const update = {
-    $inc: {
-      'cart_products.$.quantity': quantity,
-    },
-  };
-  const options = { new: true, session };
-  return Cart.findOneAndUpdate(filter, update, options);
-}
+// async function minusQuantityProduct(
+//   userId: ICart['user'],
+//   payload: IProductCart,
+//   session: ClientSession,
+// ) {
+//   const { product, quantity } = payload;
+//   if (quantity === 0) {
+//     return deleteProduct(userId, product as string);
+//   }
+//   const filter = {
+//     user: userId,
+//     'products.product': product,
+//   };
+//   const update = {
+//     $inc: {
+//       'cart_products.$.quantity': quantity,
+//     },
+//   };
+//   const options = { new: true, session };
+//   return Cart.findOneAndUpdate(filter, update, options);
+// }
 
 export const cartService = {
-  addOrUpdateProduct,
+  addProduct,
   getCartByUserId,
-  minusQuantityProduct,
+  // minusQuantityProduct,
   deleteProduct,
   updateProduct,
 };

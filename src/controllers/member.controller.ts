@@ -13,13 +13,13 @@ const addMember = catchAsync(async (
   req: Request<AddMemberParams, unknown, AddMemberPayload>,
   res
 ) => {
-  const memberExist = await memberService.findMemberShop(req.params.shop_id, req.body.user_id);
+  const memberExist = await memberService.findMemberShop(req.params.shop, req.body.user);
   if (memberExist) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Member is exist');
   }
   const member = await memberService.addMember({
     ...req.body,
-    shop_id: req.params.shop_id as string,
+    shop: req.params.shop as string,
   });
   res.status(StatusCodes.CREATED).send({ member });
 });
@@ -29,8 +29,8 @@ const getMembers = catchAsync(async (
   res
 ) => {
   const filter = pick(
-    { ...req.query, shop_id: req.params.shop_id },
-    ['shop_id']
+    { ...req.query, shop_id: req.params.shop },
+    ['shop']
   );
   const options = pick(req.query, ['sortBy', 'limit', 'page', 'populate', 'select']);
   const result = await memberService.queryMembers(filter, options);
@@ -41,8 +41,8 @@ const deleteMember = catchAsync(async (
   req: Request<DeleteMemberParams>,
   res
 ) => {
-  if (req.user.id === req.params.user_id) throw new ApiError(StatusCodes.BAD_REQUEST, 'invalid userId');
-  await memberService.deleteMember(req.params.shop_id, req.params.user_id);
+  if (req.user.id === req.params.user) throw new ApiError(StatusCodes.BAD_REQUEST, 'invalid userId');
+  await memberService.deleteMember(req.params.shop, req.params.user);
   res.status(StatusCodes.NO_CONTENT).send();
 });
 
@@ -50,8 +50,8 @@ const updateMember = catchAsync(async (
   req: Request<UpdateMemberParams, unknown, UpdateMemberPayload>,
   res
 ) => {
-  if (req.user.id === req.params.user_id) throw new ApiError(StatusCodes.BAD_REQUEST, 'invalid userId');
-  await memberService.updateMember(req.params.shop_id, req.params.user_id, req.body);
+  if (req.user.id === req.params.user) throw new ApiError(StatusCodes.BAD_REQUEST, 'invalid userId');
+  await memberService.updateMember(req.params.shop, req.params.user, req.body);
   res.status(StatusCodes.NO_CONTENT).send();
 });
 

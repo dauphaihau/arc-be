@@ -8,8 +8,8 @@ const router = express.Router();
 router
   .route('/')
   .post(
-    validate(cartValidation.addOrUpdateProduct),
-    cartController.addOrUpdateProduct
+    validate(cartValidation.addProduct),
+    cartController.addProduct
   )
   .get(
     cartController.getCart

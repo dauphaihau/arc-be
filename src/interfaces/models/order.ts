@@ -18,7 +18,8 @@ export type IUpdateOrderBody = AtLeastOne<Pick<IOrder, 'status'>>;
 
 export type IGetOrderParams = Partial<Pick<IOrder, 'id'>>;
 
-export type IProductCreateCheckoutSessionStripe = Pick<IProduct, 'id' | 'shop_id' | 'title' | 'price' | 'quantity'> & {
+// export type IProductCreateCheckoutSessionStripe = Pick<IProduct, 'id' | 'shop_id' | 'title' | 'price' | 'quantity'> & {
+export type IProductCreateCheckoutSessionStripe = Pick<IProduct, 'id' | 'shop' | 'title'> & {
   image_url: string
 };
 

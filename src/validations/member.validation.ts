@@ -4,17 +4,17 @@ import { memberSchema } from '@/schema';
 
 export const memberValidation = {
   addMember: z.object({
-    body: memberSchema.pick({ user_id: true, role: true }),
+    body: memberSchema.pick({ user: true, role: true }),
   }),
   deleteMember: z.object({
-    params: memberSchema.pick({ shop_id: true, user_id: true }),
+    params: memberSchema.pick({ shop: true, user: true }),
   }),
   updateMember: z.object({
-    params: memberSchema.pick({ shop_id: true, user_id: true }),
+    params: memberSchema.pick({ shop: true, user: true }),
     body: memberSchema.pick({ role: true }),
   }),
   getMembers: z.object({
-    params: memberSchema.pick({ shop_id: true }),
+    params: memberSchema.pick({ shop: true }),
     query: mixBaseQueryOptionsSchema(
       memberSchema.pick({ role: true })
     ),

@@ -12,7 +12,7 @@ const shopSchema = new Schema<IShop, IShopModel>(
       unique: true,
       minlength: 6,
     },
-    user_id: {
+    user: {
       type: SchemaTypes.ObjectId,
       ref: 'User',
       required: true,

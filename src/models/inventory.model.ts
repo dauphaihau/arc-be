@@ -1,19 +1,22 @@
 import { Schema, model } from 'mongoose';
 import { toJSON } from '@/models/plugins';
-import { IInventory, IInventoryModel } from '@/interfaces/models/inventory';
+import { IProductInventory, IProductInventoryModel } from '@/interfaces/models/product';
 
 // define Schema
-const inventorySchema = new Schema<IInventory, IInventoryModel>(
+const inventorySchema = new Schema<IProductInventory, IProductInventoryModel>(
   {
-    product_id: {
+    product: {
       type: Schema.Types.ObjectId,
       ref: 'Product',
       required: true,
     },
-    shop_id: {
+    shop: {
       type: Schema.Types.ObjectId,
       ref: 'Shop',
       required: true,
+    },
+    variant: {
+      type: String,
     },
     stock: {
       type: Number,
@@ -32,4 +35,4 @@ const inventorySchema = new Schema<IInventory, IInventoryModel>(
 // Plugins
 inventorySchema.plugin(toJSON);
 
-export const Inventory: IInventoryModel = model<IInventory, IInventoryModel>('Inventory', inventorySchema);
+export const Inventory: IProductInventoryModel = model<IProductInventory, IProductInventoryModel>('Inventory', inventorySchema);

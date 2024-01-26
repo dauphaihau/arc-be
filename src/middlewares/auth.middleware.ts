@@ -19,7 +19,7 @@ const verifyCallback = (
     }
     req.user = user;
 
-    const shopId = req.params.shop_id;
+    const shopId = req.params.shop;
     if (requiredRights.length && shopId) {
       const member = await memberService.findMemberShop(shopId, user.id);
       if (!member) {

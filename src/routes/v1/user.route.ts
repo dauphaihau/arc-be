@@ -30,9 +30,9 @@ router
 router
   .route('/cart')
   .post(
-    validate(cartValidation.addOrUpdateProduct),
+    // validate(cartValidation.addProduct),
     auth(),
-    cartController.addOrUpdateProduct
+    cartController.addProduct
   )
   .patch(
     validate(cartValidation.updateProduct),

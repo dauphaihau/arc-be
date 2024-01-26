@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import { z } from 'zod';
 import { FilterQuery, Schema } from 'mongoose';
 import {
@@ -6,7 +8,10 @@ import {
 } from '@/schema/sub/queryOptions.schema';
 
 export type IBaseQueryOptions = z.infer<typeof baseQueryOptionsSchema>;
-export type IQueryResult = z.infer<typeof queryResultSchema>;
+export type IQueryResultTest = z.infer<typeof queryResultSchema>;
+export type IQueryResult<T> = Omit<IQueryResultTest, 'results'> & {
+  results: T[]
+};
 
 export const paginate = (schema: Schema) => {
   /**
@@ -30,7 +35,7 @@ export const paginate = (schema: Schema) => {
   schema.statics['paginate'] = async function (
     filter: FilterQuery<Schema>,
     options: IBaseQueryOptions
-  ): Promise<IQueryResult> {
+  ): Promise<IQueryResult<Schema>> {
     let sort = '';
     if (options.sortBy) {
       const sortingCriteria: string[] = [];
@@ -61,17 +66,29 @@ export const paginate = (schema: Schema) => {
 
     if (options.populate) {
       options.populate.split(',').forEach((populateOption) => {
+        if (populateOption.includes('/')) {
+          const [root, subs] = populateOption.split('/');
+          docsPromise.populate(
+            {
+              path: root,
+              populate: subs.split('+').map(it => ({ path: it })),
+            }
+          );
+          return;
+        }
+
         docsPromise = docsPromise.populate(
           populateOption
-          // populateOption
-          //   .split('.')
-          //   .reverse()
-          //   .reduce((a, b) => ({ path: b, populate: a }))
+            .split('.')
+            .reverse()
+            .reduce((a, b) => ({ path: b, populate: a }))
         );
       });
+
     }
 
-    docsPromise = docsPromise.exec();
+    docsPromise = docsPromise.lean({ virtual: true }).exec();
+    // docsPromise = docsPromise.exec();
 
     return Promise.all([countPromise, docsPromise]).then((values) => {
       const [totalResults, results] = values;

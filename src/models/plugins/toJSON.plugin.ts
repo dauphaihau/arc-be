@@ -18,7 +18,9 @@ export const toJSON = (schema: Schema) => {
         }
       });
 
-      ret.id = ret._id.toString();
+      if (ret?._id) {
+        ret.id = ret._id.toString();
+      }
       delete ret._id;
       delete ret.__v;
       delete ret.createdAt;

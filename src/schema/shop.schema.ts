@@ -3,7 +3,7 @@ import { objectIdSchema } from '@/schema/sub/objectId.schema';
 
 export const shopSchema = z.object({
   id: objectIdSchema,
-  user_id: objectIdSchema.describe('the user that owns this shop'),
+  user: objectIdSchema.describe('the user that owns this shop'),
   shop_name: z
     .string({
       required_error: 'shop_name is required',

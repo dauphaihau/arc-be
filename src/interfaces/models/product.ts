@@ -1,36 +1,85 @@
 import { Model, FilterQuery } from 'mongoose';
 import { z } from 'zod';
+import { IOrder } from './order';
 import {
   productAttributeSchema,
   productSchema,
-  productImageSchema
+  productImageSchema,
+  productVariantSchema,
+  productInventorySchema,
+  productVariantOptSchema
 } from '@/schema';
-import { IBaseQueryOptions } from '@/models/plugins/paginate.plugin';
+import {
+  IBaseQueryOptions,
+  IQueryResult
+} from '@/models/plugins/paginate.plugin';
 import { productStateUserCanModify } from '@/schema/product.schema';
 
 export type IProduct = z.infer<typeof productSchema>;
 export type IProductImage = z.infer<typeof productImageSchema>;
+export type IProductVariantOpt = z.infer<typeof productVariantOptSchema>;
+export type IProductVariant = z.infer<typeof productVariantSchema>;
 export type IProductAttribute = z.infer<typeof productAttributeSchema>;
+export type IProductInventory = z.infer<typeof productInventorySchema>;
 
 export interface IProductModel extends Model<IProduct, unknown> {
-  paginate: (filter: FilterQuery<IProduct>, options: IBaseQueryOptions) => Promise<IProduct[]>;
+  // eslint-disable-next-line @stylistic/max-len
+  paginate: (filter: FilterQuery<IProduct>, options: IBaseQueryOptions) => Promise<IQueryResult<ResponseGetProducts>>;
 }
+
+export interface IProductInventoryModel extends Model<IProductInventory, unknown> {}
+
+export type CreateInventoryPayload = Pick<IProductInventory, 'shop' | 'product' | 'stock' | 'variant' | 'price' | 'sku'>;
+
+export type UpdateInventoryPayload = Pick<IProductInventory, 'shop' | 'product' | 'stock'>;
+
+export type ReservationInventoryPayload =
+  Pick<IProductInventory, 'shop' | 'product'>
+  & { quantity: IProductInventory['stock'] }
+  & { order_id: IOrder['id'] };
 
 export type PRODUCT_STATES_USER_CAN_MODIFY = z.infer<typeof productStateUserCanModify>;
 
-export type CreateProductParams = Partial<Pick<IProduct, 'shop_id'>>;
-export type CreateProductPayload = Omit<IProduct, 'id' | 'rating_average' | 'views' | 'state'> & {
-  state: PRODUCT_STATES_USER_CAN_MODIFY
-};
+export type CreateProductParams = Partial<Pick<IProduct, 'shop'>>;
+
+type IProductInventoryCanModify = Pick<IProductInventory, 'price' | 'stock' | 'sku'>;
+
+type VariantOption = Pick<IProductVariant, 'variant_name'> & {
+  inventory: IProductInventory
+} & Partial<IProductInventoryCanModify>;
+
+export type IVariantCreateProduct = Omit<IProductVariant, 'variant_options'> & {
+  variant_options: VariantOption[];
+} & Partial<IProductInventoryCanModify>;
+
+export type CreateProductPayload =
+  Omit<IProduct, 'id' | 'rating_average' | 'views' | 'state' | 'variants'>
+  & {
+    state: PRODUCT_STATES_USER_CAN_MODIFY
+    variants?: IVariantCreateProduct[]
+  }
+  & Partial<IProductInventoryCanModify>;
+
+export type CreateProductVariantPayload = Omit<IProductVariant, 'id'>;
 
 export type GetProductParams = Partial<Pick<IProduct, 'id'>>;
 
-export type GetProductsParams = Partial<Pick<IProduct, 'shop_id'>>;
+export type GetProductsParams = Partial<Pick<IProduct, 'shop'>>;
+
+type IVariantGetProducts = Omit<IProductVariant, 'variant_options'> & {
+  variant_options: {
+    inventory: IProductInventory
+  }[];
+  inventory: IProductInventory
+};
+export type ResponseGetProducts = Omit<IProduct, 'variants'> & {
+  variants?: IVariantGetProducts[]
+};
 
 export type DeleteProductParams = Partial<Pick<IProduct, 'id'>>;
 
-export type UpdateProductParams = Partial<Pick<IProduct, 'id' | 'shop_id'>>;
+export type UpdateProductParams = Partial<Pick<IProduct, 'id' | 'shop'>>;
 
-export type UpdateProductPayload = Omit<IProduct, 'id' | 'shop_id' | 'state'> & {
+export type UpdateProductPayload = Omit<IProduct, 'id' | 'shop' | 'state'> & {
   state: PRODUCT_STATES_USER_CAN_MODIFY
-};
+} & Partial<IProductInventoryCanModify>;

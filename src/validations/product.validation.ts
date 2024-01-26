@@ -1,16 +1,16 @@
 import { z } from 'zod';
-import { PRODUCT_MAX_IMAGES } from '@/config/enums/product';
+import { PRODUCT_CONFIG } from '@/config/enums/product';
 import { productSchema, productImageSchema } from '@/schema';
 import { productStateUserCanModify } from '@/schema/product.schema';
 import { mixBaseQueryOptionsSchema } from '@/schema/sub/queryOptions.schema';
 
 export const productValidation = {
   createProduct: z.object({
-    params: productSchema.pick({ shop_id: true }),
+    params: productSchema.pick({ shop: true }),
     body: productSchema
       .omit({
         id: true,
-        shop_id: true,
+        shop: true,
         category: true,
         views: true,
         rating_average: true,
@@ -23,14 +23,14 @@ export const productValidation = {
               .omit({ id: true })
               .strict()
             )
-            .max(PRODUCT_MAX_IMAGES),
+            .max(PRODUCT_CONFIG.MAX_IMAGES),
           state: productStateUserCanModify,
         })
       )
       .strict(),
   }),
   getProducts: z.object({
-    params: productSchema.pick({ shop_id: true }),
+    params: productSchema.pick({ shop: true }),
     query: mixBaseQueryOptionsSchema(
       productSchema.pick({
         title: true,
@@ -40,19 +40,19 @@ export const productValidation = {
     ),
   }),
   getProduct: z.object({
-    params: productSchema.pick({ shop_id: true, id: true }),
+    params: productSchema.pick({ shop: true, id: true }),
   }),
   deleteProduct: z.object({
     params: productSchema
-      .pick({ shop_id: true, id: true })
+      .pick({ shop: true, id: true })
       .strict(),
   }),
   updateProduct: z.object({
-    params: productSchema.pick({ shop_id: true, id: true }),
+    params: productSchema.pick({ shop: true, id: true }),
     body: productSchema
       .omit({
         id: true,
-        shop_id: true,
+        shop: true,
         category: true,
         views: true,
         rating_average: true,
@@ -62,7 +62,7 @@ export const productValidation = {
         z.object({
           images: z
             .array(productImageSchema.partial().strict())
-            .max(PRODUCT_MAX_IMAGES),
+            .max(PRODUCT_CONFIG.MAX_IMAGES),
           state: productStateUserCanModify,
         })
       )

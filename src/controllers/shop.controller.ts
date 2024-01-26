@@ -16,31 +16,31 @@ const createShop = catchAsync(async (
   res
 ) => {
   await transactionWrapper(async (session) => {
-    const user_id = req.user.id;
+    const userId = req.user.id;
 
     // Validate user own any shop
-    if (await Shop.exists({ user_id })) {
+    if (await Shop.exists({ user: userId })) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'each account can only own one store');
     }
 
     // Create Shop
     const shop = await shopService.createShop({
-      user_id,
+      user: userId,
       shop_name: req.body.shop_name,
     }, session);
 
     // Init owner member shop
     const member = await memberService.addMember({
-      shop_id: shop.id,
-      user_id,
+      shop: shop.id,
+      user: userId,
       role: MEMBER_ROLES.OWNER,
     }, session);
 
     // Attach shop to user
-    const updatedUser = await User.findOneAndUpdate({ _id: user_id }, {
+    const updatedUser = await User.findOneAndUpdate({ _id: userId }, {
       shop: shop.id,
     }, { session });
-    if (!updatedUser || updatedUser.id.toString() !== user_id) {
+    if (!updatedUser || updatedUser.id.toString() !== userId) {
       log.error('update user failed');
       throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR);
     }

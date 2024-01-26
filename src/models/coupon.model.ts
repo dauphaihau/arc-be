@@ -1,6 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 import { Schema, model } from 'mongoose';
-import { PRODUCT_MAX_PRICE } from '@/config/enums/product';
+import { PRODUCT_CONFIG } from '@/config/enums/product';
 import { ICoupon, ICouponModel } from '@/interfaces/models/coupon';
 import { toJSON, paginate } from '@/models/plugins';
 import { ApiError } from '@/utils';
@@ -99,7 +99,7 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
     min_order_value: {
       type: Number,
       default: 0,
-      max: PRODUCT_MAX_PRICE,
+      max: PRODUCT_CONFIG.MAX_PRICE,
       required: function (this: ICoupon) {
         return this.min_order_type === COUPON_MIN_ORDER_TYPES.ORDER_TOTAL;
       },

@@ -1,23 +1,27 @@
 import { ClientSession } from 'mongoose';
 import {
   CreateInventoryPayload,
-  UpdateInventoryPayload, ReservationInventoryPayload
-} from '@/interfaces/models/inventory';
-import { Inventory } from '@/models';
-import { IClearProductsReverseByOrder } from '@/interfaces/models/order';
+  UpdateInventoryPayload, ReservationInventoryPayload, IProductInventory
+} from '@/interfaces/models/product';
+import { ProductInventory } from '@/models';
+// import { IClearProductsReverseByOrder } from '@/interfaces/models/order';
 
 const insertInventory = async (payload: CreateInventoryPayload, session: ClientSession) => {
-  const inventory = await Inventory.create([payload], { session });
+  const inventory = await ProductInventory.create([payload], { session });
   return inventory[0];
 };
 
+const getInventoryById = async (id: IProductInventory['id']) => {
+  return ProductInventory.findById(id);
+};
+
 const updateStock = async (
-  { shop_id, product_id, stock }: UpdateInventoryPayload,
+  { shop, product, stock }: UpdateInventoryPayload,
   session: ClientSession
 ) => {
-  const filter = { shop_id, product_id };
+  const filter = { shop, product };
   const update = { stock };
-  return Inventory.updateOne(filter, update, { session });
+  return ProductInventory.updateOne(filter, update, { session });
 };
 
 const reservationProduct = async (
@@ -25,12 +29,12 @@ const reservationProduct = async (
   session: ClientSession
 ) => {
   const {
-    product_id, shop_id, quantity, order_id,
+    product, shop, quantity, order_id,
   } = payload;
 
   const filter = {
-    product_id,
-    shop_id,
+    product,
+    shop,
     stock: { $gte: quantity },
   };
   const update = {
@@ -47,37 +51,38 @@ const reservationProduct = async (
   };
   const options = { upsert: false, new: true, session };
 
-  return Inventory.updateOne(filter, update, options);
+  return ProductInventory.updateOne(filter, update, options);
 };
 
-const clearProductsReverseByOrder = async (
-  order: IClearProductsReverseByOrder,
-  session: ClientSession
-) => {
-  const { lines = [] } = order;
-  lines.forEach((item) => {
-    const { shop_id, products = [] } = item;
-    products.forEach(async (prod) => {
-      await Inventory.findOneAndUpdate(
-        {
-          shop_id,
-          product_id: prod.id,
-        },
-        {
-          $pull: {
-            reservations: { order_id: order.id },
-          },
-        },
-        { session }
-      );
-    });
-  });
-};
+// const clearProductsReverseByOrder = async (
+//   order: IClearProductsReverseByOrder,
+//   session: ClientSession
+// ) => {
+//   const { lines = [] } = order;
+//   lines.forEach((item) => {
+//     const { shop, products = [] } = item;
+//     products.forEach(async (prod) => {
+//       await ProductInventory.findOneAndUpdate(
+//         {
+//           shop,
+//           product: prod.id,
+//         },
+//         {
+//           $pull: {
+//             reservations: { order_id: order.id },
+//           },
+//         },
+//         { session }
+//       );
+//     });
+//   });
+// };
 
 
 export const inventoryService = {
   insertInventory,
   updateStock,
   reservationProduct,
-  clearProductsReverseByOrder,
+  // clearProductsReverseByOrder,
+  getInventoryById,
 };

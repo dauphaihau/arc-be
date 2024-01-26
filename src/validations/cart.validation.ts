@@ -2,13 +2,13 @@ import { z } from 'zod';
 import { productCartSchema } from '@/schema';
 
 export const cartValidation = {
-  addOrUpdateProduct: z.object({
+  addProduct: z.object({
     body: productCartSchema.strict(),
   }),
   updateProduct: z.object({
     body: z
       .object({
-        product_id: productCartSchema.shape.product_id,
+        inventory: productCartSchema.shape.inventory,
         quantity: productCartSchema.shape.quantity.optional(),
         is_select_order: productCartSchema.shape.is_select_order.optional(),
       })
@@ -20,7 +20,7 @@ export const cartValidation = {
   }),
   deleteProduct: z.object({
     body: productCartSchema
-      .pick({ product_id: true })
+      .pick({ inventory: true })
       .strict(),
   }),
 };

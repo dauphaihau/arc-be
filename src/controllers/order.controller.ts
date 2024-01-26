@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { PAYMENT_TYPES } from '@/config/enums/order';

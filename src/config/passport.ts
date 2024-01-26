@@ -25,7 +25,7 @@ const jwtVerify = async (payload: JwtPayload, done: VerifiedCallback) => {
     }
     const user = await User
       .findOne({ _id: payload.sub })
-      .populate('shop');
+      .populate('shop', 'shop_name _id');
     if (!user) {
       return done(null, false);
     }

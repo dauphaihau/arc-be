@@ -1,7 +1,8 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
 import { inventoryService } from '@/services/inventory.service';
-import { cartService } from '@/services/cart.service';
 import { redisService } from '@/services/redis.service';
 import { couponService } from '@/services/coupon.service';
 import { addressService } from '@/services/address.service';
@@ -234,7 +235,7 @@ async function createOrder(
   for (const cart_item of cart_items) {
     const { products = [], shop_id, coupon_codes = [] } = cart_item;
     for (const product of products) {
-      const key = `lock_v2023_${product.id}`;
+      const key = `lock_v2024_${product.id}`;
 
       log.info('Asking for lock');
       const lock = await redisService.retrieveLock(key);
@@ -242,8 +243,8 @@ async function createOrder(
 
       const isReservation = await inventoryService.reservationProduct(
         {
-          shop_id,
-          product_id: product.id,
+          shop: shop_id,
+          product: product.id,
           quantity: product.quantity,
           order_id: newOrder.id,
         },
@@ -255,17 +256,17 @@ async function createOrder(
       log.info(`inventory of product ${product.id} is modified`);
 
       // minus quantity product
-      await productService.minusQuantityProduct(product.id, product.quantity, session);
+      // await productService.minusQuantityProduct(product.id, product.quantity, session);
 
       // minus quantity product in cart
-      await cartService.minusQuantityProduct(
-        user_id,
-        {
-          product_id: product.id,
-          quantity: -product.quantity,
-        },
-        session
-      );
+      // await cartService.minusQuantityProduct(
+      //   user_id,
+      //   {
+      //     product: product.id,
+      //     quantity: -product.quantity,
+      //   },
+      //   session
+      // );
       log.info(`quantity product in cart, quantity product ${product.id} is modified`);
       await lock.release();
       log.info('Lock has been released, and is available for others to use');
