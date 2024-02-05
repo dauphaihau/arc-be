@@ -4,18 +4,64 @@ import {
   orderStatuses,
   ORDER_STATUSES
 } from '@/config/enums/order';
-import { IOrder, IOrderModel } from '@/interfaces/models/order';
+import {
+  IOrder,
+  IOrderModel,
+  ILineItemOrder,
+  IProductInLineOrder
+} from '@/interfaces/models/order';
 import { toJSON, paginate } from '@/models/plugins';
+
+// define product in line Schema
+const productInLineSchema = new Schema<IProductInLineOrder>(
+  {
+    inventory: {
+      type: Schema.Types.ObjectId,
+      required: true,
+    },
+    price: {
+      type: Number,
+      required: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+    },
+    title: {
+      type: String,
+      required: true,
+    },
+    image_url: {
+      type: String,
+      required: true,
+    },
+  }, { _id: false }
+);
+
+// define reserve Schema
+const lineItemSchema = new Schema<ILineItemOrder>(
+  {
+    shop: {
+      type: Schema.Types.ObjectId,
+      ref: 'Shop',
+      required: true,
+    },
+    products: {
+      type: [productInLineSchema],
+      required: true,
+    },
+  }, { _id: false }
+);
 
 // define Schema
 const orderSchema = new Schema<IOrder, IOrderModel>(
   {
-    user_id: {
+    user: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
-    address_id: {
+    address: {
       type: Schema.Types.ObjectId,
       ref: 'Address',
       required: true,
@@ -26,8 +72,7 @@ const orderSchema = new Schema<IOrder, IOrderModel>(
       required: true,
     },
     lines: {
-      type: [Schema.Types.Mixed],
-      default: [],
+      type: [lineItemSchema],
       required: true,
     },
     tracking_number: { type: String },

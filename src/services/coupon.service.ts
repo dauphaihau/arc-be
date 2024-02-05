@@ -1,5 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
+import { Product } from '@/models';
 import {
   COUPON_TYPES,
   COUPON_MIN_ORDER_TYPES,
@@ -24,46 +25,43 @@ const getCouponByCode = async (filter: GetCouponByCode) => {
 };
 
 const createCoupon = async (createBody: CreateCouponPayload) => {
-  let { type, applies_to, min_order_type } = createBody;
   const {
-    shop_id,
+    shop,
     title,
     code,
-    start_date,
-    end_date,
-    min_order_value,
-    max_uses,
-    max_uses_per_user,
-    is_active,
+    type,
     amount_off,
     percent_off,
+    min_order_type,
+    min_order_value,
     min_products,
     applies_product_ids = [],
+    max_uses,
+    max_uses_per_user,
+    start_date,
+    end_date,
+    applies_to,
+    is_active,
   } = createBody;
 
-  const couponExist = await getCouponByCode({ shop_id, code });
+  const couponExist = await getCouponByCode({ shop, code });
   if (couponExist && couponExist.is_active) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, 'Code already taken');
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Duplicate code');
   }
 
-  if (createBody?.amount_off) type = COUPON_TYPES.FIXED_AMOUNT;
-  if (createBody?.percent_off) type = COUPON_TYPES.PERCENTAGE;
-
-  if (createBody?.min_order_value) min_order_type = COUPON_MIN_ORDER_TYPES.ORDER_TOTAL;
-  if (createBody?.min_products) min_order_type = COUPON_MIN_ORDER_TYPES.NUMBER_OF_PRODUCTS;
-
   if (Array.isArray(createBody.applies_product_ids) && createBody.applies_product_ids.length > 0) {
-    applies_to = COUPON_APPLIES_TO.SPECIFIC;
-    for (const product_id of applies_product_ids) {
-      const productExist = await productService.getProductById(product_id);
-      if (!productExist) {
-        throw new ApiError(StatusCodes.NOT_FOUND, `product_id ${product_id} not found`);
-      }
+    const products = await Product.find({
+      _id: {
+        $in: applies_product_ids,
+      },
+    });
+    if (!products || products.length !== applies_product_ids.length) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'applies_product_ids is invalid');
     }
   }
 
   return Coupon.create({
-    shop_id,
+    shop,
     code,
     title,
     type,
@@ -147,21 +145,20 @@ const updateCoupon = async (
   return coupon;
 };
 
-const updateCouponShopAfterUsed = async (
-  { shop_id, user_id, code }: UpdateCouponShopAfterUsed,
+const updateCouponsShopAfterUsed = async (
+  { shop, user, codes }: UpdateCouponShopAfterUsed,
   session: ClientSession
 ) => {
-  const filter = { shop_id, code };
+  const filter = {
+    shop,
+    code: { $in: codes },
+  };
   const update = {
-    $set: {
-      users_used: user_id,
-    },
-    $inc: {
-      uses_count: 1,
-    },
+    $set: { users_used: user },
+    $inc: { uses_count: 1 },
   };
   const options = { upsert: false, session };
-  await Coupon.findOneAndUpdate(filter, update, options);
+  await Coupon.updateMany(filter, update, options);
 };
 
 export const couponService = {
@@ -171,5 +168,5 @@ export const couponService = {
   getCouponById,
   getCouponByCode,
   updateCoupon,
-  updateCouponShopAfterUsed,
+  updateCouponsShopAfterUsed,
 };

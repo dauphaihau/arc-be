@@ -16,7 +16,7 @@ import {
 // define Schema
 const couponSchema = new Schema<ICoupon, ICouponModel>(
   {
-    shop_id: {
+    shop: {
       type: Schema.Types.ObjectId,
       ref: 'Shop',
       required: true,
@@ -94,7 +94,7 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
     min_order_type: {
       type: String,
       enum: couponMinOrderTypes,
-      default: COUPON_MIN_ORDER_TYPES.ORDER_TOTAL,
+      default: COUPON_MIN_ORDER_TYPES.NONE,
     },
     min_order_value: {
       type: Number,

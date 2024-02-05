@@ -8,7 +8,7 @@ import {
   catchAsync, transactionWrapper, ApiError, pick
 } from '@/utils';
 import {
-  Shop, Member, Product, Coupon, Inventory, User
+  Shop, Member, Product, Coupon, ProductInventory, User
 } from '@/models';
 
 const createShop = catchAsync(async (
@@ -59,7 +59,9 @@ const deleteShop = catchAsync(async (req, res) => {
     }
 
     // Remove all inventory
-    const isDeletedInventories = await Inventory.deleteMany({ shop_id: shop.id }, { session });
+    const isDeletedInventories = await ProductInventory.deleteMany(
+      { shop_id: shop.id }, { session }
+    );
     if (!isDeletedInventories.deletedCount) throw new Error();
 
     // Remove all products

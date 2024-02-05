@@ -3,28 +3,29 @@ import { PRODUCT_CONFIG } from '@/config/enums/product';
 import {
   COUPON_APPLIES_TO,
   COUPON_TYPES,
-  COUPON_MIN_ORDER_TYPES
+  COUPON_MIN_ORDER_TYPES,
+  COUPON_CONFIG
 } from '@/config/enums/coupon';
 import { objectIdSchema } from '@/schema/sub/objectId.schema';
 
 export const couponSchema = z.object({
   id: objectIdSchema,
-  shop_id: objectIdSchema,
+  shop: objectIdSchema,
   code: z
     .string()
-    .min(6)
-    .max(12),
+    .min(COUPON_CONFIG.MIN_CHAR_CODE)
+    .max(COUPON_CONFIG.MAX_CHAR_CODE),
   title: z
     .string()
-    .min(2)
-    .max(50),
+    .min(COUPON_CONFIG.MIN_CHAR_TITLE)
+    .max(COUPON_CONFIG.MAX_CHAR_TITLE),
   type: z
     .nativeEnum(COUPON_TYPES)
     .optional(),
   amount_off: z
     .number()
     .min(1, 'must be large than 1')
-    .max(100000000)
+    .max(COUPON_CONFIG.MAX_AMOUNT_OFF)
     .optional(),
   percent_off: z
     .number()
@@ -49,10 +50,10 @@ export const couponSchema = z.object({
   max_uses: z
     .number()
     .min(1)
-    .max(100000, 'the maximum number cannot exceed 100000'),
+    .max(COUPON_CONFIG.MAX_USES, `the maximum number cannot exceed ${COUPON_CONFIG.MAX_USES}`),
   min_order_type: z
     .nativeEnum(COUPON_MIN_ORDER_TYPES)
-    .default(COUPON_MIN_ORDER_TYPES.ORDER_TOTAL),
+    .default(COUPON_MIN_ORDER_TYPES.NONE),
   min_order_value: z
     .number()
     .max(PRODUCT_CONFIG.MAX_PRICE)

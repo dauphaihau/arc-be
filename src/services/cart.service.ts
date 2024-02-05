@@ -1,19 +1,42 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
+import { ClientSession } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
 import { productService } from '@/services/product.service';
 import { log } from '@/config';
+import { IProductInventory } from '@/interfaces/models/product';
 import { inventoryService } from '@/services/inventory.service';
 import {
   ICart,
   IItemCart,
+  IMinusQtyProdCart,
   IProductCart,
   UpdateProductCartBody
 } from '@/interfaces/models/cart';
 import { Cart, ProductInventory } from '@/models';
 import { ApiError } from '@/utils';
-import { IProductInventory } from '@/interfaces/models/product';
 
 const getCartByUserId = async (userId: ICart['user']) => {
   return Cart.findOne({ user: userId });
+};
+
+const populateCart = async (cart: ICart) => {
+// const populateCart = async (cart: ICartModel) => {
+  await cart?.populate('items.shop', 'shop_name');
+  await cart?.populate([
+    {
+      path: 'items.products.inventory',
+      select: 'product variant stock price',
+      populate: {
+        path: 'product',
+        select: 'images title',
+      },
+    },
+    {
+      path: 'items.products.variant',
+      select: 'variant_group_name sub_variant_group_name',
+    },
+  ]);
 };
 
 async function createUserCart(
@@ -37,9 +60,12 @@ async function createUserCart(
   return Cart.findOneAndUpdate(filter, updateOrInsert, options);
 }
 
-async function deleteProduct(userId: ICart['user'], inventoryId: IProductInventory['id']) {
+async function deleteProduct(
+  userId: ICart['user'],
+  inventoryId: IProductInventory
+) {
   const inventoryInDB = await ProductInventory.findById(inventoryId);
-  if (!inventoryInDB) {
+  if (!inventoryInDB || !inventoryInDB.shop) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
   }
   const filter = {
@@ -58,12 +84,14 @@ async function deleteProduct(userId: ICart['user'], inventoryId: IProductInvento
 
   if (cartUpdated) {
     const itemCart = cartUpdated.items.find((item) => {
-      return item.shop.toString() === inventoryInDB.shop.toString();
+      if (item.shop && inventoryInDB.shop) {
+        return item.shop.toString() === inventoryInDB.shop.toString();
+      }
+      return null;
     });
     log.debug('item-cart %o', itemCart);
     if (itemCart && !itemCart.products.length) {
       log.info('pull item-shop cause by products is empty');
-      const filter = { user: userId };
       const update = {
         $pull: {
           items: {
@@ -71,7 +99,7 @@ async function deleteProduct(userId: ICart['user'], inventoryId: IProductInvento
           },
         },
       };
-      return Cart.updateOne(filter, update);
+      return Cart.findOneAndUpdate({ user: userId }, update, { new: true });
     }
   }
   return cartUpdated;
@@ -84,7 +112,7 @@ async function updateProduct(
   const { quantity, inventory } = productUpdate;
 
   if (quantity === 0) {
-    return deleteProduct(userId, inventory as string);
+    return deleteProduct(userId, inventory);
   }
 
   const foundPI = await inventoryService.getInventoryById(inventory);
@@ -137,7 +165,7 @@ async function addProduct(userId: ICart['user'], payload: IProductCart) {
     const variantInDB = await productService.getProductVariantById(payload.variant);
     log.debug('variant-in-db %o', variantInDB);
     if (
-      !inventoryInDB || !variantInDB ||
+      !inventoryInDB || !variantInDB || !inventoryInDB?.product ||
       (variantInDB.product.toString() !== inventoryInDB.product.toString())
     ) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'Product is invalid');
@@ -160,7 +188,10 @@ async function addProduct(userId: ICart['user'], payload: IProductCart) {
   }
 
   const itemCart = userCart.items.find((item) => {
-    return item.shop.toString() === inventoryInDB.shop.toString();
+    if (item.shop && inventoryInDB.shop) {
+      return item.shop.toString() === inventoryInDB.shop.toString();
+    }
+    return null;
   });
   log.debug('item-cart %o', itemCart);
   if (!itemCart) {
@@ -203,32 +234,41 @@ async function addProduct(userId: ICart['user'], payload: IProductCart) {
   );
 }
 
-// async function minusQuantityProduct(
-//   userId: ICart['user'],
-//   payload: IProductCart,
-//   session: ClientSession,
-// ) {
-//   const { product, quantity } = payload;
-//   if (quantity === 0) {
-//     return deleteProduct(userId, product as string);
-//   }
-//   const filter = {
-//     user: userId,
-//     'products.product': product,
-//   };
-//   const update = {
-//     $inc: {
-//       'cart_products.$.quantity': quantity,
-//     },
-//   };
-//   const options = { new: true, session };
-//   return Cart.findOneAndUpdate(filter, update, options);
-// }
+async function minusQuantityProduct(
+  userId: ICart['user'],
+  payload: IMinusQtyProdCart,
+  session: ClientSession
+) {
+  const { shop, inventory, quantity } = payload;
+  if (quantity === 0) {
+    return deleteProduct(userId, inventory);
+  }
+
+  const filter = {
+    user: userId,
+    'items.shop': shop,
+  };
+  const update = {
+    $inc: {
+      'items.$[e1].products.$[e2].quantity': quantity,
+    },
+  };
+  const options = {
+    arrayFilters: [
+      { 'e1.shop': shop },
+      { 'e2.inventory': inventory },
+    ],
+    new: true,
+    session,
+  };
+  return Cart.findOneAndUpdate(filter, update, options);
+}
 
 export const cartService = {
   addProduct,
   getCartByUserId,
-  // minusQuantityProduct,
+  minusQuantityProduct,
   deleteProduct,
   updateProduct,
+  populateCart,
 };

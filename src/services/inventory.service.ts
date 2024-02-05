@@ -1,17 +1,19 @@
+import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
+import { ApiError } from '@/utils';
+import { IClearProductsReverseByOrder } from '@/interfaces/models/order';
 import {
   CreateInventoryPayload,
   UpdateInventoryPayload, ReservationInventoryPayload, IProductInventory
 } from '@/interfaces/models/product';
 import { ProductInventory } from '@/models';
-// import { IClearProductsReverseByOrder } from '@/interfaces/models/order';
 
 const insertInventory = async (payload: CreateInventoryPayload, session: ClientSession) => {
   const inventory = await ProductInventory.create([payload], { session });
   return inventory[0];
 };
 
-const getInventoryById = async (id: IProductInventory['id']) => {
+const getInventoryById = async (id: IProductInventory) => {
   return ProductInventory.findById(id);
 };
 
@@ -28,14 +30,11 @@ const reservationProduct = async (
   payload: ReservationInventoryPayload,
   session: ClientSession
 ) => {
-  const {
-    product, shop, quantity, order_id,
-  } = payload;
+  const { inventoryId, quantity, order } = payload;
 
   const filter = {
-    product,
-    shop,
-    stock: { $gte: quantity },
+    _id: inventoryId,
+    // stock: { $gte: quantity },
   };
   const update = {
     $inc: {
@@ -43,9 +42,8 @@ const reservationProduct = async (
     },
     $push: {
       reservations: {
-        order_id,
+        order,
         quantity,
-        createOn: new Date(),
       },
     },
   };
@@ -54,35 +52,63 @@ const reservationProduct = async (
   return ProductInventory.updateOne(filter, update, options);
 };
 
-// const clearProductsReverseByOrder = async (
-//   order: IClearProductsReverseByOrder,
-//   session: ClientSession
-// ) => {
-//   const { lines = [] } = order;
-//   lines.forEach((item) => {
-//     const { shop, products = [] } = item;
-//     products.forEach(async (prod) => {
-//       await ProductInventory.findOneAndUpdate(
-//         {
-//           shop,
-//           product: prod.id,
-//         },
-//         {
-//           $pull: {
-//             reservations: { order_id: order.id },
-//           },
-//         },
-//         { session }
-//       );
-//     });
-//   });
-// };
+const minusStock = async (
+  inventoryId: IProductInventory['id'],
+  quantity: IProductInventory['stock'],
+  session: ClientSession
+) => {
+  return ProductInventory.updateOne(
+    { _id: inventoryId },
+    {
+      $inc: {
+        stock: -quantity,
+      },
+    },
+    { session }
+  );
+};
 
+const clearProductsReversedByOrder = async (
+  order: IClearProductsReverseByOrder,
+  session: ClientSession
+) => {
+  const promises: unknown[] = [];
+
+  order.lines.forEach((item) => {
+    const { shop, products = [] } = item;
+    products.forEach((prod) => {
+      promises.push(
+        ProductInventory.findOneAndUpdate(
+          {
+            _id: prod.inventory,
+            shop,
+          },
+          {
+            $pull: {
+              reservations: { order: order.id },
+            },
+          },
+          { session }
+        )
+      );
+    });
+  });
+
+  const results = await Promise.allSettled(promises);
+  results.forEach(rel => {
+    if (rel.status === 'rejected') {
+      throw new ApiError(
+        StatusCodes.INTERNAL_SERVER_ERROR, 'error clear product reserved'
+      );
+    }
+  });
+};
 
 export const inventoryService = {
   insertInventory,
   updateStock,
   reservationProduct,
-  // clearProductsReverseByOrder,
+  clearProductsReversedByOrder,
   getInventoryById,
+  minusStock,
 };

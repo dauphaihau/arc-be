@@ -1,44 +1,46 @@
 import { z } from 'zod';
-import { Schema } from 'mongoose';
-// import { productInventorySchema } from './product-inventory.schema';
+import { itemCartSchema } from '@/schema/cart.schema';
+import { productInventorySchema } from '@/schema/product-inventory.schema';
+import { productSchema } from '@/schema/product.schema';
 import { COUPONS_MAX_USE_PER_ORDER } from '@/config/enums/coupon';
 import { couponSchema } from '@/schema/coupon.schema';
 import { PAYMENT_TYPES, ORDER_STATUSES } from '@/config/enums/order';
-import { productSchema } from '@/schema/product.schema';
 import { objectIdSchema } from '@/schema/sub/objectId.schema';
 
-export const productOrderSchema = z.object({
-  product_id: productSchema.shape.id,
-  // quantity: productSchema.shape.quantity,
+export const productInLineSchema = z.object({
+  inventory: objectIdSchema,
+  price: productInventorySchema.shape.price,
   quantity: z.number(),
+  title: productSchema.shape.title,
+  image_url: z.string(),
 });
 
 export const lineItemSchema = z.object({
+  shop: objectIdSchema,
+  coupon_codes: itemCartSchema.shape.coupon_codes,
+  products: z
+    .array(productInLineSchema)
+    .min(1)
+    .max(20),
+});
+
+export const shopCodesSchema = z.object({
   shop: objectIdSchema,
   coupon_codes: z
     .array(couponSchema.shape.code)
     .min(1)
     .max(COUPONS_MAX_USE_PER_ORDER)
-    .optional()
-  ,
-  products: z
-    // .array(productSchema.pick({ id: true, quantity: true }))
-    // .array(productSchema.pick({ id: true }))
-    .array(z.object({
-      inventory: objectIdSchema,
-      quantity: z.number(),
-    }))
-    .min(1)
-    .max(20),
+    .optional(),
 });
 
 export const orderSchema = z.object({
   id: objectIdSchema,
-  user_id: objectIdSchema,
-  address_id: objectIdSchema,
+  user: objectIdSchema,
+  address: objectIdSchema,
   payment_type: z.nativeEnum(PAYMENT_TYPES),
   lines: z
-    .array(lineItemSchema.or(z.instanceof(Schema.Types.Mixed)))
+    // .array(lineItemSchema.or(z.instanceof(Schema.Types.Mixed)))
+    .array(lineItemSchema)
     .min(1)
     .max(20),
   tracking_number: z.string(),

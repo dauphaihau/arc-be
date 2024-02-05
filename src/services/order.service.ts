@@ -1,26 +1,30 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
+// @ts-nocheckk
 import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
-import { inventoryService } from '@/services/inventory.service';
-import { redisService } from '@/services/redis.service';
-import { couponService } from '@/services/coupon.service';
-import { addressService } from '@/services/address.service';
+import { log, env } from '@/config';
 import {
   COUPONS_MAX_USE_PER_ORDER,
-  COUPON_MIN_ORDER_TYPES, COUPON_TYPES
+  COUPON_MIN_ORDER_TYPES,
+  COUPON_TYPES
 } from '@/config/enums/coupon';
-import { productService } from '@/services/product.service';
-import { log } from '@/config';
+import { SHIPPING_FEE_PERCENT } from '@/config/enums/order';
+import { ICart, IProductCart } from '@/interfaces/models/cart';
 import {
   IOrder,
-  ReviewOrderBody,
   IUpdateOrderBody,
-  CreateOrderBody, IOrderModel
+  CreateOrderBody,
+  IOrderModel,
+  IShopCodes
 } from '@/interfaces/models/order';
+import { IProduct } from '@/interfaces/models/product';
 import { Order } from '@/models';
-import { ApiError } from '@/utils';
-import { SHIPPING_FEE_PERCENT } from '@/config/enums/order';
+import { addressService } from '@/services/address.service';
+import { cartService } from '@/services/cart.service';
+import { couponService } from '@/services/coupon.service';
+import { inventoryService } from '@/services/inventory.service';
+import { redisService } from '@/services/redis.service';
+import { ApiError, convertPrice } from '@/utils';
 
 const getOrderById = async (id: IOrder['id']) => {
   return Order.findById(id);
@@ -58,35 +62,75 @@ const updateOrderById = async (
 /*
  * Review order
  *
- * 1. validate products
+ * 1. map fields stand by for pay via card ( stripe )
  *
  * 2. calculate price each product
  *
- * 3. validate coupons
- *
- * 4. calculate discount total
+ * 3. validate coupons & calculate discount total
  */
-async function reviewOrder(payload: ReviewOrderBody) {
-  const { cart_items, user_id } = payload;
-  let productsFlattened;
+
+async function reviewOrder(payload: ICart, shopsCodes?: IShopCodes[]) {
+  const { items, user } = payload;
   const tempOrder = {
     subTotalPrice: 0,
+    subTotalAppliedDiscountPrice: 0,
     shippingFee: 0,
     totalDiscount: 0,
     totalPrice: 0,
+    totalProducts: 0,
   };
 
-  for (const cart_item of cart_items) {
-    const { coupon_codes = [], shop_id, products = [] } = cart_item;
-    const productsValid = await productService.checkAndGetShopProducts(shop_id, products);
+  const shops: { [key: string]: IShopCodes['coupon_codes'] } = {};
+  if (shopsCodes && shopsCodes.length > 0) {
+    shopsCodes.forEach((ele) => {
+      shops[ele.shop as string] = ele.coupon_codes;
+    });
+  }
+
+  const itemsSelected = [];
+  const itemNotSelected = [];
+
+  for (const item of items) {
+    const { shop, products = [] } = item;
+    const coupon_codes = shops[item?.shop?.id as string] || [];
+    const productsSelected: IProductCart[] = [];
+    const productsNotSelect: IProductCart[] = [];
+
+    products.forEach(prod => {
+      return prod.is_select_order ? productsSelected.push(prod) : productsNotSelect.push(prod);
+    });
+
+    if (productsNotSelect.length > 0) {
+      itemNotSelected.push({
+        shop: item.shop,
+        products: productsNotSelect,
+      });
+    }
+
+    const productsMappedFields = productsSelected.map(ele => {
+      const product = ele.inventory.product as IProduct;
+      return {
+        inventory: ele?.inventory?.id,
+        quantity: ele.quantity,
+        price: ele?.inventory?.price,
+        title: product.title,
+        image_url: env.aws_s3.host_bucket + '/' + product.images[0].relative_url,
+      };
+    });
+
+    tempOrder.totalProducts += productsMappedFields.length;
+    // itemsSelected.push({
+    //   shop,
+    //   products: productsMappedFields,
+    // });
 
     let count_shop_products = 0;
-    const subTotalPrice = productsValid.reduce((acc, next) => {
+    const subTotalPrice = productsMappedFields.reduce((acc, next) => {
       count_shop_products += next.quantity;
       return acc + (next.price * next.quantity);
     }, 0);
-    tempOrder.subTotalPrice += subTotalPrice;
-    tempOrder.shippingFee += subTotalPrice * SHIPPING_FEE_PERCENT;
+    tempOrder.subTotalPrice += convertPrice(subTotalPrice);
+    tempOrder.shippingFee += convertPrice(subTotalPrice * SHIPPING_FEE_PERCENT);
 
     // validate per coupon
     if (coupon_codes && coupon_codes.length > 0) {
@@ -101,7 +145,7 @@ async function reviewOrder(payload: ReviewOrderBody) {
       const coupon_types = [];
       for (const coupon_code of coupon_codes) {
         const coupon = await couponService.getCouponByCode({
-          shop_id,
+          shop,
           code: coupon_code,
         });
         if (!coupon) {
@@ -122,12 +166,12 @@ async function reviewOrder(payload: ReviewOrderBody) {
         ) {
           throw new ApiError(
             StatusCodes.BAD_REQUEST,
-            `Shop ${shop_id} require order total must be large than ${coupon.min_order_value}`
+            `Shop ${shop} require order total must be large than ${coupon.min_order_value}`
           );
         }
         if (
           coupon.min_order_type === COUPON_MIN_ORDER_TYPES.NUMBER_OF_PRODUCTS &&
-          productsValid.length < (coupon.min_products as number) &&
+          productsMappedFields.length < (coupon.min_products as number) &&
           count_shop_products < (coupon.min_products as number)
         ) {
           throw new ApiError(
@@ -137,13 +181,13 @@ async function reviewOrder(payload: ReviewOrderBody) {
           );
         }
 
-        let count = 0;
+        let count_user_used_cp = 0;
         coupon.users_used?.forEach((user_used_coupon_id) => {
-          if (user_used_coupon_id === user_id) {
-            count += 1;
+          if (user_used_coupon_id === user) {
+            count_user_used_cp += 1;
           }
         });
-        if (count >= coupon.max_uses_per_user) {
+        if (count_user_used_cp >= coupon.max_uses_per_user) {
           throw new ApiError(
             StatusCodes.BAD_REQUEST,
             `User has reach limit use coupon ${coupon_code}`
@@ -162,7 +206,7 @@ async function reviewOrder(payload: ReviewOrderBody) {
             tempOrder.shippingFee -= subTotalPrice * SHIPPING_FEE_PERCENT;
             break;
         }
-        tempOrder.totalDiscount += discount;
+        tempOrder.totalDiscount += convertPrice(discount);
       }
 
       if (
@@ -173,13 +217,24 @@ async function reviewOrder(payload: ReviewOrderBody) {
       }
     }
 
-    productsFlattened = productsValid;
-    tempOrder.totalPrice = tempOrder.subTotalPrice - tempOrder.totalDiscount;
+    tempOrder.subTotalAppliedDiscountPrice = convertPrice(
+      tempOrder.subTotalPrice - tempOrder.totalDiscount
+    );
+    tempOrder.totalPrice = convertPrice(
+      tempOrder.subTotalPrice - tempOrder.totalDiscount
+    );
+
+    itemsSelected.push({
+      shop,
+      products: productsMappedFields,
+      coupon_codes,
+    });
   }
-  tempOrder.totalPrice += tempOrder.shippingFee;
+  tempOrder.totalPrice += convertPrice(tempOrder.shippingFee);
   return {
     tempOrder,
-    productsFlattened,
+    itemsSelected,
+    itemNotSelected,
   };
 }
 
@@ -192,14 +247,14 @@ async function reviewOrder(payload: ReviewOrderBody) {
  *
  *    create order
  *
- * 2. reservation quantity product in inventory
+ * 2. reservation quantity product into inventory ( until user paid then clear reserves)
  *    acquire lock from redis to reserve
  *
- * 3. minus quantity product
+ * 3. minus stock
  *
- * 4. minus quantity product in cart
+ * 4. update coupon if apply coupon
  *
- * 5. update coupon if apply coupon
+ * 5. minus quantity product or remove item in cart
  *
  */
 async function createOrder(
@@ -207,24 +262,34 @@ async function createOrder(
   session: ClientSession
 ) {
   const {
-    user_id,
+    user,
+    address,
     payment_type,
-    address_id,
-    cart_items = [],
+    shops_codes,
   } = payload;
 
-  const { tempOrder, productsFlattened } = await reviewOrder(payload);
+  const cart = await cartService.getCartByUserId(user);
+  if (!cart) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Cart not found');
+  }
+  await cartService.populateCart(cart);
 
-  const userAddress = await addressService.getAddressById(address_id);
-  if (!userAddress || userAddress.user_id.toString() !== user_id) {
+  const {
+    tempOrder,
+    itemsSelected,
+    itemNotSelected,
+  } = await reviewOrder(cart, shops_codes);
+
+  const userAddress = await addressService.getAddressById(address);
+  if (!userAddress || userAddress.user.toString() !== user) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Address not found');
   }
 
   const newOrderCreated = await Order.create([{
-    user_id,
-    address_id,
+    user,
+    address,
     payment_type,
-    lines: cart_items,
+    lines: itemsSelected,
     subtotal: tempOrder.subTotalPrice,
     shipping_fee: tempOrder.shippingFee,
     total_discount: tempOrder.totalDiscount,
@@ -232,10 +297,10 @@ async function createOrder(
   }], { session });
   const newOrder = newOrderCreated[0];
 
-  for (const cart_item of cart_items) {
-    const { products = [], shop_id, coupon_codes = [] } = cart_item;
+  for (const item of itemsSelected) {
+    const { products = [], shop, coupon_codes = [] } = item;
     for (const product of products) {
-      const key = `lock_v2024_${product.id}`;
+      const key = `lock_v2024_${product.inventory}`;
 
       log.info('Asking for lock');
       const lock = await redisService.retrieveLock(key);
@@ -243,50 +308,36 @@ async function createOrder(
 
       const isReservation = await inventoryService.reservationProduct(
         {
-          shop: shop_id,
-          product: product.id,
+          inventoryId: product.inventory,
+          order: newOrder.id,
           quantity: product.quantity,
-          order_id: newOrder.id,
         },
         session
       );
       if (!isReservation.modifiedCount) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Some products have been updated, please come back to check');
       }
-      log.info(`inventory of product ${product.id} is modified`);
 
-      // minus quantity product
-      // await productService.minusQuantityProduct(product.id, product.quantity, session);
+      // minus stock
+      await inventoryService.minusStock(product.inventory, product.quantity, session);
+      log.info(`inventory ${product.inventory} is modified`);
 
-      // minus quantity product in cart
-      // await cartService.minusQuantityProduct(
-      //   user_id,
-      //   {
-      //     product: product.id,
-      //     quantity: -product.quantity,
-      //   },
-      //   session
-      // );
-      log.info(`quantity product in cart, quantity product ${product.id} is modified`);
       await lock.release();
       log.info('Lock has been released, and is available for others to use');
     }
 
     if (coupon_codes && coupon_codes.length > 0) {
-      for (const code of coupon_codes) {
-        const couponUpdated = await couponService.updateCouponShopAfterUsed(
-          { shop_id, user_id, code },
-          session
-        );
-        log.debug('coupon updated %o', couponUpdated);
-      }
+      await couponService.updateCouponsShopAfterUsed({
+        shop, user, codes: coupon_codes,
+      }, session);
     }
   }
+
+  await cart.updateOne({ items: itemNotSelected }, session);
 
   return {
     newOrder,
     userAddress,
-    productsFlattened,
   };
 }
 

@@ -3,7 +3,7 @@ import { objectIdSchema } from '@/schema/sub/objectId.schema';
 
 export const addressSchema = z.object({
   id: objectIdSchema,
-  user_id: objectIdSchema,
+  user: objectIdSchema,
   full_name: z.string().max(50),
   address1: z.string().max(50),
   address2: z.string().max(50).optional(),

@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { COUPON_CONFIG } from '@/config/enums/coupon';
+import { couponSchema } from '@/schema/coupon.schema';
 import { CART_CONFIG } from '@/config/enums/cart';
 import { PRODUCT_CONFIG } from '@/config/enums/product';
 import { objectIdSchema } from '@/schema/sub/objectId.schema';
@@ -16,6 +18,10 @@ export const productCartSchema = z.object({
 export const itemCartSchema = z.object({
   shop: objectIdSchema,
   products: z.array(productCartSchema),
+  coupon_codes: z
+    .array(couponSchema.shape.code)
+    .max(COUPON_CONFIG.MAX_USE_PER_ORDER)
+    .optional(),
 });
 
 export const cartSchema = z.object({

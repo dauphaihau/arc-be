@@ -2,6 +2,7 @@
 // @ts-nocheck
 import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { ProductVariant } from '@/models/product-variant.model';
 import { log } from '@/config';
 import { PRODUCT_VARIANT_TYPES } from '@/config/enums/product';
 import {
@@ -11,10 +12,9 @@ import {
   DeleteProductParams,
   UpdateProductParams,
   UpdateProductPayload,
-  GetProductsParams,
-  IProductInventory
+  GetProductsParams
 } from '@/interfaces/models/product';
-import { Inventory } from '@/models';
+import { ProductInventory } from '@/models';
 import { productService, inventoryService, awsS3Service } from '@/services';
 import {
   catchAsync, pick, transactionWrapper, ApiError
@@ -159,8 +159,48 @@ const getProductsByShop = catchAsync(async (
     },
     ['shop', 'price', 'name', 'category']
   );
+  const defaultPopulate = 'shop,inventory,variants/inventory+variant_options.inventory';
   const options = pick(req.query, ['sortBy', 'limit', 'page', 'populate', 'select']);
+  options['populate'] = defaultPopulate;
   const result = await productService.queryProducts(filter, options);
+
+  result.results = result.results.map((prod) => {
+    prod.summary_inventory = {
+      lowest_price: 0,
+      highest_price: 0,
+      stock: 0,
+    };
+
+    prod.variants && prod.variants.forEach((vari, idx) => {
+      if (prod.variant_type === PRODUCT_VARIANT_TYPES.SINGLE && vari?.inventory?.price) {
+
+        prod.summary_inventory.stock += vari.inventory.stock;
+
+        if (idx === 0 || (vari.inventory.price < prod.summary_inventory.lowest_price)) {
+          prod.summary_inventory.lowest_price = vari.inventory.price;
+        }
+        if (idx === 0 || (vari.inventory.price > prod.summary_inventory.highest_price)) {
+          prod.summary_inventory.highest_price = vari.inventory.price;
+        }
+
+      }
+
+      if (prod.variant_type === PRODUCT_VARIANT_TYPES.COMBINE) {
+        vari.variant_options.forEach((varOpt) => {
+          prod.summary_inventory.stock += varOpt.inventory.stock;
+          if (idx === 0 || (varOpt.inventory.price < prod.summary_inventory.lowest_price)) {
+            prod.summary_inventory.lowest_price = varOpt.inventory.price;
+          }
+          if (idx === 0 || (varOpt.inventory.price > prod.summary_inventory.highest_price)) {
+            prod.summary_inventory.highest_price = varOpt.inventory.price;
+          }
+        });
+      }
+    });
+
+    return prod;
+  });
+
   res.send(result);
 });
 
@@ -172,40 +212,75 @@ const getProducts = catchAsync(async (
   const filter = pick(req.query, ['shop', 'price', 'name', 'category']);
   const options = pick(req.query, ['sortBy', 'limit', 'page', 'populate', 'select']);
   options['populate'] = defaultPopulate;
-  // console.log('options', options);
-
   const result = await productService.queryProducts(filter, options);
-  // console.log('result', result);
+
+  // result.results = result.results.map((prod) => {
+  //   // if (prod.variant_type === PRODUCT_VARIANT_TYPES.NONE) {
+  //   //   return prod;
+  //   // }
+  //   let variantLowestPrice: IProductInventory | undefined;
+  //   prod.variants && prod.variants.forEach((vari, idx) => {
+  //     if (prod.variant_type === PRODUCT_VARIANT_TYPES.SINGLE && vari?.inventory?.price) {
+  //       if (idx === 0 ||
+  //         (variantLowestPrice?.price && vari.inventory.price < variantLowestPrice.price)
+  //       ) {
+  //         variantLowestPrice = vari.inventory;
+  //       }
+  //
+  //     }
+  //
+  //     if (prod.variant_type === PRODUCT_VARIANT_TYPES.COMBINE) {
+  //       vari.variant_options.forEach((varOpt, index) => {
+  //         if (index === 0 ||
+  //           (variantLowestPrice?.price && varOpt.inventory.price < variantLowestPrice.price)
+  //         ) {
+  //           variantLowestPrice = varOpt.inventory;
+  //         }
+  //       });
+  //     }
+  //
+  //   });
+  //
+  //   if (variantLowestPrice) {
+  //     prod.inventory = variantLowestPrice;
+  //   }
+  //   return prod;
+  // });
 
   result.results = result.results.map((prod) => {
-    if (prod.variant_type === PRODUCT_VARIANT_TYPES.NONE) {
-      return prod;
-    }
-    let variantLowestPrice: IProductInventory | undefined;
+    prod.summary_inventory = {
+      lowest_price: 0,
+      highest_price: 0,
+      stock: 0,
+    };
+
     prod.variants && prod.variants.forEach((vari, idx) => {
       if (prod.variant_type === PRODUCT_VARIANT_TYPES.SINGLE && vari?.inventory?.price) {
-        if (idx === 0 ||
-          (variantLowestPrice?.price && vari.inventory.price < variantLowestPrice.price)
-        ) {
-          variantLowestPrice = vari.inventory;
+
+        prod.summary_inventory.stock += vari.inventory.stock;
+
+        if (idx === 0 || (vari.inventory.price < prod.summary_inventory.lowest_price)) {
+          prod.summary_inventory.lowest_price = vari.inventory.price;
+        }
+        if (idx === 0 || (vari.inventory.price > prod.summary_inventory.highest_price)) {
+          prod.summary_inventory.highest_price = vari.inventory.price;
         }
 
       }
 
       if (prod.variant_type === PRODUCT_VARIANT_TYPES.COMBINE) {
-        vari.variant_options.forEach((varOpt, index) => {
-          if (index === 0 ||
-            (variantLowestPrice?.price && varOpt.inventory.price < variantLowestPrice.price)
-          ) {
-            variantLowestPrice = varOpt.inventory;
+        vari.variant_options.forEach((varOpt) => {
+          prod.summary_inventory.stock += varOpt.inventory.stock;
+          if (idx === 0 || (varOpt.inventory.price < prod.summary_inventory.lowest_price)) {
+            prod.summary_inventory.lowest_price = varOpt.inventory.price;
+          }
+          if (idx === 0 || (varOpt.inventory.price > prod.summary_inventory.highest_price)) {
+            prod.summary_inventory.highest_price = varOpt.inventory.price;
           }
         });
       }
     });
 
-    if (variantLowestPrice) {
-      prod.inventory = variantLowestPrice;
-    }
     return prod;
   });
 
@@ -216,16 +291,17 @@ const deleteProduct = catchAsync(async (
   req: Request<DeleteProductParams>,
   res
 ) => {
-  const product_id = req.params.id as string;
+  const product = req.params.id as string;
 
   await transactionWrapper(async (session) => {
-    const result = await productService.deleteProductById(product_id, session);
+    const result = await productService.deleteProductById(product, session);
 
-    result.images.forEach((image) => {
-      awsS3Service.deleteObject(image.relative_url);
-    });
+    const images = result.images.map(img => img.relative_url);
+    await awsS3Service.deleteMultiObject(images);
 
-    await Inventory.deleteOne({ product_id }, { session });
+    await ProductVariant.deleteMany({ product }, { session });
+    await ProductInventory.deleteMany({ product }, { session });
+
     res.status(StatusCodes.NO_CONTENT).send();
   });
 });
@@ -234,16 +310,16 @@ const updateProduct = catchAsync(async (
   req: Request<UpdateProductParams, unknown, UpdateProductPayload>,
   res
 ) => {
-  const product_id = req.params.id as string;
+  const productId = req.params.id as string;
 
   await transactionWrapper(async (session) => {
-    const product = await productService.updateProduct(product_id, req.body, session);
+    const product = await productService.updateProduct(productId, req.body, session);
 
     // update stock
     if (req.body?.stock) {
       const updatedInv = await inventoryService.updateStock({
         shop: product.shop,
-        product: product_id,
+        product: productId,
         stock: req.body.stock,
       }, session);
       if (!updatedInv.modifiedCount) {

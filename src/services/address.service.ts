@@ -12,9 +12,9 @@ const getAddressById = async (id: IAddress['id']) => {
 };
 
 const createAddress = async (payload: CreateAddressPayload) => {
-  const { user_id, is_primary } = payload;
+  const { user, is_primary } = payload;
   if (is_primary) {
-    const filter = { user_id, is_primary: true };
+    const filter = { user, is_primary: true };
     const update = { is_primary: false };
     await Address.findOneAndUpdate(filter, update);
   }

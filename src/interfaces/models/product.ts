@@ -1,13 +1,17 @@
-import { Model, FilterQuery } from 'mongoose';
+import {
+  Model, FilterQuery, PopulatedDoc
+} from 'mongoose';
 import { z } from 'zod';
 import { IOrder } from './order';
+import { Override } from '@/interfaces/utils';
+import { IPopulatedShop } from '@/interfaces/models/shop';
 import {
   productAttributeSchema,
   productSchema,
   productImageSchema,
   productVariantSchema,
   productInventorySchema,
-  productVariantOptSchema
+  productVariantOptSchema, productInventoryReservationSchema
 } from '@/schema';
 import {
   IBaseQueryOptions,
@@ -16,11 +20,20 @@ import {
 import { productStateUserCanModify } from '@/schema/product.schema';
 
 export type IProduct = z.infer<typeof productSchema>;
+export type IPopulatedProduct = PopulatedDoc<IProduct>;
+
 export type IProductImage = z.infer<typeof productImageSchema>;
 export type IProductVariantOpt = z.infer<typeof productVariantOptSchema>;
 export type IProductVariant = z.infer<typeof productVariantSchema>;
 export type IProductAttribute = z.infer<typeof productAttributeSchema>;
-export type IProductInventory = z.infer<typeof productInventorySchema>;
+
+
+export type IProductInventoryReservationSchema = z.infer<typeof productInventoryReservationSchema>;
+export type IProductInventorySchema = z.infer<typeof productInventorySchema>;
+export type IProductInventory = Override<IProductInventorySchema, {
+  shop: IPopulatedShop
+  product: IPopulatedProduct
+}>;
 
 export interface IProductModel extends Model<IProduct, unknown> {
   // eslint-disable-next-line @stylistic/max-len
@@ -34,9 +47,13 @@ export type CreateInventoryPayload = Pick<IProductInventory, 'shop' | 'product' 
 export type UpdateInventoryPayload = Pick<IProductInventory, 'shop' | 'product' | 'stock'>;
 
 export type ReservationInventoryPayload =
-  Pick<IProductInventory, 'shop' | 'product'>
-  & { quantity: IProductInventory['stock'] }
-  & { order_id: IOrder['id'] };
+  // Pick<IProductInventory, 'shop' | 'product'> &
+  // Pick<IProductInventory, 'id' | 'stock'> &
+  {
+    inventoryId: IProductInventory['id']
+    order: IOrder['id'] ,
+    quantity: number
+  };
 
 export type PRODUCT_STATES_USER_CAN_MODIFY = z.infer<typeof productStateUserCanModify>;
 

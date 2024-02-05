@@ -1,15 +1,12 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import { StatusCodes } from 'http-status-codes';
 import Stripe from 'stripe';
+import { inventoryService } from '@/services/inventory.service';
 import { stripeClient, env, log } from '@/config';
-// import { ORDER_STATUSES } from '@/config/enums/order';
+import { ORDER_STATUSES } from '@/config/enums/order';
 import {
-  // IClearProductsReverseByOrder,
-  IGetCheckoutSessionUrlPayload
+  IGetCheckoutSessionUrlPayload, IClearProductsReverseByOrder
 } from '@/interfaces/models/order';
 import { IUser } from '@/interfaces/models/user';
-// import { inventoryService } from '@/services/inventory.service';
 import { orderService } from '@/services/order.service';
 import { ApiError, transactionWrapper } from '@/utils';
 
@@ -21,29 +18,32 @@ async function getCheckoutSessionUrl(
   payload: IGetCheckoutSessionUrlPayload
 ) {
   const { id: user_id, email } = user;
-  const { newOrder, productsFlattened, userAddress } = payload;
+  const { newOrder, userAddress } = payload;
 
-  if (!productsFlattened) {
-    throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Something wrong');
-  }
+  const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
-  const line_items = productsFlattened.map((product) => (
-    {
-      price_data: {
-        currency: 'usd',
-        product_data: {
-          name: product.title,
-          images: [product.image_url],
-          metadata: {
-            shop_id: product.shop_id as string,
-            product_id: product.id as string,
+  newOrder.lines.forEach((line) => {
+    return line.products.forEach(product => {
+      line_items.push(
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: product.title,
+              images: [product.image_url],
+              metadata: {
+                order_id: newOrder.id as string,
+              },
+            },
+            unit_amount: convertCurrencyStripe(product.price),
           },
-        },
-        unit_amount: convertCurrencyStripe(product.price),
-      },
-      quantity: product.quantity,
-    }
-  ));
+          quantity: product.quantity,
+        }
+      );
+    });
+  });
+
+  log.debug('line-item %o', line_items);
 
   const params: Stripe.Checkout.SessionCreateParams = {
     submit_type: 'pay',
@@ -77,7 +77,6 @@ async function getCheckoutSessionUrl(
     params.payment_intent_data = {
       shipping: {
         name: userAddress.full_name,
-
         address: {
           country: userAddress.country,
           state: userAddress.state,
@@ -110,7 +109,7 @@ async function getCheckoutSessionUrl(
     params.discounts = [{ coupon: coupon.id }];
   }
 
-  log.debug('params %o', params);
+  log.debug('params checkout session %o', params);
   const session = await stripeClient.checkout.sessions.create(params);
   return session.url;
 }
@@ -129,10 +128,10 @@ async function onEventStripe(event: Stripe.Event) {
             status: ORDER_STATUSES.PAID,
           }, sessionMongo);
           log.debug('order %o', order);
-          // await inventoryService.clearProductsReverseByOrder(
-          //   order as IClearProductsReverseByOrder,
-          //   sessionMongo
-          // );
+          await inventoryService.clearProductsReversedByOrder(
+            order as IClearProductsReverseByOrder,
+            sessionMongo
+          );
         }
       });
     }

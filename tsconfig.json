@@ -2,7 +2,10 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "CommonJS",
-    "lib": ["ESNext"],
+    "lib": [
+      "ESNext",
+      "dom"
+    ],
     "moduleResolution": "node",
     "esModuleInterop": true,
     "emitDecoratorMetadata": true,
@@ -39,6 +42,6 @@
     "noFallthroughCasesInSwitch": true,
     "noPropertyAccessFromIndexSignature": true,
     "exactOptionalPropertyTypes": true,
-    "forceConsistentCasingInFileNames": true,
+    "forceConsistentCasingInFileNames": true
   },
 }

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
   lineItemSchema,
-  orderSchema
+  orderSchema, shopCodesSchema
 } from '@/schema';
 
 export const orderValidation = {
@@ -12,9 +12,9 @@ export const orderValidation = {
   }),
   createOrder: z.object({
     body: z.object({
-      address_id: orderSchema.shape.address_id,
+      address: orderSchema.shape.address,
       payment_type: orderSchema.shape.payment_type,
-      cart_items: z.array(lineItemSchema.strict()),
+      shops_codes: z.array(shopCodesSchema),
     }).strict(),
   }),
 };

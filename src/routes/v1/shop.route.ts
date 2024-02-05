@@ -61,7 +61,7 @@ router
   .get(validate(productValidation.getProducts), productController.getProductsByShop);
 
 router
-  .route('/:shop_id/products/:id')
+  .route('/:shop/products/:id')
   .get(
     validate(productValidation.getProduct),
     productController.getProduct
@@ -79,16 +79,16 @@ router
 
 // Coupon
 router
-  .route('/:shop_id/coupons')
+  .route('/:shop/coupons')
   .post(
     validate(couponValidation.createCoupon),
     auth('createCoupon'),
     couponController.createCoupon
   )
-  .get(validate(couponValidation.getCoupons), couponController.getCoupons);
+  .get(validate(couponValidation.getCoupons), couponController.getCouponsByShop);
 
 router
-  .route('/:shop_id/coupons/:id')
+  .route('/:shop/coupons/:id')
   .get(
     validate(couponValidation.getCoupon),
     couponController.getCoupon

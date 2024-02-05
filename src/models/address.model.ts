@@ -5,7 +5,7 @@ import { toJSON, paginate } from '@/models/plugins';
 // define Schema
 const addressSchema = new Schema<IAddress, IAddressModel>(
   {
-    user_id: {
+    user: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,

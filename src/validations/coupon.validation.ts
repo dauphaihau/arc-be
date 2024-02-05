@@ -1,67 +1,103 @@
 import { z } from 'zod';
-import { COUPON_TYPES } from '@/config/enums/coupon';
+import {
+  COUPON_TYPES,
+  COUPON_MIN_ORDER_TYPES,
+  COUPON_APPLIES_TO
+} from '@/config/enums/coupon';
 import { couponSchema } from '@/schema/coupon.schema';
 import { mixBaseQueryOptionsSchema } from '@/schema/sub/queryOptions.schema';
 
 export const couponValidation = {
   createCoupon: z.object({
-    params: couponSchema.pick({ shop_id: true }),
+    params: couponSchema.pick({ shop: true }),
     body: couponSchema
       .omit({
         id: true,
-        shop_id: true,
+        shop: true,
         users_used: true,
-        applies_to: true,
-        min_order_type: true,
       })
       .strict()
       .superRefine((val, ctx) => {
 
-        if (val?.amount_off && val?.percent_off) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'only accept one',
-            path: ['amount_off, percent_off'],
-          });
+        switch (val.applies_to) {
+          case COUPON_APPLIES_TO.ALL:
+            if (val?.applies_product_ids) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'unrecognized applies_product_ids',
+              });
+            }
+            break;
+          case COUPON_APPLIES_TO.SPECIFIC:
+            if (!val?.applies_product_ids) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'required applies_product_ids',
+              });
+            }
+            break;
         }
 
-        if (!val?.type && !val?.amount_off && !val?.percent_off) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'require 1 field',
-            path: ['amount_off, percent_off'],
-          });
+        switch (val.type) {
+          case COUPON_TYPES.FIXED_AMOUNT:
+            if (val?.percent_off || !val?.amount_off) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: val?.percent_off ? 'unrecognized percent_off' : 'required amount_off',
+              });
+            }
+            break;
+          case COUPON_TYPES.PERCENTAGE:
+            if (val?.amount_off || !val?.percent_off) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: val?.amount_off ? 'unrecognized amount_off' : 'required percent_off',
+              });
+
+            }
+            break;
+          case COUPON_TYPES.FREE_SHIP:
+            if (val?.amount_off || val?.percent_off) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'free_ship not include amount_off, percent_off filed',
+                path: ['amount_off, percent_off'],
+              });
+            }
+            break;
         }
 
-        if (val.type === COUPON_TYPES.FREE_SHIP && (val?.amount_off || val?.percent_off)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'free_ship not include amount_off, percent_off filed',
-            path: ['type'],
-          });
-        }
-
-        if (val?.type && val.type !== COUPON_TYPES.FREE_SHIP) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'only accept free_ship',
-            path: ['type'],
-          });
+        switch (val.min_order_type) {
+          case COUPON_MIN_ORDER_TYPES.NUMBER_OF_PRODUCTS:
+            if (val?.min_order_value || !val?.min_products) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: val?.min_order_value ? 'unrecognized min_order_value' : 'required min_products',
+              });
+            }
+            break;
+          case COUPON_MIN_ORDER_TYPES.ORDER_TOTAL:
+            if (!val?.min_order_value || val?.min_products) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: val?.min_products ? 'unrecognized min_products' : 'required min_order_value',
+              });
+            }
+            break;
+          case COUPON_MIN_ORDER_TYPES.NONE:
+            if (val?.min_order_value || val?.min_products) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'min_order_type none not include fields: min_order_value, min_products',
+              });
+            }
+            break;
         }
 
         if (val.max_uses_per_user > val.max_uses) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'must be less than or equal to max_uses',
-            path: ['max_uses_per_user'],
-          });
-        }
-
-        if (val?.min_order_value && val?.min_products) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'only accept  one',
-            path: ['min_order_value, min_products'],
+            message: 'max_uses_per_user must be less than or equal to max_uses',
           });
         }
 
@@ -75,7 +111,7 @@ export const couponValidation = {
       }),
   }),
   getCoupons: z.object({
-    params: couponSchema.pick({ shop_id: true }),
+    params: couponSchema.pick({ shop: true }),
     query: mixBaseQueryOptionsSchema(
       couponSchema.pick({
         code: true,
@@ -83,19 +119,19 @@ export const couponValidation = {
     ),
   }),
   getCoupon: z.object({
-    params: couponSchema.pick({ shop_id: true, id: true }),
+    params: couponSchema.pick({ shop: true, id: true }),
   }),
   deleteCoupon: z.object({
     params: couponSchema
-      .pick({ shop_id: true, id: true })
+      .pick({ shop: true, id: true })
       .strict(),
   }),
   updateCoupon: z.object({
-    params: couponSchema.pick({ shop_id: true, id: true }),
+    params: couponSchema.pick({ shop: true, id: true }),
     body: couponSchema
       .omit({
         id: true,
-        shop_id: true,
+        shop: true,
         code: true,
         users_used: true,
         max_uses_per_user: true,

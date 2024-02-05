@@ -5,7 +5,7 @@ import { StatusCodes } from 'http-status-codes';
 import { PAYMENT_TYPES } from '@/config/enums/order';
 import {
   IGetOrderParams,
-  CreateOrderBody, ReviewOrderBody
+  CreateOrderBody
 } from '@/interfaces/models/order';
 import { orderService } from '@/services';
 import { stripeService } from '@/services/stripe.service';
@@ -26,21 +26,21 @@ const getListOrders = catchAsync(async (req, res) => {
   res.send(result);
 });
 
-const reviewOrder = catchAsync(async (
-  req: Request<unknown, unknown, ReviewOrderBody>,
-  res
-) => {
-  req.body.user_id = req.user.id;
-  const { tempOrder } = await orderService.reviewOrder(req.body);
-  res.status(StatusCodes.OK).send({ tempOrder });
-});
+// const reviewOrder = catchAsync(async (
+//   req: Request<unknown, unknown, ReviewOrderBody>,
+//   res
+// ) => {
+//   req.body.user_id = req.user.id;
+//   const { tempOrder } = await orderService.reviewOrder(req.body);
+//   res.status(StatusCodes.OK).send({ tempOrder });
+// });
 
 const createOrder = catchAsync(async (
   req: Request<unknown, unknown, CreateOrderBody>,
   res
 ) => {
   await transactionWrapper(async (session) => {
-    req.body.user_id = req.user.id;
+    req.body.user = req.user.id;
     const result = await orderService.createOrder(req.body, session);
     if (req.body.payment_type === PAYMENT_TYPES.CARD) {
       const checkoutSessionUrl = await stripeService.getCheckoutSessionUrl(req.user, result);
@@ -54,6 +54,6 @@ const createOrder = catchAsync(async (
 export const orderController = {
   getOrder,
   getListOrders,
-  reviewOrder,
+  // reviewOrder,
   createOrder,
 };

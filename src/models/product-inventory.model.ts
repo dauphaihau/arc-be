@@ -1,7 +1,29 @@
 import { Schema, model } from 'mongoose';
 import { PRODUCT_CONFIG } from '@/config/enums/product';
 import { toJSON } from '@/models/plugins';
-import { IProductInventory, IProductInventoryModel } from '@/interfaces/models/product';
+import {
+  IProductInventory,
+  IProductInventoryModel,
+  IProductInventoryReservationSchema
+} from '@/interfaces/models/product';
+
+// define reserve Schema
+const reserveSchema = new Schema<IProductInventoryReservationSchema>(
+  {
+    order: {
+      type: Schema.Types.ObjectId,
+      ref: 'order',
+    },
+    quantity: {
+      type: Number,
+      default: 0,
+    },
+    createdOn: {
+      type: Date,
+      default: new Date(),
+    },
+  }, { _id: false }
+);
 
 // define Schema
 const productInventorySchema = new Schema<IProductInventory, IProductInventoryModel>(
@@ -36,8 +58,7 @@ const productInventorySchema = new Schema<IProductInventory, IProductInventoryMo
       max: PRODUCT_CONFIG.MAX_CHAR_SKU,
     },
     reservations: {
-      type: Schema.Types.Mixed,
-      default: [],
+      type: [reserveSchema],
     },
   },
   {

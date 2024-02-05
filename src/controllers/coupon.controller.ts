@@ -8,14 +8,16 @@ import {
 } from '@/interfaces/models/coupon';
 import { couponService } from '@/services';
 import { catchAsync, pick } from '@/utils';
+import { IPopulatedShop } from '@/interfaces/models/shop';
 
 const createCoupon = catchAsync(async (
   req: Request<CreateCouponParams, unknown, CreateCouponPayload>,
   res
 ) => {
+
   const coupon = await couponService.createCoupon({
     ...req.body,
-    shop_id: req.params.shop_id as string,
+    shop: req.params.shop as IPopulatedShop,
   });
   res.status(StatusCodes.CREATED).send({ coupon });
 });
@@ -28,16 +30,16 @@ const getCoupon = catchAsync(async (
   res.status(StatusCodes.OK).send({ coupon });
 });
 
-const getCoupons = catchAsync(async (
+const getCouponsByShop = catchAsync(async (
   req: Request<GetCouponsParams>,
   res
 ) => {
   const filter = pick(
     {
       ...req.query,
-      shop_id: req.params.shop_id,
+      shop: req.params.shop,
     },
-    ['shop_id', 'code']
+    ['shop', 'code']
   );
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
   const result = await couponService.queryCoupons(filter, options);
@@ -63,7 +65,7 @@ const updateCoupon = catchAsync(async (
 
 export const couponController = {
   createCoupon,
-  getCoupons,
+  getCouponsByShop,
   getCoupon,
   deleteCoupon,
   updateCoupon,

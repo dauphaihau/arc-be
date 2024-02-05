@@ -43,6 +43,10 @@ router
     auth(),
     cartController.getCart
   )
+  .put(
+    auth(),
+    cartController.getCartWithCoupons
+  )
   .delete(
     validate(cartValidation.deleteProduct),
     auth(),
@@ -50,13 +54,13 @@ router
   );
 
 // Order
-router
-  .route('/order/review')
-  .post(
-    validate(orderValidation.reviewOrder),
-    auth(),
-    orderController.reviewOrder
-  );
+// router
+// .route('/order/review')
+// .post(
+//   validate(orderValidation.reviewOrder),
+//   auth(),
+//   orderController.reviewOrder
+// );
 router
   .route('/orders')
   .post(
