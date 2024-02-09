@@ -5,7 +5,7 @@ import { FilterQuery, Schema } from 'mongoose';
 import {
   baseQueryOptionsSchema,
   queryResultSchema
-} from '@/schema/sub/queryOptions.schema';
+} from '@/schemas/sub/queryOptions.schema';
 
 export type IBaseQueryOptions = z.infer<typeof baseQueryOptionsSchema>;
 export type IQueryResultTest = z.infer<typeof queryResultSchema>;

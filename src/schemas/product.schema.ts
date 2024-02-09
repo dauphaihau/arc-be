@@ -1,15 +1,13 @@
 import { z } from 'zod';
-import { productAttributeSchema } from './sub/prod-attribute.schema';
 import {
   PRODUCT_STATES,
   PRODUCT_WHO_MADE,
-  PRODUCT_CATEGORIES,
   PRODUCT_REGEX_SLUG,
   PRODUCT_REGEX_NOT_URL,
   PRODUCT_CONFIG,
   PRODUCT_VARIANT_TYPES
 } from '@/config/enums/product';
-import { objectIdSchema } from '@/schema/sub/objectId.schema';
+import { objectIdSchema } from '@/schemas/sub/objectId.schema';
 
 export const productImageSchema = z.object({
   id: objectIdSchema,
@@ -54,9 +52,17 @@ export const productVariantSchema = z.object({
   variant_options: z.array(productVariantOptSchema).optional(),
 }).merge(productVariantOptSchema);
 
+export const productAttributeSchema = z.object({
+  attribute: objectIdSchema,
+  selected: z.string(),
+});
+
 export const productSchema = z.object({
   id: objectIdSchema,
   shop: objectIdSchema,
+  inventory: objectIdSchema,
+  category: objectIdSchema,
+  attributes: z.array(productAttributeSchema),
   title: z
     .string()
     .min(PRODUCT_CONFIG.MIN_CHAR_TITLE)
@@ -88,8 +94,6 @@ export const productSchema = z.object({
   non_taxable: z
     .boolean()
     .default(false),
-  category: z.nativeEnum(PRODUCT_CATEGORIES),
-  attributes: productAttributeSchema,
   images: z
     .array(productImageSchema)
     .min(PRODUCT_CONFIG.MIN_IMAGES)
@@ -106,7 +110,6 @@ export const productSchema = z.object({
   variants: z
     .array(productVariantOptSchema.shape.id)
     .default([]),
-  inventory: objectIdSchema,
 });
 
 export const productStateUserCanModify = z.union([

@@ -8,3 +8,5 @@ export { cartController } from './cart.controller';
 export { addressController } from './address.controller';
 export { orderController } from './order.controller';
 export { userController } from './user.controller';
+export { categoryController } from './category.controller';
+export { attributeController } from './attribute.controller';

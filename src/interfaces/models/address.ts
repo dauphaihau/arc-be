@@ -3,7 +3,7 @@ import {
   Model,
   FilterQuery
 } from 'mongoose';
-import { addressSchema } from '@/schema';
+import { addressSchema } from '@/schemas';
 import { IBaseQueryOptions } from '@/models/plugins/paginate.plugin';
 
 export type IAddress = z.infer<typeof addressSchema>;

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { productSchema } from '@/schema';
+import { productSchema } from '@/schemas';
 
 export const uploadValidation = {
   getPresignedUrl: z.object({

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { PRODUCT_CONFIG } from '@/config/enums/product';
-import { objectIdSchema } from '@/schema/sub/objectId.schema';
+import { objectIdSchema } from '@/schemas/sub/objectId.schema';
 
 export const productInventoryReservationSchema = z.object({
   order: objectIdSchema,

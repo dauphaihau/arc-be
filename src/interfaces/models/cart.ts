@@ -4,7 +4,7 @@ import {
 import { z } from 'zod';
 import { IProductInventory } from '@/interfaces/models/product';
 import { Override } from '@/interfaces/utils';
-import { productCartSchema, cartSchema, itemCartSchema } from '@/schema';
+import { productCartSchema, cartSchema, itemCartSchema } from '@/schemas';
 import { IPopulatedShop } from '@/interfaces/models/shop';
 
 export type ICartSchema = z.infer<typeof cartSchema>;

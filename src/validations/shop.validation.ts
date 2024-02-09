@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { mixBaseQueryOptionsSchema } from '@/schema/sub/queryOptions.schema';
-import { shopSchema } from '@/schema';
+import { mixBaseQueryOptionsSchema } from '@/schemas/sub/queryOptions.schema';
+import { shopSchema } from '@/schemas';
 
 export const shopValidation = {
   getShops: z.object({

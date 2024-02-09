@@ -1,8 +1,12 @@
 import { z } from 'zod';
 import { PRODUCT_CONFIG } from '@/config/enums/product';
-import { productSchema, productImageSchema } from '@/schema';
-import { productStateUserCanModify } from '@/schema/product.schema';
-import { mixBaseQueryOptionsSchema } from '@/schema/sub/queryOptions.schema';
+import {
+  productSchema,
+  productImageSchema
+  // productInventorySchema
+} from '@/schemas';
+import { productStateUserCanModify } from '@/schemas/product.schema';
+import { mixBaseQueryOptionsSchema } from '@/schemas/sub/queryOptions.schema';
 
 export const productValidation = {
   createProduct: z.object({
@@ -11,7 +15,6 @@ export const productValidation = {
       .omit({
         id: true,
         shop: true,
-        category: true,
         views: true,
         rating_average: true,
       })
@@ -27,6 +30,13 @@ export const productValidation = {
           state: productStateUserCanModify,
         })
       )
+    //     .merge(
+    //       productInventorySchema.pick({
+    //         price: true,
+    //         stock: true,
+    //         sku: true,
+    //       })
+    // )
       .strict(),
   }),
   getProducts: z.object({

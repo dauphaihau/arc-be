@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { COUPON_CONFIG } from '@/config/enums/coupon';
-import { couponSchema } from '@/schema/coupon.schema';
+import { couponSchema } from '@/schemas/coupon.schema';
 import { CART_CONFIG } from '@/config/enums/cart';
 import { PRODUCT_CONFIG } from '@/config/enums/product';
-import { objectIdSchema } from '@/schema/sub/objectId.schema';
+import { objectIdSchema } from '@/schemas/sub/objectId.schema';
 
 export const productCartSchema = z.object({
   inventory: objectIdSchema,

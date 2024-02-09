@@ -3,7 +3,7 @@
 import { Schema } from 'mongoose';
 
 /**
- * A mongoose schema plugin which applies the following in the toJSON transform call:
+ * A mongoose schemas plugin which applies the following in the toJSON transform call:
  *  - removes __v, createdAt, updatedAt, and any path that has private: true
  *  - replaces _id with id
  */

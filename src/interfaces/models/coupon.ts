@@ -7,7 +7,7 @@ import { IPopulatedShop } from '@/interfaces/models/shop';
 import { Override } from '@/interfaces/utils';
 import { IBaseQueryOptions } from '@/models/plugins/paginate.plugin';
 import { IUser } from '@/interfaces/models/user';
-import { couponSchema } from '@/schema';
+import { couponSchema } from '@/schemas';
 
 export type ICouponSchema = z.infer<typeof couponSchema>;
 export type ICoupon = Override<ICouponSchema, {

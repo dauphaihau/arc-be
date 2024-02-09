@@ -6,6 +6,7 @@ import uploadRoute from './upload.route';
 import cartRoute from './cart.route';
 import userRoute from './user.route';
 import productRoute from './product.route';
+import categoryRoute from './category.route';
 import { env } from '@/config';
 
 const router = Router();
@@ -34,6 +35,10 @@ const defaultRoutes = [
   {
     path: '/products',
     route: productRoute,
+  },
+  {
+    path: '/categories',
+    route: categoryRoute,
   },
 ];
 

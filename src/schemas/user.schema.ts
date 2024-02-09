@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { objectIdSchema } from '@/schema/sub/objectId.schema';
+import { objectIdSchema } from '@/schemas/sub/objectId.schema';
 import { USER_REGEX_PASSWORD, USER_REGEX_NAME } from '@/config/enums/user';
 
 export const userSchema = z.object({

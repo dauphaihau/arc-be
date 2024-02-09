@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { PAYMENT_TYPES } from '@/config/enums/order';
@@ -26,15 +24,6 @@ const getListOrders = catchAsync(async (req, res) => {
   res.send(result);
 });
 
-// const reviewOrder = catchAsync(async (
-//   req: Request<unknown, unknown, ReviewOrderBody>,
-//   res
-// ) => {
-//   req.body.user_id = req.user.id;
-//   const { tempOrder } = await orderService.reviewOrder(req.body);
-//   res.status(StatusCodes.OK).send({ tempOrder });
-// });
-
 const createOrder = catchAsync(async (
   req: Request<unknown, unknown, CreateOrderBody>,
   res
@@ -54,6 +43,5 @@ const createOrder = catchAsync(async (
 export const orderController = {
   getOrder,
   getListOrders,
-  // reviewOrder,
   createOrder,
 };

@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { mixBaseQueryOptionsSchema } from '@/schema/sub/queryOptions.schema';
-import { memberSchema } from '@/schema';
+import { mixBaseQueryOptionsSchema } from '@/schemas/sub/queryOptions.schema';
+import { memberSchema } from '@/schemas';
 
 export const memberValidation = {
   addMember: z.object({

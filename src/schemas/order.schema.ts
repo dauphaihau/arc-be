@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { itemCartSchema } from '@/schema/cart.schema';
-import { productInventorySchema } from '@/schema/product-inventory.schema';
-import { productSchema } from '@/schema/product.schema';
+import { itemCartSchema } from '@/schemas/cart.schema';
+import { productInventorySchema } from '@/schemas/product-inventory.schema';
+import { productSchema } from '@/schemas/product.schema';
 import { COUPONS_MAX_USE_PER_ORDER } from '@/config/enums/coupon';
-import { couponSchema } from '@/schema/coupon.schema';
+import { couponSchema } from '@/schemas/coupon.schema';
 import { PAYMENT_TYPES, ORDER_STATUSES } from '@/config/enums/order';
-import { objectIdSchema } from '@/schema/sub/objectId.schema';
+import { objectIdSchema } from '@/schemas/sub/objectId.schema';
 
 export const productInLineSchema = z.object({
   inventory: objectIdSchema,
@@ -39,7 +39,6 @@ export const orderSchema = z.object({
   address: objectIdSchema,
   payment_type: z.nativeEnum(PAYMENT_TYPES),
   lines: z
-    // .array(lineItemSchema.or(z.instanceof(Schema.Types.Mixed)))
     .array(lineItemSchema)
     .min(1)
     .max(20),

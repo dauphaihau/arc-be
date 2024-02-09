@@ -8,3 +8,5 @@ export { Cart } from './cart.model';
 export { Order } from './order.model';
 export { Address } from './address.model';
 export { Coupon } from './coupon.model';
+export { Attribute } from './attribute.model';
+export { Category } from './category.model';

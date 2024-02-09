@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { productCartSchema } from '@/schema';
+import { productCartSchema } from '@/schemas';
 
 export const cartValidation = {
   addProduct: z.object({

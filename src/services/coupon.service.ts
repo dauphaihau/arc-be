@@ -15,6 +15,7 @@ import {
 import { productService } from '@/services/product.service';
 import { Coupon } from '@/models/coupon.model';
 import { ApiError } from '@/utils';
+import { IPopulatedProduct } from '@/interfaces/models/product';
 
 const getCouponById = async (id: ICoupon['id']) => {
   return Coupon.findById(id);
@@ -121,7 +122,7 @@ const updateCoupon = async (
   if (Array.isArray(updateBody.applies_product_ids) && updateBody.applies_product_ids.length > 0) {
     updateBody.applies_to = COUPON_APPLIES_TO.SPECIFIC;
     for (const product_id of updateBody.applies_product_ids) {
-      const productExist = await productService.getProductById(product_id);
+      const productExist = await productService.getProductById(product_id as IPopulatedProduct);
       if (!productExist) {
         throw new ApiError(StatusCodes.NOT_FOUND, `product_id ${product_id} not found`);
       }

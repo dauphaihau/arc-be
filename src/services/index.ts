@@ -11,3 +11,4 @@ export { couponService } from './coupon.service';
 export { cartService } from './cart.service';
 export { orderService } from './order.service';
 export { addressService } from './address.service';
+export { categoryService } from './category.service';

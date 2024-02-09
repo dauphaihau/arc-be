@@ -1,6 +1,6 @@
 import { Model, FilterQuery } from 'mongoose';
 import { z } from 'zod';
-import { memberSchema } from '@/schema';
+import { memberSchema } from '@/schemas';
 import { IBaseQueryOptions } from '@/models/plugins/paginate.plugin';
 
 export type IMember = z.infer<typeof memberSchema>;

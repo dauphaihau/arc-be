@@ -6,6 +6,7 @@ export * from './user.schema';
 export * from './member.schema';
 export * from './coupon.schema';
 export * from './order.schema';
-export * from './sub/prod-attribute.schema';
 export * from './cart.schema';
 export * from './address.schema';
+export * from './category.schema';
+export * from './attribute.schema';

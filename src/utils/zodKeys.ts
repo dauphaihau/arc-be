@@ -9,17 +9,17 @@ import { z } from 'zod';
  */
 
 export const zodKeys = <T extends z.ZodTypeAny>(schema: T): string[] => {
-  // make sure schema is not null or undefined
+  // make sure schemas is not null or undefined
   if (schema === null || schema === undefined) return [];
-  // check if schema is nullable or optional
+  // check if schemas is nullable or optional
   if (schema instanceof z.ZodNullable || schema instanceof z.ZodOptional) {
     return zodKeys(schema.unwrap());
   }
-  // check if schema is an array
+  // check if schemas is an array
   if (schema instanceof z.ZodArray) return zodKeys(schema.element);
-  // check if schema is an object
+  // check if schemas is an object
   if (schema instanceof z.ZodObject) {
-    // get key/value pairs from schema
+    // get key/value pairs from schemas
     const entries = Object.entries(schema.shape);
     // loop through key/value pairs
     return entries.flatMap(([key, value]) => {

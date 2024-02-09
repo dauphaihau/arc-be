@@ -4,8 +4,8 @@ import {
   COUPON_MIN_ORDER_TYPES,
   COUPON_APPLIES_TO
 } from '@/config/enums/coupon';
-import { couponSchema } from '@/schema/coupon.schema';
-import { mixBaseQueryOptionsSchema } from '@/schema/sub/queryOptions.schema';
+import { couponSchema } from '@/schemas/coupon.schema';
+import { mixBaseQueryOptionsSchema } from '@/schemas/sub/queryOptions.schema';
 
 export const couponValidation = {
   createCoupon: z.object({

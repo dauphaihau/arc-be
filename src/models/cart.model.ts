@@ -34,7 +34,7 @@ const productCartSchema = new Schema<IProductCart>(
   }
 );
 
-// Define item cart schema
+// Define item cart schemas
 const itemCartSchema = new Schema<IItemCart>(
   {
     shop: {
@@ -52,7 +52,7 @@ const itemCartSchema = new Schema<IItemCart>(
   }
 );
 
-// Define cart schema
+// Define cart schemas
 const cartSchema = new Schema<ICart, ICartModel>(
   {
     user: {

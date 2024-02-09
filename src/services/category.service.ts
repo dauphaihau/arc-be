@@ -10,9 +10,11 @@ import {
   IProductImage,
   IProduct,
   IProductModel,
-  IVariantCreateProduct, IProductVariant, IPopulatedProduct
+  IVariantCreateProduct,
+  IPopulatedProduct
 } from '@/interfaces/models/product';
-import { Product } from '@/models';
+import { ICategory } from '@/interfaces/models/category';
+import { Category, Product } from '@/models';
 import { ApiError } from '@/utils';
 import { getValidKeysAttrByCategory } from '@/schemas';
 import { log } from '@/config';
@@ -31,12 +33,31 @@ const validateAttributes = (category: IProduct['category'], attributes: IProduct
   }
 };
 
-const getProductById = async (id: IPopulatedProduct) => {
-  return Product.findById(id);
+const getCategoryById = async (id: ICategory['id']) => {
+  return Category.findById(id);
 };
 
-const getProductVariantById = async (id: IProductVariant['id']) => {
-  return ProductVariant.findById(id);
+const getSubCategoriesByCategory = async (id: ICategory['id']) => {
+  const category = await getCategoryById(id);
+  if (!category) throw new ApiError(StatusCodes.NOT_FOUND, 'Category not found');
+
+  let categoryIds = [category.id];
+
+  let parentIds = null;
+  const getSubCategory = async () => {
+    const subCategories = await Category.find({
+      parent: {
+        $in: parentIds ? parentIds : [category.id],
+      },
+    });
+    if (subCategories && subCategories.length > 0) {
+      parentIds = subCategories.map(sub => sub.id);
+      categoryIds = [...categoryIds, ...parentIds];
+      await getSubCategory();
+    }
+  };
+  await getSubCategory();
+  return categoryIds;
 };
 
 /**
@@ -160,12 +181,12 @@ const deleteProductById = async (productId: IPopulatedProduct, session: ClientSe
   return product.remove({ session });
 };
 
-export const productService = {
+export const categoryService = {
   createProduct,
-  getProductById,
+  getCategoryById,
+  getSubCategoriesByCategory,
   queryProducts,
   deleteProductById,
   updateProduct,
-  getProductVariantById,
   createProductVariant,
 };

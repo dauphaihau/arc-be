@@ -1,19 +1,17 @@
 import { Document, Schema, model } from 'mongoose';
 import slugify from 'slugify';
 import {
-  productStates,
   PRODUCT_STATES,
-  productWhoMade,
-  productCategories,
   PRODUCT_REGEX_SLUG,
   PRODUCT_REGEX_NOT_URL,
   PRODUCT_CONFIG,
-  PRODUCT_VARIANT_TYPES
+  PRODUCT_VARIANT_TYPES, PRODUCT_WHO_MADE
 } from '@/config/enums/product';
 import {
   IProductModel,
   IProduct,
-  IProductImage
+  IProductImage,
+  IProductAttribute
 } from '@/interfaces/models/product';
 import { toJSON, paginate } from '@/models/plugins';
 
@@ -41,6 +39,21 @@ const imageSchema = new Schema<IProductImage>(
 );
 imageSchema.plugin(toJSON);
 
+// define attribute Schema
+const attributeSchema = new Schema<IProductAttribute>(
+  {
+    attribute: {
+      type: Schema.Types.ObjectId,
+      ref: 'Attribute',
+      required: true,
+    },
+    selected: {
+      type: String,
+    },
+  }
+);
+attributeSchema.plugin(toJSON);
+
 // define product Schema
 const productSchema = new Schema<IProduct, IProductModel>(
   {
@@ -48,6 +61,17 @@ const productSchema = new Schema<IProduct, IProductModel>(
       type: Schema.Types.ObjectId,
       ref: 'Shop',
       required: true,
+    },
+    inventory: {
+      type: Schema.Types.ObjectId,
+      ref: 'product_inventory',
+    },
+    category: {
+      type: Schema.Types.ObjectId,
+      ref: 'Category',
+    },
+    attributes: {
+      type: [attributeSchema],
     },
     title: {
       type: String,
@@ -82,21 +106,12 @@ const productSchema = new Schema<IProduct, IProductModel>(
     },
     state: {
       type: String,
-      enum: productStates,
+      enum: Object.values(PRODUCT_STATES),
       default: PRODUCT_STATES.ACTIVE,
-    },
-    category: {
-      type: String,
-      enum: productCategories,
-      required: true,
-    },
-    attributes: {
-      type: Schema.Types.Mixed,
-      required: true,
     },
     who_made: {
       type: String,
-      enum: productWhoMade,
+      enum: Object.values(PRODUCT_WHO_MADE),
       required: true,
     },
     is_digital: {
@@ -133,10 +148,6 @@ const productSchema = new Schema<IProduct, IProductModel>(
     },
     variants: {
       type: [{ type: Schema.Types.ObjectId, ref: 'product_variant' }],
-    },
-    inventory: {
-      type: Schema.Types.ObjectId,
-      ref: 'product_inventory',
     },
   },
   {

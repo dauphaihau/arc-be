@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   lineItemSchema,
   orderSchema, shopCodesSchema
-} from '@/schema';
+} from '@/schemas';
 
 export const orderValidation = {
   reviewOrder: z.object({

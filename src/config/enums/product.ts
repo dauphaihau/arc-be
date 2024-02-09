@@ -14,13 +14,6 @@ export const PRODUCT_CONFIG = {
   MAX_TAGS: 21,
 };
 
-export enum PRODUCT_CATEGORIES {
-  ELECTRONIC = 'electronic',
-  CLOTHING = 'clothing',
-  HOME = 'home'
-  // FURNITURE = 'furniture'
-}
-
 export enum PRODUCT_STATES {
   ACTIVE = 'active', // currently for sale.
   INACTIVE = 'inactive', // When updating a product
@@ -43,22 +36,5 @@ export enum PRODUCT_VARIANT_TYPES {
   COMBINE = 'combine'
 }
 
-export enum PRODUCT_ATTR_CLOTHING_TYPES { PANTS = 'pants', T_SHIRT = 't-shirt', HOODIE = 'hoodie', SWEATERS = 'Sweaters' }
-export enum PRODUCT_ATTR_CLOTHING_SHAPES { SLIM = 'slim', OVERSIZE = 'oversize' }
-export enum PRODUCT_ATTR_CLOTHING_GENDER { MALE = 'male', FEMALE = 'female', UNISEX = 'unisex' }
-
-export enum PRODUCT_ATTR_COLORS {
-  BLACK= 'black',
-  WHITE = 'white',
-  RED = 'red',
-  YELLOW = 'yellow',
-  BLUE = 'blue',
-  GREEN = 'green'
-}
-
 export const PRODUCT_REGEX_SLUG = /^[a-z0-9]+(?:(?:-|_)+[a-z0-9]+)*$/;
 export const PRODUCT_REGEX_NOT_URL = /^(?!http.*$).*/;
-
-export const productCategories = Object.values(PRODUCT_CATEGORIES);
-export const productStates = Object.values(PRODUCT_STATES);
-export const productWhoMade = Object.values(PRODUCT_WHO_MADE);

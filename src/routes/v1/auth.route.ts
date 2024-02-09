@@ -84,7 +84,7 @@ export default router;
  *       required: true
  *       content:
  *         application/json:
- *           schema:
+ *           schemas:
  *             type: object
  *             required:
  *               - name
@@ -111,13 +111,13 @@ export default router;
  *         description: Return user info & pair cookies ( `access`, `refresh` )
  *         headers:
  *           Set-Cookie:
- *             schema:
+ *             schemas:
  *               type: string
  *               example: access=eyJhbGciOiJIU...; Path=/; HttpOnly
  *             description: Access/refresh token
  *         content:
  *           application/json:
- *             schema:
+ *             schemas:
  *               type: object
  *               properties:
  *                 user:
@@ -136,7 +136,7 @@ export default router;
  *       required: true
  *       content:
  *         application/json:
- *           schema:
+ *           schemas:
  *             type: object
  *             required:
  *               - email
@@ -156,13 +156,13 @@ export default router;
  *         description: Return user info & pair cookies ( `access`, `refresh` )
  *         headers:
  *           Set-Cookie:
- *             schema:
+ *             schemas:
  *               type: string
  *               example: access=eyJhbGciOiJIU...; Path=/; HttpOnly
  *             description: Access/refresh token
  *         content:
  *           application/json:
- *             schema:
+ *             schemas:
  *               type: object
  *               properties:
  *                 user:
@@ -171,7 +171,7 @@ export default router;
  *         description: Invalid email or password
  *         content:
  *           application/json:
- *             schema:
+ *             schemas:
  *               $ref: '#/components/schemas/Error'
  *             example:
  *               code: 401
@@ -202,7 +202,7 @@ export default router;
  *         description: OK
  *         headers:
  *           Set-Cookie:
- *             schema:
+ *             schemas:
  *               type: string
  *               example: access=eyJhbGciOiJIU...; Path=/; HttpOnly
  *             description: Access/refresh token
@@ -221,7 +221,7 @@ export default router;
  *       required: true
  *       content:
  *         application/json:
- *           schema:
+ *           schemas:
  *             type: object
  *             required:
  *               - email
@@ -248,14 +248,14 @@ export default router;
  *       - in: query
  *         name: token
  *         required: true
- *         schema:
+ *         schemas:
  *           type: string
  *         description: The reset password token
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
- *           schema:
+ *           schemas:
  *             type: object
  *             required:
  *               - password
@@ -274,7 +274,7 @@ export default router;
  *         description: Password reset failed
  *         content:
  *           application/json:
- *             schema:
+ *             schemas:
  *               $ref: '#/components/schemas/Error'
  *             example:
  *               code: 401
@@ -307,7 +307,7 @@ export default router;
  *       - in: query
  *         name: token
  *         required: true
- *         schema:
+ *         schemas:
  *           type: string
  *         description: The verify email token
  *     responses:
@@ -317,7 +317,7 @@ export default router;
  *         description: verify email failed
  *         content:
  *           application/json:
- *             schema:
+ *             schemas:
  *               $ref: '#/components/schemas/Error'
  *             example:
  *               code: 401

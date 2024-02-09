@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheckk
 import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
 import { log, env } from '@/config';

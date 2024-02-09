@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Document, Model, ObjectId } from 'mongoose';
-import { tokenSchema } from '@/schema';
+import { tokenSchema } from '@/schemas';
 
 export type IToken = z.infer<typeof tokenSchema> & Document;
 
