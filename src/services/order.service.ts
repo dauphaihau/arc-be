@@ -111,8 +111,8 @@ async function reviewOrder(payload: ICart, shopsCodes?: IShopCodes[]) {
         inventory: ele?.inventory?.id,
         quantity: ele.quantity,
         price: ele?.inventory?.price,
-        title: product.title,
-        image_url: env.aws_s3.host_bucket + '/' + product.images[0].relative_url,
+        title: product?.title,
+        image_url: env.aws_s3.host_bucket + '/' + product?.images[0]?.relative_url,
       };
     });
 

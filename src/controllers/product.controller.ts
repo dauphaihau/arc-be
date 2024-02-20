@@ -1,8 +1,7 @@
 import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { ProductVariant } from '@/models/product-variant.model';
 import { log } from '@/config';
-import { PRODUCT_VARIANT_TYPES } from '@/config/enums/product';
+import { PRODUCT_VARIANT_TYPES, PRODUCT_SORT_BY } from '@/config/enums/product';
 import {
   CreateProductPayload,
   CreateProductParams,
@@ -10,11 +9,13 @@ import {
   DeleteProductParams,
   UpdateProductParams,
   UpdateProductPayload,
-  GetProductsParams,
   IPopulatedProduct,
-  GetProductQueries
+  GetProductQueries,
+  GetProductByShopParams
 } from '@/interfaces/models/product';
+import { IPopulatedShop } from '@/interfaces/models/shop';
 import { ProductInventory } from '@/models';
+import { ProductVariant } from '@/models/product-variant.model';
 import {
   productService,
   inventoryService,
@@ -24,7 +25,6 @@ import {
 import {
   catchAsync, pick, transactionWrapper, ApiError
 } from '@/utils';
-import { IPopulatedShop } from '@/interfaces/models/shop';
 
 const createProduct = catchAsync(async (
   req: Request<CreateProductParams, unknown, CreateProductPayload>,
@@ -151,7 +151,7 @@ const getProduct = catchAsync(async (
 });
 
 const getProductsByShop = catchAsync(async (
-  req: Request<GetProductsParams>,
+  req: Request<GetProductByShopParams, unknown, unknown>,
   res
 ) => {
   const filter = pick(
@@ -164,6 +164,7 @@ const getProductsByShop = catchAsync(async (
   const defaultPopulate = 'shop,inventory,variants/inventory+variant_options.inventory';
   const options = pick(req.query, ['sortBy', 'limit', 'page', 'populate', 'select']);
   options['populate'] = defaultPopulate;
+
   const result = await productService.queryProducts(filter, options);
 
   result.results = result.results.map((prod) => {
@@ -207,13 +208,11 @@ const getProductsByShop = catchAsync(async (
 });
 
 const getProducts = catchAsync(async (
-  req: Request<GetProductsParams, unknown, unknown, GetProductQueries>,
+  req: Request<unknown, unknown, unknown, GetProductQueries>,
   res
 ) => {
-  const defaultPopulate = 'shop,inventory,variants/inventory+variant_options.inventory';
-  const filter = pick(req.query, ['shop', 'price', 'name', 'category']);
+  const filter = pick(req.query, ['shop', 'price', 'title', 'category', 'is_digial']);
   const options = pick(req.query, ['sortBy', 'limit', 'page', 'populate', 'select']);
-  options['populate'] = defaultPopulate;
 
   if (req.query?.category) {
     const categoryIds = await categoryService.getSubCategoriesByCategory(req.query.category);
@@ -222,51 +221,134 @@ const getProducts = catchAsync(async (
     };
   }
 
+  if (req.query?.sortBy === PRODUCT_SORT_BY.DESC) {
+    options['sortBy'] = 'createdAt';
+  }
+
+  if (req.query?.is_digital) {
+    filter['is_digital'] = req.query.is_digital === 'true';
+  }
+
+  if (req.query?.title) {
+    // filter['title'] = {
+    //   $regex: '.*' + req.query.title + '.*',
+    // };
+    filter['title'] = new RegExp(req.query.title, 'i');
+  }
+
+  const result = await productService.queryProducts(filter, options);
+  res.send(result);
+});
+
+const getProductsByCategory = catchAsync(async (
+  req: Request<unknown, unknown, unknown, GetProductQueries>,
+  res
+) => {
+  const defaultPopulate = 'shop,inventory,variants/inventory+variant_options.inventory';
+  const defaultSelect = 'shop,title,variant_type,variants,images';
+
+  const filter = pick(req.query, ['shop', 'price', 'title', 'category', 'is_digial']);
+  const options = pick(req.query, ['sortBy', 'limit', 'page', 'populate', 'select']);
+
+  options['populate'] = defaultPopulate;
+  options['select'] = defaultSelect;
+
+  if (req.query?.category) {
+    const categoryIds = await categoryService.getSubCategoriesByCategory(req.query.category);
+    filter['category'] = {
+      $in: categoryIds,
+    };
+  }
+
+  if (req.query?.sortBy === PRODUCT_SORT_BY.DESC) {
+    options['sortBy'] = 'createdAt';
+  }
+
+  if (req.query?.is_digital) {
+    filter['is_digital'] = req.query.is_digital === 'true';
+  }
+
+  if (req.query?.title) {
+    // filter['title'] = {
+    //   $regex: '.*' + req.query?.title + '.*',
+    // };
+    filter['title'] = new RegExp(req.query.title, 'i');
+  }
+
   const result = await productService.queryProducts(filter, options);
 
-  result.results = result.results.map((prod) => {
-    prod.summary_inventory = {
-      lowest_price: 0,
-      highest_price: 0,
-      stock: 0,
+  let mapResult = [];
+
+  mapResult = result.results.map((prod) => {
+    const obj = {
+      id: '',
+      shop_name:'',
+      title:'',
+      image_relative_url:'',
+      summary_inventory: {
+        lowest_price: 0,
+        highest_price: 0,
+      },
     };
+    obj.shop_name = prod.shop.shop_name;
+    obj.title = prod.title;
+    obj.id = prod.id as string;
+    obj.image_relative_url = prod.images[0].relative_url;
+
+    if (prod.variant_type === PRODUCT_VARIANT_TYPES.NONE) {
+      obj.summary_inventory.lowest_price = prod.inventory.price;
+      // prod.summary_inventory.stock = prod.inventory.stock;
+    }
 
     prod.variants && prod.variants.forEach((variant, indexVariant) => {
       if (prod.variant_type === PRODUCT_VARIANT_TYPES.SINGLE && variant?.inventory?.price) {
-
-        prod.summary_inventory.stock += variant.inventory.stock;
-
+        // obj.summary_inventory.stock += variant.inventory.stock;
         if (indexVariant === 0 ||
-          (variant.inventory.price < prod.summary_inventory.lowest_price)) {
-          prod.summary_inventory.lowest_price = variant.inventory.price;
+          (variant.inventory.price < obj.summary_inventory.lowest_price)) {
+          obj.summary_inventory.lowest_price = variant.inventory.price;
         }
         if (indexVariant === 0 ||
-          (variant.inventory.price > prod.summary_inventory.highest_price)) {
-          prod.summary_inventory.highest_price = variant.inventory.price;
+          (variant.inventory.price > obj.summary_inventory.highest_price)) {
+          obj.summary_inventory.highest_price = variant.inventory.price;
         }
-
       }
 
       if (prod.variant_type === PRODUCT_VARIANT_TYPES.COMBINE) {
         variant.variant_options.forEach((varOpt, indexVarOpt) => {
-          prod.summary_inventory.stock += varOpt.inventory.stock;
+          // obj.summary_inventory.stock += varOpt.inventory.stock;
           if (indexVarOpt === 0 ||
-            (varOpt.inventory.price < prod.summary_inventory.lowest_price)) {
-            prod.summary_inventory.lowest_price = varOpt.inventory.price;
+            (varOpt.inventory.price < obj.summary_inventory.lowest_price)) {
+            obj.summary_inventory.lowest_price = varOpt.inventory.price;
           }
           if (indexVarOpt === 0 ||
-            (varOpt.inventory.price > prod.summary_inventory.highest_price)) {
-            prod.summary_inventory.highest_price = varOpt.inventory.price;
+            (varOpt.inventory.price > obj.summary_inventory.highest_price)) {
+            obj.summary_inventory.highest_price = varOpt.inventory.price;
           }
         });
       }
     });
-
-    return prod;
+    return obj;
   });
 
-  res.send(result);
+  if (
+    req.query?.sortBy &&
+    (req.query?.sortBy === PRODUCT_SORT_BY.PRICE_ASC ||
+      req.query?.sortBy === PRODUCT_SORT_BY.PRICE_DESC)
+  ) {
+    mapResult = mapResult.sort((a, b) => {
+      if (req.query?.sortBy === PRODUCT_SORT_BY.PRICE_DESC) {
+        return b.summary_inventory.lowest_price - a.summary_inventory.lowest_price;
+      }
+      return a.summary_inventory.lowest_price - b.summary_inventory.lowest_price;
+    });
+  }
+
+  res.send({
+    ...result,
+    results: mapResult,
+  });
 });
+
 
 const deleteProduct = catchAsync(async (
   req: Request<DeleteProductParams>,
@@ -318,4 +400,5 @@ export const productController = {
   deleteProduct,
   updateProduct,
   getProductsByShop,
+  getProductsByCategory,
 };

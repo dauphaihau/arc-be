@@ -2,6 +2,7 @@
 // @ts-nocheck
 import { z } from 'zod';
 import { FilterQuery, Schema } from 'mongoose';
+import { Override } from '@/interfaces/utils';
 import {
   baseQueryOptionsSchema,
   queryResultSchema
@@ -9,9 +10,12 @@ import {
 
 export type IBaseQueryOptions = z.infer<typeof baseQueryOptionsSchema>;
 export type IQueryResultTest = z.infer<typeof queryResultSchema>;
-export type IQueryResult<T> = Omit<IQueryResultTest, 'results'> & {
+export type IQueryResult<T> = Override<IQueryResultTest, {
   results: T[]
-};
+}>;
+
+const limitNum = 10;
+const pageNum = 10;
 
 export const paginate = (schema: Schema) => {
   /**
@@ -49,13 +53,13 @@ export const paginate = (schema: Schema) => {
     }
 
     const limit = options.limit &&
-    parseInt(options.limit as string, 10) > 0 ?
-      parseInt(options.limit as string, 10) :
-      10;
+    parseInt(options.limit as string, limitNum) > 0 ?
+      parseInt(options.limit as string, limitNum) :
+      limitNum;
 
     const page = options.page &&
-    parseInt(options.page as string, 10) > 0 ?
-      parseInt(options.page as string, 10) :
+    parseInt(options.page as string, pageNum) > 0 ?
+      parseInt(options.page as string, pageNum) :
       1;
 
     const skip = (page - 1) * limit;
@@ -71,7 +75,9 @@ export const paginate = (schema: Schema) => {
           docsPromise.populate(
             {
               path: root,
-              populate: subs.split('+').map(it => ({ path: it })),
+              populate: subs.split('+').map(it => ({
+                path: it,
+              })),
             }
           );
           return;

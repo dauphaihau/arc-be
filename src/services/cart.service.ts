@@ -1,10 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { ClientSession } from 'mongoose';
+import mongoose, { ClientSession } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
 import { productService } from '@/services/product.service';
 import { log } from '@/config';
-import { IProductInventory } from '@/interfaces/models/product';
 import { inventoryService } from '@/services/inventory.service';
 import {
   ICart,
@@ -13,8 +12,80 @@ import {
   IProductCart,
   UpdateProductCartBody
 } from '@/interfaces/models/cart';
-import { Cart, ProductInventory } from '@/models';
+import { Cart, ProductInventory, Product } from '@/models';
 import { ApiError } from '@/utils';
+
+const getProductsForHeader = async (userId: ICart['user']) => {
+  const limit = 3;
+  const result = await Cart.aggregate([
+    { $match: { user: mongoose.Types.ObjectId(userId) } },
+    { $unwind: '$items' },
+    { $unwind: '$items.products' },
+    { $sort: { 'items.products.createdAt': -1 } },
+    {
+      $facet: {
+        countProducts: [
+          { $count: 'countProducts' },
+        ],
+        products: [
+          { $limit: limit },
+          {
+            $lookup: {
+              from: ProductInventory.collection.name,
+              localField: 'items.products.inventory',
+              foreignField: '_id',
+              as: 'inventory',
+            },
+          },
+          {
+            $lookup: {
+              from: Product.collection.name,
+              localField: 'inventory.product',
+              foreignField: '_id',
+              as: 'product',
+              pipeline: [
+                {
+                  $addFields: {
+                    image: { $arrayElemAt: ['$images', 0] },
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              product: { $arrayElemAt: ['$product', 0] },
+              inventory: { $arrayElemAt: ['$inventory', 0] },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              'inventory.variant': 1,
+              'product.title': 1,
+              'product._id': 1,
+              'product.image.relative_url': 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $project: {
+        countProducts: { $arrayElemAt: ['$countProducts.countProducts', 0] },
+        products: 1,
+      },
+    },
+  ]);
+  // log.debug('result %o', result);
+  const resultAsObj = result[0];
+  const restProducts = resultAsObj.countProducts - limit;
+
+  return {
+    products: resultAsObj.products,
+    restProducts: restProducts < 0 ? 0 : restProducts,
+  };
+};
 
 const getCartByUserId = async (userId: ICart['user']) => {
   return Cart.findOne({ user: userId });
@@ -62,7 +133,7 @@ async function createUserCart(
 
 async function deleteProduct(
   userId: ICart['user'],
-  inventoryId: IProductInventory
+  inventoryId?: IProductCart['inventory']
 ) {
   const inventoryInDB = await ProductInventory.findById(inventoryId);
   if (!inventoryInDB || !inventoryInDB.shop) {
@@ -83,6 +154,7 @@ async function deleteProduct(
   const cartUpdated = await Cart.findOneAndUpdate(filter, update, options);
 
   if (cartUpdated) {
+    // log.debug('item-cart %o', cartUpdated);
     const itemCart = cartUpdated.items.find((item) => {
       if (item.shop && inventoryInDB.shop) {
         return item.shop.toString() === inventoryInDB.shop.toString();
@@ -91,7 +163,7 @@ async function deleteProduct(
     });
     log.debug('item-cart %o', itemCart);
     if (itemCart && !itemCart.products.length) {
-      log.info('pull item-shop cause by products is empty');
+      // log.info('pull item-shop cause by products is empty');
       const update = {
         $pull: {
           items: {
@@ -212,14 +284,18 @@ async function addProduct(userId: ICart['user'], payload: IProductCart) {
         $addToSet: {
           'items.$.products': payload,
         },
-      }
+      },
+      { new: true }
     );
   }
 
   if ((payload.quantity + productCart.quantity) > inventoryInDB.stock) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Quantity of product have been exceed stock');
   }
-  return userCart.update(
+  return Cart.findOneAndUpdate(
+    {
+      user: userId,
+    },
     {
       $inc: {
         'items.$[e1].products.$[e2].quantity': payload.quantity,
@@ -271,4 +347,5 @@ export const cartService = {
   deleteProduct,
   updateProduct,
   populateCart,
+  getProductsForHeader,
 };

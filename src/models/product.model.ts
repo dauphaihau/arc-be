@@ -62,13 +62,22 @@ const productSchema = new Schema<IProduct, IProductModel>(
       ref: 'Shop',
       required: true,
     },
-    inventory: {
-      type: Schema.Types.ObjectId,
-      ref: 'product_inventory',
-    },
     category: {
       type: Schema.Types.ObjectId,
       ref: 'Category',
+    },
+    inventory: {
+      type: Schema.Types.ObjectId,
+      ref: 'product_inventory',
+      default: null,
+    },
+    variant_type: {
+      type: String,
+      enum: Object.values(PRODUCT_VARIANT_TYPES),
+      default: PRODUCT_VARIANT_TYPES.NONE,
+    },
+    variants: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'product_variant' }],
     },
     attributes: {
       type: [attributeSchema],
@@ -140,14 +149,6 @@ const productSchema = new Schema<IProduct, IProductModel>(
       min: [0, 'Rating must be more than 0'],
       max: [5, 'Rating must be equal or less than 5.0'],
       set: (val: number) => Math.round(val * 10) / 10,
-    },
-    variant_type: {
-      type: String,
-      enum: Object.values(PRODUCT_VARIANT_TYPES),
-      default: PRODUCT_VARIANT_TYPES.NONE,
-    },
-    variants: {
-      type: [{ type: Schema.Types.ObjectId, ref: 'product_variant' }],
     },
   },
   {

@@ -6,7 +6,7 @@ export const PRODUCT_CONFIG = {
   MIN_IMAGES: 1,
   MAX_IMAGES: 10,
   MAX_PRICE: 50000,
-  MAX_QUANTITY: 10000000,
+  MAX_QUANTITY: 999,
   MAX_CHAR_VARIANT_GROUP_NAME: 14,
   MAX_CHAR_VARIANT_NAME: 20,
   MAX_CHAR_SKU: 100,
@@ -34,6 +34,12 @@ export enum PRODUCT_VARIANT_TYPES {
   NONE = 'none',
   SINGLE = 'single',
   COMBINE = 'combine'
+}
+
+export enum PRODUCT_SORT_BY {
+  DESC = 'desc',
+  PRICE_ASC = 'priceAsc',
+  PRICE_DESC = 'priceDesc'
 }
 
 export const PRODUCT_REGEX_SLUG = /^[a-z0-9]+(?:(?:-|_)+[a-z0-9]+)*$/;

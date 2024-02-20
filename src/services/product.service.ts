@@ -1,35 +1,30 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
 import { ProductVariant } from '@/models/product-variant.model';
 import {
   CreateProductPayload,
   UpdateProductPayload,
-  IProductAttribute,
   IProductImage,
-  IProduct,
   IProductModel,
   IVariantCreateProduct, IProductVariant, IPopulatedProduct
 } from '@/interfaces/models/product';
 import { Product } from '@/models';
 import { ApiError } from '@/utils';
-import { getValidKeysAttrByCategory } from '@/schemas';
 import { log } from '@/config';
 import { awsS3Service } from '@/services/aws-s3.service';
 
-const validateAttributes = (category: IProduct['category'], attributes: IProductAttribute) => {
-  const keysValid = getValidKeysAttrByCategory(category);
-  const keyInvalid: string[] = [];
-  Object.keys(attributes).forEach((key) => {
-    if (!keysValid.includes(key)) {
-      keyInvalid.push(key);
-    }
-  });
-  if (keyInvalid.length) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, `keys of attributes invalid: ${keyInvalid.join(', ')}`);
-  }
-};
+// const validateAttributes = (category: IProduct['category'], attributes: IProductAttribute) => {
+//   // const keysValid = getValidKeysAttrByCategory(category);
+//   const keyInvalid: string[] = [];
+//   Object.keys(attributes).forEach((key) => {
+//     if (!keysValid.includes(key)) {
+//       keyInvalid.push(key);
+//     }
+//   });
+//   if (keyInvalid.length) {
+//     throw new ApiError(StatusCodes.BAD_REQUEST, `keys of attributes invalid: ${keyInvalid.join(', ')}`);
+//   }
+// };
 
 const getProductById = async (id: IPopulatedProduct) => {
   return Product.findById(id);
@@ -58,9 +53,9 @@ const updateProduct = async (
   const product = await getProductById(productId);
   if (!product) throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
 
-  if (updateBody?.attributes) {
-    validateAttributes(updateBody.category, updateBody.attributes);
-  }
+  // if (updateBody?.attributes) {
+  //   validateAttributes(updateBody.category, updateBody.attributes);
+  // }
 
   if (updateBody?.images && updateBody.images.length > 0) {
     const delete_image_ids: IProductImage['id'][] = [];

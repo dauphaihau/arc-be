@@ -8,7 +8,7 @@ const password = 'passworD1.';
 const salt = bcrypt.genSaltSync(8);
 const hashedPassword = bcrypt.hashSync(password, salt);
 
-export const userOne: IUser = {
+export const userOne: Partial<IUser> = {
   _id: new mongoose.Types.ObjectId(),
   name: faker.person.fullName(),
   email: faker.internet.email().toLowerCase(),

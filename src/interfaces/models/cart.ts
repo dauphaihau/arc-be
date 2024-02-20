@@ -1,11 +1,14 @@
-import {
-  Model
-} from 'mongoose';
+import { Model } from 'mongoose';
 import { z } from 'zod';
 import { IProductInventory } from '@/interfaces/models/product';
 import { Override } from '@/interfaces/utils';
 import { productCartSchema, cartSchema, itemCartSchema } from '@/schemas';
 import { IPopulatedShop } from '@/interfaces/models/shop';
+
+interface ITimestamps {
+  createdAt: Date
+  updatedAt: Date
+}
 
 export type ICartSchema = z.infer<typeof cartSchema>;
 export type IItemCartSchema = z.infer<typeof itemCartSchema>;
@@ -18,7 +21,7 @@ export type IProductCart = Override<IProductCartSchema, {
 export type IItemCart = Override<IItemCartSchema, {
   shop: IPopulatedShop,
   products: IProductCart[]
-}>;
+}> & ITimestamps;
 
 export type ICart = Override<ICartSchema, {
   items: IItemCart[]
@@ -26,7 +29,7 @@ export type ICart = Override<ICartSchema, {
 
 export interface ICartModel extends Model<ICart, unknown> {}
 
-export type DeleteProductCartBody = Pick<IProductCart, 'inventory'>;
+export type DeleteProductCartQueries = Partial<Pick<IProductCart, 'inventory'>>;
 
 export type UpdateProductCartBody =
   Pick<IProductCart, 'inventory'> &

@@ -26,4 +26,4 @@ const attributeSchema = new Schema<IAttribute>(
 // Plugins
 attributeSchema.plugin(toJSON);
 
-export const Attribute = model<IAttribute>('Attribute', attributeSchema);
+export const Attribute = model<IAttribute>('category_attribute', attributeSchema);

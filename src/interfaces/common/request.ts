@@ -8,3 +8,7 @@ export interface IBodyRequest<T> extends Omit<Request, 'body'> {
 export interface IParamsRequest<T> extends Omit<Request, 'params'> {
   params: T & ParamsDictionary;
 }
+
+export type BaseQueryParamsGetList = Record<
+'sortBy'| 'limit'| 'page'| 'populate'| 'select'
+, string>;

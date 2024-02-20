@@ -16,6 +16,14 @@ const categorySchema = new Schema<ICategory>(
       max: CATEGORY_CONFIG.MAX_CHAR_NAME,
       required: true,
     },
+    rank: {
+      type: Number,
+      min: 1,
+      required: true,
+    },
+    relative_url_image: {
+      type: String,
+    },
   },
   {
     timestamps: true,

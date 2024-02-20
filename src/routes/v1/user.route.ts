@@ -48,7 +48,7 @@ router
     cartController.getCartWithCoupons
   )
   .delete(
-    validate(cartValidation.deleteProduct),
+    // validate(cartValidation.deleteProduct),
     auth(),
     cartController.deleteProduct
   );

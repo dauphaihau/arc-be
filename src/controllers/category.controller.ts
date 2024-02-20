@@ -21,12 +21,12 @@ const getCategories = catchAsync(async (
 ) => {
   const categories = await Category.find({
     parent: req.query.parent || null,
-  });
+  }).sort({ rank: 1 });
   const subCategories = await Category.find({
     parent: {
       $in: categories.map(c => c.id),
     },
-  });
+  }).sort({ rank: 1 });
 
   res.status(StatusCodes.OK).send(
     { categories, has_more: subCategories && subCategories.length > 0 });

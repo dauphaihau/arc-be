@@ -4,7 +4,7 @@ import {
 import { z } from 'zod';
 import { IOrder } from './order';
 import { Override } from '@/interfaces/utils';
-import { IPopulatedShop } from '@/interfaces/models/shop';
+import { IPopulatedShop, IShop } from '@/interfaces/models/shop';
 import {
   productAttributeSchema,
   productSchema,
@@ -19,11 +19,16 @@ import {
   IQueryResult
 } from '@/models/plugins/paginate.plugin';
 import { productStateUserCanModify } from '@/schemas/product.schema';
+import { BaseQueryParamsGetList } from '@/interfaces/common/request';
 
+export type IProductInventorySchema = z.infer<typeof productInventorySchema>;
 export type IProductSchema = z.infer<typeof productSchema>;
+
 export type IProduct = Override<IProductSchema, {
-  shop: IPopulatedShop
+  shop: IPopulatedShop,
+  inventory: PopulatedDoc<IProduct>
 }>;
+
 export type IPopulatedProduct = PopulatedDoc<IProduct>;
 
 export type IProductImage = z.infer<typeof productImageSchema>;
@@ -32,7 +37,6 @@ export type IProductVariant = z.infer<typeof productVariantSchema>;
 export type IProductAttribute = z.infer<typeof productAttributeSchema>;
 
 export type IProductInventoryReservationSchema = z.infer<typeof productInventoryReservationSchema>;
-export type IProductInventorySchema = z.infer<typeof productInventorySchema>;
 export type IProductInventory = Override<IProductInventorySchema, {
   shop: IPopulatedShop
   product: IPopulatedProduct
@@ -81,8 +85,12 @@ export type CreateProductPayload =
 export type CreateProductVariantPayload = Omit<IProductVariant, 'id'>;
 
 export type GetProductParams = Partial<Pick<IProduct, 'id'>>;
-export type GetProductQueries = Partial<Pick<IProduct, 'category'>>;
 
+export type GetProductByShopParams = Partial<Pick<IProduct, 'shop'>>;
+
+export type GetProductQueries = Partial<
+Pick<IProduct, 'category' | 'title'> & { is_digital: 'true' | 'false' } & BaseQueryParamsGetList
+>;
 
 export type GetProductsParams = Partial<Pick<IProduct, 'shop' | 'category'>>;
 
@@ -92,12 +100,15 @@ type IVariantGetProducts = Omit<IProductVariant, 'variant_options'> & {
   }[];
   inventory: IProductInventory
 };
-export type ResponseGetProducts = Omit<IProduct, 'variants'> & {
+
+export type ResponseGetProducts = Override<IProduct, {
   variants?: IVariantGetProducts[]
+  inventory: IProductInventory
+  shop: IShop
   summary_inventory: Record<
   'lowest_price' | 'highest_price' | 'stock'
   ,number>
-};
+}>;
 
 export type DeleteProductParams = Partial<Pick<IProduct, 'id'>>;
 
