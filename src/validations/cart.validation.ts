@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { productCartSchema } from '@/schemas';
+import { productCartSchema, lineItemSchema } from '@/schemas';
 
 export const cartValidation = {
   addProduct: z.object({
@@ -9,8 +9,14 @@ export const cartValidation = {
     body: z
       .object({
         inventory: productCartSchema.shape.inventory,
+        variant: productCartSchema.shape.variant.optional(),
         quantity: productCartSchema.shape.quantity.optional(),
         is_select_order: productCartSchema.shape.is_select_order.optional(),
+        additionInfoItems: z.array(lineItemSchema.pick({
+          shop: true,
+          coupon_codes: true,
+          note: true,
+        })),
       })
       .strict()
       .refine((val) => {

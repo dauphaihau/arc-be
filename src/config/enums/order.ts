@@ -17,6 +17,11 @@ export enum PAYMENT_TYPES {
   CARD = 'card'
 }
 
+export const ORDER_CONFIG = {
+  MAX_CHAR_NOTE: 10000,
+  MAX_ORDER_TOTAL: 999999.99,
+};
+
 export const SHIPPING_FEE_PERCENT = 5 / 100; // suppose 5% is standard
 
 export const paymentTypes = Object.values(PAYMENT_TYPES);

@@ -6,23 +6,26 @@ import {
   COUPON_MIN_ORDER_TYPES,
   COUPON_TYPES
 } from '@/config/enums/coupon';
-import { SHIPPING_FEE_PERCENT } from '@/config/enums/order';
-import { ICart, IProductCart } from '@/interfaces/models/cart';
+import { SHIPPING_FEE_PERCENT, ORDER_CONFIG } from '@/config/enums/order';
+import {
+  IAdditionInfoItem,
+  ICartPopulated,
+  IItemCartPopulated
+} from '@/interfaces/models/cart';
 import {
   IOrder,
   IUpdateOrderBody,
-  CreateOrderBody,
-  IOrderModel,
-  IShopCodes
+  CreateOrderForBuyNowBody,
+  IOrderModel, CreateOrderFromCartBody
 } from '@/interfaces/models/order';
-import { IProduct } from '@/interfaces/models/product';
 import { Order } from '@/models';
 import { addressService } from '@/services/address.service';
 import { cartService } from '@/services/cart.service';
 import { couponService } from '@/services/coupon.service';
 import { inventoryService } from '@/services/inventory.service';
 import { redisService } from '@/services/redis.service';
-import { ApiError, convertPrice } from '@/utils';
+import { ApiError, roundNumAndFixed } from '@/utils';
+import { ICoupon } from '@/interfaces/models/coupon';
 
 const getOrderById = async (id: IOrder['id']) => {
   return Order.findById(id);
@@ -58,7 +61,7 @@ const updateOrderById = async (
 };
 
 /*
- * Review order
+ * Summary order
  *
  * 1. map fields stand by for pay via card ( stripe )
  *
@@ -67,9 +70,10 @@ const updateOrderById = async (
  * 3. validate coupons & calculate discount total
  */
 
-async function reviewOrder(payload: ICart, shopsCodes?: IShopCodes[]) {
-  const { items, user } = payload;
-  const tempOrder = {
+// async function getSummaryOrder(cart: ICart, additionInfoItems?: IAdditionInfoItem[]) {
+async function getSummaryOrder(cart: ICartPopulated, additionInfoItems?: IAdditionInfoItem[]) {
+  const { items, user } = cart;
+  const summaryOrder = {
     subTotalPrice: 0,
     subTotalAppliedDiscountPrice: 0,
     shippingFee: 0,
@@ -78,10 +82,14 @@ async function reviewOrder(payload: ICart, shopsCodes?: IShopCodes[]) {
     totalProducts: 0,
   };
 
-  const shops: { [key: string]: IShopCodes['coupon_codes'] } = {};
-  if (shopsCodes && shopsCodes.length > 0) {
-    shopsCodes.forEach((ele) => {
-      shops[ele.shop as string] = ele.coupon_codes;
+  const itemShops: { [key: string]: Pick<IAdditionInfoItem, 'note' | 'coupon_codes'> } = {};
+  if (additionInfoItems && additionInfoItems.length > 0) {
+    additionInfoItems.forEach((ele) => {
+      // itemShops[ele.shop as string] = ele.coupon_codes;
+      itemShops[ele.shop as string] = {
+        note: ele?.note ?? '',
+        coupon_codes: ele?.coupon_codes ?? [],
+      };
     });
   }
 
@@ -90,23 +98,28 @@ async function reviewOrder(payload: ICart, shopsCodes?: IShopCodes[]) {
 
   for (const item of items) {
     const { shop, products = [] } = item;
-    const coupon_codes = shops[item?.shop?.id as string] || [];
-    const productsSelected: IProductCart[] = [];
-    const productsNotSelect: IProductCart[] = [];
+    if (!shop?._id) {
+      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR);
+    }
+    const shopId = shop._id;
+    const { coupon_codes, note } = itemShops[shopId.toString()] || [];
+    const productsSelected: IItemCartPopulated['products'] = [];
+    const productsNotSelect: IItemCartPopulated['products'] = [];
 
-    products.forEach(prod => {
+    products.forEach((prod) => {
       return prod.is_select_order ? productsSelected.push(prod) : productsNotSelect.push(prod);
     });
 
     if (productsNotSelect.length > 0) {
       itemNotSelected.push({
-        shop: item.shop,
+        shop: shopId,
         products: productsNotSelect,
       });
     }
 
     const productsMappedFields = productsSelected.map(ele => {
-      const product = ele.inventory.product as IProduct;
+      const product = ele.inventory.product ;
+
       return {
         inventory: ele?.inventory?.id,
         quantity: ele.quantity,
@@ -116,19 +129,15 @@ async function reviewOrder(payload: ICart, shopsCodes?: IShopCodes[]) {
       };
     });
 
-    tempOrder.totalProducts += productsMappedFields.length;
-    // itemsSelected.push({
-    //   shop,
-    //   products: productsMappedFields,
-    // });
+    summaryOrder.totalProducts += productsMappedFields.length;
 
     let count_shop_products = 0;
     const subTotalPrice = productsMappedFields.reduce((acc, next) => {
       count_shop_products += next.quantity;
       return acc + (next.price * next.quantity);
     }, 0);
-    tempOrder.subTotalPrice += convertPrice(subTotalPrice);
-    tempOrder.shippingFee += convertPrice(subTotalPrice * SHIPPING_FEE_PERCENT);
+    summaryOrder.subTotalPrice += roundNumAndFixed(subTotalPrice);
+    summaryOrder.shippingFee += roundNumAndFixed(subTotalPrice * SHIPPING_FEE_PERCENT);
 
     // validate per coupon
     if (coupon_codes && coupon_codes.length > 0) {
@@ -143,7 +152,7 @@ async function reviewOrder(payload: ICart, shopsCodes?: IShopCodes[]) {
       const coupon_types = [];
       for (const coupon_code of coupon_codes) {
         const coupon = await couponService.getCouponByCode({
-          shop,
+          shop: shopId as ICoupon['id'],
           code: coupon_code,
         });
         if (!coupon) {
@@ -164,7 +173,8 @@ async function reviewOrder(payload: ICart, shopsCodes?: IShopCodes[]) {
         ) {
           throw new ApiError(
             StatusCodes.BAD_REQUEST,
-            `Shop ${shop} require order total must be large than ${coupon.min_order_value}`
+            `Shop ${shop?.shop_name} require order total must be large than
+             ${coupon.min_order_value}`
           );
         }
         if (
@@ -175,7 +185,7 @@ async function reviewOrder(payload: ICart, shopsCodes?: IShopCodes[]) {
           throw new ApiError(
             StatusCodes.BAD_REQUEST,
             `Coupon ${coupon_code} require order must 
-            be at least ${coupon.min_products} productsValid`
+            be at least ${coupon.min_products} products`
           );
         }
 
@@ -201,10 +211,11 @@ async function reviewOrder(payload: ICart, shopsCodes?: IShopCodes[]) {
             discount = subTotalPrice * (coupon.percent_off as number / 100);
             break;
           case COUPON_TYPES.FREE_SHIP:
-            tempOrder.shippingFee -= subTotalPrice * SHIPPING_FEE_PERCENT;
+            summaryOrder.shippingFee -= roundNumAndFixed(subTotalPrice * SHIPPING_FEE_PERCENT);
+            // summaryOrder.shippingFee -= subTotalPrice * SHIPPING_FEE_PERCENT;
             break;
         }
-        tempOrder.totalDiscount += convertPrice(discount);
+        summaryOrder.totalDiscount += roundNumAndFixed(discount);
       }
 
       if (
@@ -215,31 +226,34 @@ async function reviewOrder(payload: ICart, shopsCodes?: IShopCodes[]) {
       }
     }
 
-    tempOrder.subTotalAppliedDiscountPrice = convertPrice(
-      tempOrder.subTotalPrice - tempOrder.totalDiscount
+    summaryOrder.subTotalAppliedDiscountPrice = roundNumAndFixed(
+      summaryOrder.subTotalPrice - summaryOrder.totalDiscount
     );
-    tempOrder.totalPrice = convertPrice(
-      tempOrder.subTotalPrice - tempOrder.totalDiscount
+    summaryOrder.totalPrice = roundNumAndFixed(
+      summaryOrder.subTotalPrice - summaryOrder.totalDiscount
     );
 
     itemsSelected.push({
-      shop,
+      shop: shopId,
       products: productsMappedFields,
       coupon_codes,
+      note,
     });
   }
-  tempOrder.totalPrice += convertPrice(tempOrder.shippingFee);
+
+  summaryOrder.totalPrice += roundNumAndFixed(summaryOrder.shippingFee);
+
   return {
-    tempOrder,
+    summaryOrder,
     itemsSelected,
     itemNotSelected,
   };
 }
 
 /*
- * Create order
+ * Create order from cart
  *
- * 1. init order from "review order"
+ * 1. init order from "summary order"
  *
  *    validate address
  *
@@ -255,15 +269,15 @@ async function reviewOrder(payload: ICart, shopsCodes?: IShopCodes[]) {
  * 5. minus quantity product or remove item in cart
  *
  */
-async function createOrder(
-  payload: CreateOrderBody,
+async function createOrderFromCart(
+  payload: CreateOrderFromCartBody,
   session: ClientSession
 ) {
   const {
     user,
     address,
     payment_type,
-    shops_codes,
+    additionInfoItems,
   } = payload;
 
   const cart = await cartService.getCartByUserId(user);
@@ -273,10 +287,16 @@ async function createOrder(
   await cartService.populateCart(cart);
 
   const {
-    tempOrder,
+    summaryOrder,
     itemsSelected,
     itemNotSelected,
-  } = await reviewOrder(cart, shops_codes);
+    // @ts-expect-error:next-line
+  } = await getSummaryOrder(cart, additionInfoItems);
+
+  if (summaryOrder.totalPrice > ORDER_CONFIG.MAX_ORDER_TOTAL) {
+    throw new ApiError(StatusCodes.BAD_REQUEST,
+      `The total amount due must be no more than ${ORDER_CONFIG.MAX_ORDER_TOTAL}`);
+  }
 
   const userAddress = await addressService.getAddressById(address);
   if (!userAddress || userAddress.user.toString() !== user) {
@@ -288,10 +308,10 @@ async function createOrder(
     address,
     payment_type,
     lines: itemsSelected,
-    subtotal: tempOrder.subTotalPrice,
-    shipping_fee: tempOrder.shippingFee,
-    total_discount: tempOrder.totalDiscount,
-    total: tempOrder.totalPrice,
+    subtotal: summaryOrder.subTotalPrice,
+    shipping_fee: summaryOrder.shippingFee,
+    total_discount: summaryOrder.totalDiscount,
+    total: summaryOrder.totalPrice,
   }], { session });
   const newOrder = newOrderCreated[0];
 
@@ -339,10 +359,104 @@ async function createOrder(
   };
 }
 
+async function createOrderForBuyNow(
+  payload: CreateOrderForBuyNowBody,
+  session: ClientSession
+) {
+  const {
+    user,
+    address,
+    payment_type,
+    additionInfoItems,
+    inventory,
+    quantity,
+  } = payload;
+
+  const inventoryInDB = await inventoryService.getInventoryById(inventory);
+  if (!inventoryInDB) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
+  }
+
+  await inventoryInDB?.populate('product');
+  const items = [{
+    shop: inventoryInDB.shop,
+    products: [{
+      is_select_order: true,
+      quantity,
+      inventory: inventoryInDB,
+    }],
+  }];
+
+  const {
+    summaryOrder,
+    itemsSelected,
+    // @ts-expect-error:next-line
+  } = await getSummaryOrder({ user, items }, additionInfoItems);
+
+  const userAddress = await addressService.getAddressById(address);
+  if (!userAddress || userAddress.user.toString() !== user) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Address not found');
+  }
+
+  const newOrderCreated = await Order.create([{
+    user,
+    address,
+    payment_type,
+    lines: itemsSelected,
+    subtotal: summaryOrder.subTotalPrice,
+    shipping_fee: summaryOrder.shippingFee,
+    total_discount: summaryOrder.totalDiscount,
+    total: summaryOrder.totalPrice,
+  }], { session });
+  const newOrder = newOrderCreated[0];
+
+  for (const item of itemsSelected) {
+    const { products = [], shop, coupon_codes = [] } = item;
+    for (const product of products) {
+      const key = `lock_v2024_${product.inventory}`;
+
+      log.info('Asking for lock');
+      const lock = await redisService.retrieveLock(key);
+      log.info('Lock acquired');
+
+      const isReservation = await inventoryService.reservationProduct(
+        {
+          inventoryId: product.inventory,
+          order: newOrder.id,
+          quantity: product.quantity,
+        },
+        session
+      );
+      if (!isReservation.modifiedCount) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Some products have been updated, please come back to check');
+      }
+
+      // minus stock
+      await inventoryService.minusStock(product.inventory, product.quantity, session);
+      log.info(`inventory ${product.inventory} is modified`);
+
+      await lock.release();
+      log.info('Lock has been released, and is available for others to use');
+    }
+
+    if (coupon_codes && coupon_codes.length > 0) {
+      await couponService.updateCouponsShopAfterUsed({
+        shop, user, codes: coupon_codes,
+      }, session);
+    }
+  }
+
+  return {
+    newOrder,
+    userAddress,
+  };
+}
+
 export const orderService = {
   queryOrders,
   getOrderById,
-  reviewOrder,
-  createOrder,
+  getSummaryOrder,
+  createOrderFromCart,
   updateOrderById,
+  createOrderForBuyNow,
 };

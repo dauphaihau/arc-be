@@ -25,7 +25,7 @@ export const couponSchema = z.object({
   amount_off: z
     .number()
     .min(1, 'must be large than 1')
-    .max(COUPON_CONFIG.MAX_AMOUNT_OFF)
+    .max(PRODUCT_CONFIG.MAX_PRICE - 1)
     .optional(),
   percent_off: z
     .number()
@@ -45,18 +45,20 @@ export const couponSchema = z.object({
     .optional(),
   max_uses_per_user: z
     .number()
-    .min(1)
-    .max(5, 'the maximum number cannot exceed 5'),
+    .min(COUPON_CONFIG.MIN_USES_PER_USER)
+    .max(COUPON_CONFIG.MAX_USES_PER_USER,
+      `the maximum number cannot exceed ${COUPON_CONFIG.MAX_USES_PER_USER}`),
   max_uses: z
     .number()
     .min(1)
-    .max(COUPON_CONFIG.MAX_USES, `the maximum number cannot exceed ${COUPON_CONFIG.MAX_USES}`),
+    .max(PRODUCT_CONFIG.MAX_QUANTITY,
+      `the maximum number cannot exceed ${PRODUCT_CONFIG.MAX_QUANTITY}`),
   min_order_type: z
     .nativeEnum(COUPON_MIN_ORDER_TYPES)
     .default(COUPON_MIN_ORDER_TYPES.NONE),
   min_order_value: z
     .number()
-    .max(PRODUCT_CONFIG.MAX_PRICE)
+    // .max(PRODUCT_CONFIG.MAX_PRICE)
     .default(0)
     .optional(),
   min_products: z

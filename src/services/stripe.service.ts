@@ -11,7 +11,7 @@ import { orderService } from '@/services/order.service';
 import { ApiError, transactionWrapper } from '@/utils';
 
 // x 100: with USD, stripe use cents ( ex: $1000 -> $10.00 )
-const convertCurrencyStripe = (price: number) => price * 100;
+const convertCurrencyStripe = (price: number) => Math.round(price * 100);
 
 async function getCheckoutSessionUrl(
   user: IUser,
@@ -43,7 +43,7 @@ async function getCheckoutSessionUrl(
     });
   });
 
-  log.debug('line-item %o', line_items);
+  // log.debug('line-item %o', line_items);
 
   const params: Stripe.Checkout.SessionCreateParams = {
     submit_type: 'pay',
@@ -120,7 +120,7 @@ async function onEventStripe(event: Stripe.Event) {
       break;
     case 'checkout.session.completed': {
       const session = event.data.object;
-      log.debug('session complete %o', session);
+      // log.debug('session complete %o', session);
 
       await transactionWrapper(async (sessionMongo) => {
         if (session.metadata && session.metadata['order_id']) {

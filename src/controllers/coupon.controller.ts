@@ -8,7 +8,6 @@ import {
 } from '@/interfaces/models/coupon';
 import { couponService } from '@/services';
 import { catchAsync, pick } from '@/utils';
-import { IPopulatedShop } from '@/interfaces/models/shop';
 
 const createCoupon = catchAsync(async (
   req: Request<CreateCouponParams, unknown, CreateCouponPayload>,
@@ -17,7 +16,7 @@ const createCoupon = catchAsync(async (
 
   const coupon = await couponService.createCoupon({
     ...req.body,
-    shop: req.params.shop as IPopulatedShop,
+    shop: req.params.shop as string,
   });
   res.status(StatusCodes.CREATED).send({ coupon });
 });

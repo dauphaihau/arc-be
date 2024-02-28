@@ -2,9 +2,11 @@ import { z } from 'zod';
 import { itemCartSchema } from '@/schemas/cart.schema';
 import { productInventorySchema } from '@/schemas/product-inventory.schema';
 import { productSchema } from '@/schemas/product.schema';
-import { COUPONS_MAX_USE_PER_ORDER } from '@/config/enums/coupon';
-import { couponSchema } from '@/schemas/coupon.schema';
-import { PAYMENT_TYPES, ORDER_STATUSES } from '@/config/enums/order';
+import {
+  PAYMENT_TYPES,
+  ORDER_STATUSES,
+  ORDER_CONFIG
+} from '@/config/enums/order';
 import { objectIdSchema } from '@/schemas/sub/objectId.schema';
 
 export const productInLineSchema = z.object({
@@ -22,14 +24,9 @@ export const lineItemSchema = z.object({
     .array(productInLineSchema)
     .min(1)
     .max(20),
-});
-
-export const shopCodesSchema = z.object({
-  shop: objectIdSchema,
-  coupon_codes: z
-    .array(couponSchema.shape.code)
-    .min(1)
-    .max(COUPONS_MAX_USE_PER_ORDER)
+  note: z
+    .string()
+    .max(ORDER_CONFIG.MAX_CHAR_NOTE)
     .optional(),
 });
 
@@ -49,5 +46,5 @@ export const orderSchema = z.object({
   subtotal: z.number(),
   shipping_fee: z.number(),
   total_discount: z.number(),
-  total: z.number(),
+  total: z.number().max(ORDER_CONFIG.MAX_ORDER_TOTAL),
 });

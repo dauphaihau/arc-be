@@ -10,7 +10,8 @@ export const baseQueryOptionsSchema = z.object({
     Number,
     z.union([z.number(), z.string()])
   ),
-  sortBy: z.enum(['desc', 'asc']),
+  // sortBy: z.enum(['desc', 'asc']),
+  sortBy: z.string(),
   populate: z.string(),
   select: z.string(),
 }).partial();

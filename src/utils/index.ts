@@ -3,4 +3,4 @@ export { ApiError } from './ApiError';
 export { transactionWrapper } from './transactionWrapper';
 export { pick } from './pick';
 export { zodKeys } from './zodKeys';
-export { convertPrice } from './convertPrice';
+export { roundNumAndFixed } from './roundNumAndFixed';

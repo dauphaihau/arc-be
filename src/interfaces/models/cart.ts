@@ -1,43 +1,49 @@
 import { Model } from 'mongoose';
 import { z } from 'zod';
-import { IProductInventory } from '@/interfaces/models/product';
+import { ILineItemOrder } from '@/interfaces/models/order';
+import { IProductInventory, IProduct } from '@/interfaces/models/product';
 import { Override } from '@/interfaces/utils';
 import { productCartSchema, cartSchema, itemCartSchema } from '@/schemas';
-import { IPopulatedShop } from '@/interfaces/models/shop';
+import { IShop } from '@/interfaces/models/shop';
 
-interface ITimestamps {
-  createdAt: Date
-  updatedAt: Date
-}
 
-export type ICartSchema = z.infer<typeof cartSchema>;
-export type IItemCartSchema = z.infer<typeof itemCartSchema>;
-export type IProductCartSchema = z.infer<typeof productCartSchema>;
+// ------  Base
 
-export type IProductCart = Override<IProductCartSchema, {
-  inventory: IProductInventory
-}>;
+export type ICart = z.infer<typeof cartSchema>;
+export type IItemCart = z.infer<typeof itemCartSchema>;
+export type IProductCart = z.infer<typeof productCartSchema>;
 
-export type IItemCart = Override<IItemCartSchema, {
-  shop: IPopulatedShop,
-  products: IProductCart[]
-}> & ITimestamps;
-
-export type ICart = Override<ICartSchema, {
-  items: IItemCart[]
-}>;
+export type IAdditionInfoItem = Pick<ILineItemOrder, 'shop' | 'coupon_codes' | 'note'>;
 
 export interface ICartModel extends Model<ICart, unknown> {}
+
+
+// ------  API Request
 
 export type DeleteProductCartQueries = Partial<Pick<IProductCart, 'inventory'>>;
 
 export type UpdateProductCartBody =
   Pick<IProductCart, 'inventory'> &
-  Partial<Pick<IProductCart, 'is_select_order' | 'quantity'>>
+  Partial<Pick<IProductCart, 'is_select_order' | 'quantity'>> & {
+    additionInfoItems?: IAdditionInfoItem[]
+  }
 ;
 
 export type IMinusQtyProdCart = {
-  shop: IPopulatedShop,
+  shop: IShop['id'],
   inventory: IProductInventory['id']
   quantity: number
 };
+
+export type IItemCartPopulated = Override<IItemCart, {
+  shop: IShop & { _id: IShop['id'] },
+  products: Override<IProductCart, {
+    inventory: Override<IProductInventory, {
+      product: IProduct
+    }>
+  }>[]
+}>;
+
+export type ICartPopulated = Override<ICart, {
+  items: IItemCartPopulated[]
+}>;

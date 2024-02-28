@@ -22,6 +22,8 @@ export const itemCartSchema = z.object({
     .array(couponSchema.shape.code)
     .max(COUPON_CONFIG.MAX_USE_PER_ORDER)
     .optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 });
 
 export const cartSchema = z.object({

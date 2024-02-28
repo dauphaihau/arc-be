@@ -12,5 +12,5 @@ export const addressSchema = z.object({
   zip: z.string().max(10),
   country: z.string(),
   phone: z.string().max(20),
-  is_primary: z.boolean(),
+  is_primary: z.boolean().optional(),
 });

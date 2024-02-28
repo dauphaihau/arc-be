@@ -11,6 +11,13 @@ const getAddressById = async (id: IAddress['id']) => {
   return Address.findById(id);
 };
 
+const getPrimaryAddressByUser = async (userId: IAddress['user']) => {
+  return Address.findOne({
+    user: userId,
+    is_primary: true,
+  });
+};
+
 const createAddress = async (payload: CreateAddressPayload) => {
   const { user, is_primary } = payload;
   if (is_primary) {
@@ -50,6 +57,11 @@ const updateAddress = async (
   if (!address) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Address not found');
   }
+  if (updateBody.is_primary) {
+    const filter = { user: address.user, is_primary: true };
+    const update = { is_primary: false };
+    await Address.findOneAndUpdate(filter, update);
+  }
   Object.assign(address, updateBody);
   await address.save();
   return address;
@@ -61,4 +73,5 @@ export const addressService = {
   queryAddresses,
   deleteAddressById,
   updateAddress,
+  getPrimaryAddressByUser,
 };

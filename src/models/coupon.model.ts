@@ -7,10 +7,7 @@ import { ApiError } from '@/utils';
 import {
   COUPON_TYPES,
   COUPON_APPLIES_TO,
-  COUPON_MIN_ORDER_TYPES,
-  couponTypes,
-  couponMinOrderTypes,
-  couponAppliesTo
+  COUPON_MIN_ORDER_TYPES
 } from '@/config/enums/coupon';
 
 // define Schema
@@ -36,7 +33,7 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
     },
     applies_to: {
       type: String,
-      enum: couponAppliesTo,
+      enum: Object.values(COUPON_APPLIES_TO),
       default: COUPON_APPLIES_TO.ALL,
     },
     applies_product_ids: {
@@ -45,13 +42,13 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
     },
     type: {
       type: String,
-      enum: couponTypes,
+      enum: Object.values(COUPON_TYPES),
       required: true,
     },
     amount_off: {
       type: Number,
       default: 0,
-      max: 100000000,
+      max: PRODUCT_CONFIG.MAX_PRICE - 1,
       required: function (this: ICoupon) {
         return this.type === COUPON_TYPES.FIXED_AMOUNT;
       },
@@ -74,7 +71,7 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
     },
     max_uses: {
       type: Number,
-      max: 100000,
+      max: PRODUCT_CONFIG.MAX_QUANTITY,
       required: true,
     },
     max_uses_per_user: {
@@ -93,13 +90,13 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
     },
     min_order_type: {
       type: String,
-      enum: couponMinOrderTypes,
+      enum: Object.values(COUPON_MIN_ORDER_TYPES),
       default: COUPON_MIN_ORDER_TYPES.NONE,
     },
     min_order_value: {
       type: Number,
       default: 0,
-      max: PRODUCT_CONFIG.MAX_PRICE,
+      // max: PRODUCT_CONFIG.MAX_PRICE,
       required: function (this: ICoupon) {
         return this.min_order_type === COUPON_MIN_ORDER_TYPES.ORDER_TOTAL;
       },

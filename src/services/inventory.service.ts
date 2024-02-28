@@ -13,7 +13,7 @@ const insertInventory = async (payload: CreateInventoryPayload, session: ClientS
   return inventory[0];
 };
 
-const getInventoryById = async (id: IProductInventory) => {
+const getInventoryById = async (id: IProductInventory['id']) => {
   return ProductInventory.findById(id);
 };
 

@@ -1,5 +1,9 @@
 import express from 'express';
-import { cartValidation, orderValidation } from '@/validations';
+import {
+  cartValidation,
+  orderValidation,
+  addressValidation
+} from '@/validations';
 import {
   addressController,
   orderController,
@@ -17,20 +21,40 @@ router
 // Address
 router
   .route('/addresses')
-  .post(auth(), addressController.createAddress)
-  .get(auth(), addressController.getAddresses);
+  .post(
+    auth(),
+    validate(addressValidation.createAddress),
+    addressController.createAddress
+  )
+  .get(
+    auth(),
+    validate(addressValidation.getAddresses),
+    addressController.getAddresses
+  );
 
 router
   .route('/addresses/:id')
-  .patch(auth(), addressController.updateAddress)
-  .delete(auth(), addressController.deleteAddress)
-  .get(auth(), addressController.getAddress);
+  .patch(
+    auth(),
+    validate(addressValidation.updateAddress),
+    addressController.updateAddress
+  )
+  .delete(
+    auth(),
+    validate(addressValidation.deleteAddress),
+    addressController.deleteAddress
+  )
+  .get(
+    auth(),
+    validate(addressValidation.getAddress),
+    addressController.getAddress
+  );
 
 // Cart
 router
   .route('/cart')
   .post(
-    // validate(cartValidation.addProduct),
+    validate(cartValidation.addProduct),
     auth(),
     cartController.addProduct
   )
@@ -48,25 +72,28 @@ router
     cartController.getCartWithCoupons
   )
   .delete(
-    // validate(cartValidation.deleteProduct),
+    validate(cartValidation.deleteProduct),
     auth(),
     cartController.deleteProduct
   );
 
 // Order
-// router
-// .route('/order/review')
-// .post(
-//   validate(orderValidation.reviewOrder),
-//   auth(),
-//   orderController.reviewOrder
-// );
 router
   .route('/orders')
-  .post(
-    validate(orderValidation.createOrder),
+  .delete(
+    validate(orderValidation.getSummaryOrder),
     auth(),
-    orderController.createOrder
+    orderController.getSummaryOrder
+  )
+  .post(
+    validate(orderValidation.createOrderFromCart),
+    auth(),
+    orderController.createOrderFromCart
+  )
+  .put(
+    validate(orderValidation.createOrderForBuyNow),
+    auth(),
+    orderController.createOrderForBuyNow
   )
   .get(auth(), orderController.getListOrders);
 router

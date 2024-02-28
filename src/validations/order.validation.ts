@@ -1,20 +1,31 @@
 import { z } from 'zod';
 import {
   lineItemSchema,
-  orderSchema, shopCodesSchema
+  orderSchema,
+  productInLineSchema
 } from '@/schemas';
 
 export const orderValidation = {
-  reviewOrder: z.object({
-    body: z.object({
-      cart_items: z.array(lineItemSchema.strict()),
-    }).strict(),
+  getSummaryOrder: z.object({
+    body: productInLineSchema
+      .pick({ inventory: true, quantity: true })
+      .merge(lineItemSchema.pick({ coupon_codes: true }))
+      .strict()
+    ,
   }),
-  createOrder: z.object({
-    body: z.object({
-      address: orderSchema.shape.address,
-      payment_type: orderSchema.shape.payment_type,
-      shops_codes: z.array(shopCodesSchema),
-    }).strict(),
+  createOrderFromCart: z.object({
+    body: orderSchema
+      .pick({ address: true, payment_type: true })
+      .merge(lineItemSchema.omit({ products: true }))
+      .strict()
+    ,
+  }),
+  createOrderForBuyNow: z.object({
+    body: orderSchema
+      .pick({ address: true, payment_type: true })
+      .merge(productInLineSchema.pick({ inventory: true, quantity: true }))
+      .merge(lineItemSchema.pick({ coupon_codes: true, note: true }))
+      .strict()
+    ,
   }),
 };

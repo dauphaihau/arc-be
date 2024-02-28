@@ -9,11 +9,9 @@ import {
   DeleteProductParams,
   UpdateProductParams,
   UpdateProductPayload,
-  IPopulatedProduct,
   GetProductQueries,
   GetProductByShopParams
 } from '@/interfaces/models/product';
-import { IPopulatedShop } from '@/interfaces/models/shop';
 import { ProductInventory } from '@/models';
 import { ProductVariant } from '@/models/product-variant.model';
 import {
@@ -30,7 +28,8 @@ const createProduct = catchAsync(async (
   req: Request<CreateProductParams, unknown, CreateProductPayload>,
   res
 ) => {
-  const shopId = req.params.shop as IPopulatedShop;
+  const shopId = req.params.shop as string;
+
   await transactionWrapper(async (session) => {
     const {
       variants, stock, price, sku, ...resBody
@@ -138,7 +137,10 @@ const getProduct = catchAsync(async (
   req: Request<GetProductParams>,
   res
 ) => {
-  const product = await productService.getProductById(req.params.id as IPopulatedProduct);
+  const product = await productService.getProductById(req.params.id as string);
+  await product?.populate('shop', {
+    shop_name: 1,
+  });
   await product?.populate({
     path: 'variants',
     populate: [
@@ -354,7 +356,7 @@ const deleteProduct = catchAsync(async (
   req: Request<DeleteProductParams>,
   res
 ) => {
-  const product = req.params.id as IPopulatedProduct;
+  const product = req.params.id as string;
 
   await transactionWrapper(async (session) => {
     const result = await productService.deleteProductById(product, session);
@@ -373,7 +375,7 @@ const updateProduct = catchAsync(async (
   req: Request<UpdateProductParams, unknown, UpdateProductPayload>,
   res
 ) => {
-  const productId = req.params.id as IPopulatedProduct;
+  const productId = req.params.id as string;
 
   await transactionWrapper(async (session) => {
     const product = await productService.updateProduct(productId, req.body, session);
@@ -381,7 +383,8 @@ const updateProduct = catchAsync(async (
     // update stock
     if (req.body?.stock) {
       const updatedInv = await inventoryService.updateStock({
-        shop: product.shop as IPopulatedShop,
+        // shop: product.shop as IPopulatedShop,
+        shop: product.shop as string,
         product: productId,
         stock: req.body.stock,
       }, session);

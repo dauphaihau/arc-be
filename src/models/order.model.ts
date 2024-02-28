@@ -2,7 +2,7 @@ import { model, Schema } from 'mongoose';
 import {
   paymentTypes,
   orderStatuses,
-  ORDER_STATUSES
+  ORDER_STATUSES, ORDER_CONFIG
 } from '@/config/enums/order';
 import {
   IOrder,
@@ -49,6 +49,10 @@ const lineItemSchema = new Schema<ILineItemOrder>(
     products: {
       type: [productInLineSchema],
       required: true,
+    },
+    note: {
+      type: String,
+      max: ORDER_CONFIG.MAX_CHAR_NOTE,
     },
   }, { _id: false }
 );
@@ -104,6 +108,7 @@ const orderSchema = new Schema<IOrder, IOrderModel>(
     total: {
       type: Number,
       default: 0,
+      max: ORDER_CONFIG.MAX_ORDER_TOTAL,
       required: true,
     },
   },

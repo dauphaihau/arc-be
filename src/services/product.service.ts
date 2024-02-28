@@ -6,7 +6,7 @@ import {
   UpdateProductPayload,
   IProductImage,
   IProductModel,
-  IVariantCreateProduct, IProductVariant, IPopulatedProduct
+  IVariantCreateProduct, IProductVariant, IProduct
 } from '@/interfaces/models/product';
 import { Product } from '@/models';
 import { ApiError } from '@/utils';
@@ -26,7 +26,7 @@ import { awsS3Service } from '@/services/aws-s3.service';
 //   }
 // };
 
-const getProductById = async (id: IPopulatedProduct) => {
+const getProductById = async (id: IProduct['id']) => {
   return Product.findById(id);
 };
 
@@ -46,7 +46,7 @@ const getProductVariantById = async (id: IProductVariant['id']) => {
  *      update: require id, relative_url + props
  */
 const updateProduct = async (
-  productId: IPopulatedProduct,
+  productId: IProduct['id'],
   updateBody: UpdateProductPayload,
   session: ClientSession
 ) => {
@@ -149,7 +149,7 @@ const queryProducts: IProductModel['paginate'] = async (filter, options) => {
   return products;
 };
 
-const deleteProductById = async (productId: IPopulatedProduct, session: ClientSession) => {
+const deleteProductById = async (productId: IProduct['id'], session: ClientSession) => {
   const product = await getProductById(productId);
   if (!product) throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
   return product.remove({ session });

@@ -3,9 +3,9 @@ export const COUPON_CONFIG = {
   MAX_CHAR_CODE: 12,
   MIN_CHAR_TITLE: 2,
   MAX_CHAR_TITLE: 50,
-  MAX_AMOUNT_OFF: 100000000,
-  MAX_USES: 100000000,
   MAX_USE_PER_ORDER: 2,
+  MIN_USES_PER_USER: 1,
+  MAX_USES_PER_USER: 5,
 };
 
 export enum COUPON_APPLIES_TO {
@@ -26,7 +26,3 @@ export enum COUPON_MIN_ORDER_TYPES {
 }
 
 export const COUPONS_MAX_USE_PER_ORDER = 2;
-
-export const couponAppliesTo = Object.values(COUPON_APPLIES_TO);
-export const couponTypes = Object.values(COUPON_TYPES);
-export const couponMinOrderTypes = Object.values(COUPON_MIN_ORDER_TYPES);

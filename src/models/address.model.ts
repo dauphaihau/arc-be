@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import { Schema, model, Document } from 'mongoose';
 import { IAddress, IAddressModel } from '@/interfaces/models/address';
 import { toJSON, paginate } from '@/models/plugins';
 
@@ -61,5 +61,22 @@ const addressSchema = new Schema<IAddress, IAddressModel>(
 // Plugins
 addressSchema.plugin(toJSON);
 addressSchema.plugin(paginate);
+
+addressSchema.post(['find', 'findOne', 'findOneAndUpdate'], function (res) {
+  if (!this.mongooseOptions().lean) {
+    return;
+  }
+  if (Array.isArray(res)) {
+    res.forEach(transformDoc);
+    return;
+  }
+  transformDoc(res);
+});
+
+function transformDoc(doc: Document) {
+  doc.id = doc._id;
+  delete doc._id;
+  delete doc.__v;
+}
 
 export const Address: IAddressModel = model<IAddress, IAddressModel>('Address', addressSchema);

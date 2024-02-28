@@ -2,8 +2,10 @@ import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { cartService, orderService } from '@/services';
 import { catchAsync } from '@/utils';
-import { DeleteProductCartQueries } from '@/interfaces/models/cart';
-import { log } from '@/config';
+import {
+  DeleteProductCartQueries,
+  UpdateProductCartBody
+} from '@/interfaces/models/cart';
 
 const getCart = catchAsync(async (req, res) => {
   const { type } = req.query;
@@ -27,9 +29,12 @@ const getCart = catchAsync(async (req, res) => {
   }, 0);
   await cartService.populateCart(cart);
   // log.debug('cart %o', cart);
-  const { tempOrder } = await orderService.reviewOrder(cart);
+  // @ts-expect-error:next-line
+  const { summaryOrder } = await orderService.getSummaryOrder(cart);
 
-  res.status(StatusCodes.OK).send({ cart, tempOrder, totalProducts });
+  res.status(StatusCodes.OK).send({
+    cart, summaryOrder, totalProducts,
+  });
 });
 
 const getCartWithCoupons = catchAsync(async (req, res) => {
@@ -44,8 +49,9 @@ const getCartWithCoupons = catchAsync(async (req, res) => {
   });
 
   await cartService.populateCart(cart);
-  const { tempOrder } = await orderService.reviewOrder(cart, req.body);
-  res.status(StatusCodes.OK).send({ cart, tempOrder, totalProducts });
+  // @ts-expect-error:next-line
+  const { summaryOrder } = await orderService.getSummaryOrder(cart, req.body);
+  res.status(StatusCodes.OK).send({ cart, summaryOrder, totalProducts });
 });
 
 const addProduct = catchAsync(async (req, res) => {
@@ -55,20 +61,26 @@ const addProduct = catchAsync(async (req, res) => {
     return;
   }
   await cartService.populateCart(cart);
-  const { tempOrder } = await orderService.reviewOrder(cart);
-  res.status(StatusCodes.OK).send({ tempOrder });
+  // @ts-expect-error:next-line
+  const { summaryOrder } = await orderService.getSummaryOrder(cart);
+  res.status(StatusCodes.OK).send({ summaryOrder });
 });
 
-const updateProduct = catchAsync(async (req, res) => {
-  const cart = await cartService.updateProduct(req.user.id, req.body);
+const updateProduct = catchAsync(async (
+  req: Request<unknown, unknown, UpdateProductCartBody>,
+  res
+) => {
+  const { additionInfoItems, ...resBody } = req.body;
+  const cart = await cartService.updateProduct(req.user.id, resBody);
   if (!cart) {
     res.status(StatusCodes.OK).send({ cart });
     return;
   }
   await cartService.populateCart(cart);
-  const { tempOrder } = await orderService.reviewOrder(cart);
+  // @ts-expect-error:next-line
+  const { summaryOrder } = await orderService.getSummaryOrder(cart, additionInfoItems);
 
-  res.status(StatusCodes.OK).send({ tempOrder });
+  res.status(StatusCodes.OK).send({ summaryOrder });
 });
 
 const deleteProduct = catchAsync(async (
@@ -81,9 +93,10 @@ const deleteProduct = catchAsync(async (
     return;
   }
   await cartService.populateCart(cart);
-  log.debug('cart %o', cart);
-  const { tempOrder } = await orderService.reviewOrder(cart);
-  res.status(StatusCodes.OK).send({ tempOrder });
+  // log.debug('cart %o', cart);
+  // @ts-expect-error:next-line
+  const { summaryOrder } = await orderService.getSummaryOrder(cart);
+  res.status(StatusCodes.OK).send({ summaryOrder });
 });
 
 export const cartController = {

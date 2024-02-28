@@ -1,10 +1,10 @@
 import {
-  Model, FilterQuery, PopulatedDoc
+  Model, FilterQuery
 } from 'mongoose';
 import { z } from 'zod';
 import { IOrder } from './order';
 import { Override } from '@/interfaces/utils';
-import { IPopulatedShop, IShop } from '@/interfaces/models/shop';
+import { IShop } from '@/interfaces/models/shop';
 import {
   productAttributeSchema,
   productSchema,
@@ -21,26 +21,16 @@ import {
 import { productStateUserCanModify } from '@/schemas/product.schema';
 import { BaseQueryParamsGetList } from '@/interfaces/common/request';
 
-export type IProductInventorySchema = z.infer<typeof productInventorySchema>;
-export type IProductSchema = z.infer<typeof productSchema>;
-
-export type IProduct = Override<IProductSchema, {
-  shop: IPopulatedShop,
-  inventory: PopulatedDoc<IProduct>
-}>;
-
-export type IPopulatedProduct = PopulatedDoc<IProduct>;
-
+// ----- Base
+export type IProduct = z.infer<typeof productSchema>;
+export type IProductInventory = z.infer<typeof productInventorySchema>;
 export type IProductImage = z.infer<typeof productImageSchema>;
-export type IProductVariantOpt = z.infer<typeof productVariantOptSchema>;
 export type IProductVariant = z.infer<typeof productVariantSchema>;
+export type IProductVariantOpt = z.infer<typeof productVariantOptSchema>;
 export type IProductAttribute = z.infer<typeof productAttributeSchema>;
-
 export type IProductInventoryReservationSchema = z.infer<typeof productInventoryReservationSchema>;
-export type IProductInventory = Override<IProductInventorySchema, {
-  shop: IPopulatedShop
-  product: IPopulatedProduct
-}>;
+
+// export type IPopulatedProduct = PopulatedDoc<IProduct>;
 
 export interface IProductModel extends Model<IProduct, unknown> {
   // eslint-disable-next-line @stylistic/max-len
@@ -48,6 +38,10 @@ export interface IProductModel extends Model<IProduct, unknown> {
 }
 
 export interface IProductInventoryModel extends Model<IProductInventory, unknown> {}
+
+export type PRODUCT_STATES_USER_CAN_MODIFY = z.infer<typeof productStateUserCanModify>;
+
+// ------- API Request
 
 export type CreateInventoryPayload = Pick<IProductInventory, 'shop' | 'product' | 'stock' | 'variant' | 'price' | 'sku'>;
 
@@ -59,8 +53,6 @@ export type ReservationInventoryPayload =
     order: IOrder['id'] ,
     quantity: number
   };
-
-export type PRODUCT_STATES_USER_CAN_MODIFY = z.infer<typeof productStateUserCanModify>;
 
 export type CreateProductParams = Partial<Pick<IProduct, 'shop'>>;
 
@@ -82,8 +74,6 @@ export type CreateProductPayload =
   }
   & Partial<IProductInventoryCanModify>;
 
-export type CreateProductVariantPayload = Omit<IProductVariant, 'id'>;
-
 export type GetProductParams = Partial<Pick<IProduct, 'id'>>;
 
 export type GetProductByShopParams = Partial<Pick<IProduct, 'shop'>>;
@@ -92,7 +82,16 @@ export type GetProductQueries = Partial<
 Pick<IProduct, 'category' | 'title'> & { is_digital: 'true' | 'false' } & BaseQueryParamsGetList
 >;
 
-export type GetProductsParams = Partial<Pick<IProduct, 'shop' | 'category'>>;
+export type DeleteProductParams = Partial<Pick<IProduct, 'id'>>;
+
+export type UpdateProductParams = Partial<Pick<IProduct, 'id' | 'shop'>>;
+
+export type UpdateProductPayload = Omit<IProduct, 'id' | 'shop' | 'state'> & {
+  state: PRODUCT_STATES_USER_CAN_MODIFY
+} & Partial<IProductInventoryCanModify>;
+
+
+// ------- API Response
 
 type IVariantGetProducts = Omit<IProductVariant, 'variant_options'> & {
   variant_options: {
@@ -109,11 +108,3 @@ export type ResponseGetProducts = Override<IProduct, {
   'lowest_price' | 'highest_price' | 'stock'
   ,number>
 }>;
-
-export type DeleteProductParams = Partial<Pick<IProduct, 'id'>>;
-
-export type UpdateProductParams = Partial<Pick<IProduct, 'id' | 'shop'>>;
-
-export type UpdateProductPayload = Omit<IProduct, 'id' | 'shop' | 'state'> & {
-  state: PRODUCT_STATES_USER_CAN_MODIFY
-} & Partial<IProductInventoryCanModify>;

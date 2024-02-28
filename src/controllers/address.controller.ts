@@ -10,8 +10,11 @@ import { addressService } from '@/services';
 import { catchAsync, pick } from '@/utils';
 
 const createAddress = catchAsync(async (req, res) => {
-  const user = await addressService.createAddress({ ...req.body, user: req.user.id });
-  res.status(StatusCodes.CREATED).send(user);
+  const address = await addressService.createAddress({
+    ...req.body,
+    user: req.user.id,
+  });
+  res.status(StatusCodes.CREATED).send({ address });
 });
 
 const getAddress = catchAsync(async (
@@ -25,7 +28,6 @@ const getAddress = catchAsync(async (
 const getAddresses = catchAsync(async (req, res) => {
   const filter = { user: req.user.id };
   const options = pick(req.query, ['sortBy', 'limit', 'page', 'select', 'populate']);
-  options['select'] = { attributes: 0 };
   const result = await addressService.queryAddresses(filter, options);
   res.send(result);
 });
