@@ -108,7 +108,8 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
         return this.min_order_type === COUPON_MIN_ORDER_TYPES.NUMBER_OF_PRODUCTS;
       },
     },
-    is_active: { type: Boolean, default: true },
+    is_active: { type: Boolean, default: false },
+    is_auto_sale: { type: Boolean, default: false },
   },
   {
     timestamps: true,

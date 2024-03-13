@@ -1,18 +1,19 @@
 import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { COUPON_TYPES, COUPON_APPLIES_TO } from '@/config/enums/coupon';
 import { log } from '@/config';
-import { PRODUCT_VARIANT_TYPES, PRODUCT_SORT_BY } from '@/config/enums/product';
+import { PRODUCT_VARIANT_TYPES, PRODUCT_SORT_BY, PRODUCT_CONFIG } from '@/config/enums/product';
 import {
-  CreateProductPayload,
+  CreateProductBody,
   CreateProductParams,
   GetProductParams,
   DeleteProductParams,
   UpdateProductParams,
-  UpdateProductPayload,
+  UpdateProductBody,
   GetProductQueries,
   GetProductByShopParams
 } from '@/interfaces/models/product';
-import { ProductInventory } from '@/models';
+import { ProductInventory, Coupon } from '@/models';
 import { ProductVariant } from '@/models/product-variant.model';
 import {
   productService,
@@ -24,8 +25,8 @@ import {
   catchAsync, pick, transactionWrapper, ApiError
 } from '@/utils';
 
-const createProduct = catchAsync(async (
-  req: Request<CreateProductParams, unknown, CreateProductPayload>,
+const createProductByShop = catchAsync(async (
+  req: Request<CreateProductParams, unknown, CreateProductBody>,
   res
 ) => {
   const shopId = req.params.shop as string;
@@ -57,7 +58,7 @@ const createProduct = catchAsync(async (
                     shop: shopId,
                     product: product.id,
                     variant: vari.variant_name + '-' + subVar.variant_name,
-                    price: subVar.price || 0,
+                    price: subVar.price || PRODUCT_CONFIG.MIN_PRICE,
                     stock: subVar.stock || 0,
                     sku: subVar.sku,
                   },
@@ -89,7 +90,7 @@ const createProduct = catchAsync(async (
               product: product.id,
               variant: vari.variant_name,
               stock: vari.stock || 0,
-              price: vari.price || 0,
+              price: vari.price || PRODUCT_CONFIG.MIN_PRICE,
               sku: vari.sku,
             }, session);
 
@@ -121,7 +122,7 @@ const createProduct = catchAsync(async (
         shop: shopId,
         product: product.id,
         stock: stock || 0,
-        price: price || 0,
+        price: price || PRODUCT_CONFIG.MIN_PRICE,
         sku,
       }, session
     );
@@ -131,25 +132,6 @@ const createProduct = catchAsync(async (
     }, { session });
     res.status(StatusCodes.CREATED).send({ product });
   });
-});
-
-const getProduct = catchAsync(async (
-  req: Request<GetProductParams>,
-  res
-) => {
-  const product = await productService.getProductById(req.params.id as string);
-  await product?.populate('shop', {
-    shop_name: 1,
-  });
-  await product?.populate({
-    path: 'variants',
-    populate: [
-      { path: 'inventory' },
-      { path: 'variant_options.inventory' },
-    ],
-  });
-  await product?.populate('inventory');
-  res.status(StatusCodes.OK).send({ product });
 });
 
 const getProductsByShop = catchAsync(async (
@@ -209,6 +191,50 @@ const getProductsByShop = catchAsync(async (
   res.send(result);
 });
 
+const deleteProductByShop = catchAsync(async (
+  req: Request<DeleteProductParams>,
+  res
+) => {
+  const product = req.params.id as string;
+
+  await transactionWrapper(async (session) => {
+    const result = await productService.deleteProductById(product, session);
+
+    const images = result.images.map(img => img.relative_url);
+    await awsS3Service.deleteMultiObject(images);
+
+    await ProductVariant.deleteMany({ product }, { session });
+    await ProductInventory.deleteMany({ product }, { session });
+
+    res.status(StatusCodes.NO_CONTENT).send();
+  });
+});
+
+const updateProductByShop = catchAsync(async (
+  req: Request<UpdateProductParams, unknown, UpdateProductBody>,
+  res
+) => {
+  const productId = req.params.id as string;
+
+  await transactionWrapper(async (session) => {
+    const product = await productService.updateProduct(productId, req.body, session);
+
+    // update stock
+    if (req.body?.stock) {
+      const updatedInv = await inventoryService.updateStock({
+        // shop: product.shop as IPopulatedShop,
+        shop: product.shop as string,
+        product: productId,
+        stock: req.body.stock,
+      }, session);
+      if (!updatedInv.modifiedCount) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Update stock failed');
+      }
+    }
+    res.send({ product });
+  });
+});
+
 const getProducts = catchAsync(async (
   req: Request<unknown, unknown, unknown, GetProductQueries>,
   res
@@ -232,9 +258,6 @@ const getProducts = catchAsync(async (
   }
 
   if (req.query?.title) {
-    // filter['title'] = {
-    //   $regex: '.*' + req.query.title + '.*',
-    // };
     filter['title'] = new RegExp(req.query.title, 'i');
   }
 
@@ -271,36 +294,30 @@ const getProductsByCategory = catchAsync(async (
   }
 
   if (req.query?.title) {
-    // filter['title'] = {
-    //   $regex: '.*' + req.query?.title + '.*',
-    // };
     filter['title'] = new RegExp(req.query.title, 'i');
   }
 
   const result = await productService.queryProducts(filter, options);
 
   let mapResult = [];
-
-  mapResult = result.results.map((prod) => {
+  mapResult = await Promise.all(result.results.map(async (prod) => {
     const obj = {
       id: '',
-      shop_name:'',
-      title:'',
-      image_relative_url:'',
+      shop_name: '',
+      title: '',
+      image_relative_url: '',
       summary_inventory: {
         lowest_price: 0,
         highest_price: 0,
+        sale_price: 0,
+        discount_types: [] as COUPON_TYPES[],
+        percent_off: 0,
       },
     };
     obj.shop_name = prod.shop.shop_name;
     obj.title = prod.title;
     obj.id = prod.id as string;
     obj.image_relative_url = prod.images[0].relative_url;
-
-    if (prod.variant_type === PRODUCT_VARIANT_TYPES.NONE) {
-      obj.summary_inventory.lowest_price = prod.inventory.price;
-      // prod.summary_inventory.stock = prod.inventory.stock;
-    }
 
     prod.variants && prod.variants.forEach((variant, indexVariant) => {
       if (prod.variant_type === PRODUCT_VARIANT_TYPES.SINGLE && variant?.inventory?.price) {
@@ -329,8 +346,46 @@ const getProductsByCategory = catchAsync(async (
         });
       }
     });
+
+    if (prod.variant_type === PRODUCT_VARIANT_TYPES.NONE) {
+      obj.summary_inventory.lowest_price = prod.inventory.price;
+      // prod.summary_inventory.stock = prod.inventory.stock;
+    }
+
+    const coupons = await Coupon.find({
+      shop: prod.shop._id.toString(),
+      is_auto_sale: true,
+    });
+
+    if (coupons) {
+      coupons.forEach((coupon) => {
+        if (coupon) {
+
+          let isCouponSpecifyValid: boolean | undefined = false;
+          if (coupon.applies_to === COUPON_APPLIES_TO.SPECIFIC) {
+            isCouponSpecifyValid = coupon.applies_product_ids && coupon.applies_product_ids.includes(prod.id);
+          }
+
+          if (coupon.applies_to === COUPON_APPLIES_TO.ALL || isCouponSpecifyValid) {
+            const { lowest_price } = obj.summary_inventory;
+            if (coupon.type) {
+              obj.summary_inventory.discount_types.push(coupon.type);
+            }
+            if (coupon.type === COUPON_TYPES.FIXED_AMOUNT && coupon?.amount_off) {
+              obj.summary_inventory.sale_price = lowest_price - coupon.amount_off;
+              // obj.summary_inventory.percent_off = coupon.percent_off;
+            }
+            if (coupon.type === COUPON_TYPES.PERCENTAGE && coupon?.percent_off) {
+              obj.summary_inventory.sale_price = lowest_price - (lowest_price * (coupon.percent_off / 100));
+              obj.summary_inventory.percent_off = coupon.percent_off;
+            }
+          }
+        }
+      });
+    }
+
     return obj;
-  });
+  }));
 
   if (
     req.query?.sortBy &&
@@ -351,57 +406,31 @@ const getProductsByCategory = catchAsync(async (
   });
 });
 
-
-const deleteProduct = catchAsync(async (
-  req: Request<DeleteProductParams>,
+const getDetailProduct = catchAsync(async (
+  req: Request<GetProductParams>,
   res
 ) => {
-  const product = req.params.id as string;
-
-  await transactionWrapper(async (session) => {
-    const result = await productService.deleteProductById(product, session);
-
-    const images = result.images.map(img => img.relative_url);
-    await awsS3Service.deleteMultiObject(images);
-
-    await ProductVariant.deleteMany({ product }, { session });
-    await ProductInventory.deleteMany({ product }, { session });
-
-    res.status(StatusCodes.NO_CONTENT).send();
+  const product = await productService.getProductById(req.params.id as string);
+  await product?.populate('shop', {
+    shop_name: 1,
   });
-});
-
-const updateProduct = catchAsync(async (
-  req: Request<UpdateProductParams, unknown, UpdateProductPayload>,
-  res
-) => {
-  const productId = req.params.id as string;
-
-  await transactionWrapper(async (session) => {
-    const product = await productService.updateProduct(productId, req.body, session);
-
-    // update stock
-    if (req.body?.stock) {
-      const updatedInv = await inventoryService.updateStock({
-        // shop: product.shop as IPopulatedShop,
-        shop: product.shop as string,
-        product: productId,
-        stock: req.body.stock,
-      }, session);
-      if (!updatedInv.modifiedCount) {
-        throw new ApiError(StatusCodes.BAD_REQUEST, 'Update stock failed');
-      }
-    }
-    res.send({ product });
+  await product?.populate({
+    path: 'variants',
+    populate: [
+      { path: 'inventory' },
+      { path: 'variant_options.inventory' },
+    ],
   });
+  await product?.populate('inventory');
+  res.status(StatusCodes.OK).send({ product });
 });
 
 export const productController = {
-  createProduct,
-  getProduct,
+  createProductByShop,
+  getDetailProduct,
   getProducts,
-  deleteProduct,
-  updateProduct,
+  deleteProductByShop,
+  updateProductByShop,
   getProductsByShop,
   getProductsByCategory,
 };

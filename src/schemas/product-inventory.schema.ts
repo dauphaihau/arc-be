@@ -14,7 +14,7 @@ export const productInventorySchema = z.object({
   product: objectIdSchema,
   price: z
     .number()
-    .min(1)
+    .min(PRODUCT_CONFIG.MIN_PRICE)
     .max(PRODUCT_CONFIG.MAX_PRICE),
   stock: z
     .number()

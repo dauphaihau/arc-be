@@ -2,8 +2,8 @@ import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
 import { ProductVariant } from '@/models/product-variant.model';
 import {
-  CreateProductPayload,
-  UpdateProductPayload,
+  CreateProductBody,
+  UpdateProductBody,
   IProductImage,
   IProductModel,
   IVariantCreateProduct, IProductVariant, IProduct
@@ -12,19 +12,6 @@ import { Product } from '@/models';
 import { ApiError } from '@/utils';
 import { log } from '@/config';
 import { awsS3Service } from '@/services/aws-s3.service';
-
-// const validateAttributes = (category: IProduct['category'], attributes: IProductAttribute) => {
-//   // const keysValid = getValidKeysAttrByCategory(category);
-//   const keyInvalid: string[] = [];
-//   Object.keys(attributes).forEach((key) => {
-//     if (!keysValid.includes(key)) {
-//       keyInvalid.push(key);
-//     }
-//   });
-//   if (keyInvalid.length) {
-//     throw new ApiError(StatusCodes.BAD_REQUEST, `keys of attributes invalid: ${keyInvalid.join(', ')}`);
-//   }
-// };
 
 const getProductById = async (id: IProduct['id']) => {
   return Product.findById(id);
@@ -47,7 +34,7 @@ const getProductVariantById = async (id: IProductVariant['id']) => {
  */
 const updateProduct = async (
   productId: IProduct['id'],
-  updateBody: UpdateProductPayload,
+  updateBody: UpdateProductBody,
   session: ClientSession
 ) => {
   const product = await getProductById(productId);
@@ -120,7 +107,7 @@ const updateProduct = async (
   return product;
 };
 
-const createProduct = async (payload: CreateProductPayload, session: ClientSession) => {
+const createProduct = async (payload: CreateProductBody, session: ClientSession) => {
   // validateAttributes(payload.category, payload.attributes);
   const product = await Product.create([payload], { session });
   return product[0];

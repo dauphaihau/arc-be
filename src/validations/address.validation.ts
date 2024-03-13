@@ -17,7 +17,6 @@ export const addressValidation = {
     params: addressSchema.pick({ id: true }),
   }),
   getAddresses: z.object({
-    // params: addressSchema.pick({ id: true }),
     query: mixBaseQueryOptionsSchema(
       addressSchema.pick({ is_primary: true })
     ),

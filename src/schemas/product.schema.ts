@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { productInventorySchema } from './product-inventory.schema';
 import {
   PRODUCT_STATES,
   PRODUCT_WHO_MADE,
@@ -117,3 +118,19 @@ export const productStateUserCanModify = z.union([
   z.literal(PRODUCT_STATES.INACTIVE),
   z.literal(PRODUCT_STATES.DRAFT),
 ]).default(PRODUCT_STATES.ACTIVE);
+
+
+export const createProductSchema = productSchema.omit({ 
+  id: true,
+  shop: true,
+  views: true,
+  rating_average: true,
+  inventory: true,
+  // variants: true,
+}).merge(
+  productInventorySchema.pick({ price: true, stock: true, sku: true })
+).merge(
+  z.object({
+    variants: z.array(z.any()),
+  })
+);

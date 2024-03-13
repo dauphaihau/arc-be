@@ -1,5 +1,5 @@
 import {
-  Model, FilterQuery
+  Model, FilterQuery, Document
 } from 'mongoose';
 import { z } from 'zod';
 import { IOrder } from './order';
@@ -66,7 +66,7 @@ export type IVariantCreateProduct = Omit<IProductVariant, 'variant_options'> & {
   variant_options: VariantOption[];
 } & Partial<IProductInventoryCanModify>;
 
-export type CreateProductPayload =
+export type CreateProductBody =
   Omit<IProduct, 'id' | 'rating_average' | 'views' | 'state' | 'variants'>
   & {
     state: PRODUCT_STATES_USER_CAN_MODIFY
@@ -86,7 +86,7 @@ export type DeleteProductParams = Partial<Pick<IProduct, 'id'>>;
 
 export type UpdateProductParams = Partial<Pick<IProduct, 'id' | 'shop'>>;
 
-export type UpdateProductPayload = Omit<IProduct, 'id' | 'shop' | 'state'> & {
+export type UpdateProductBody = Omit<IProduct, 'id' | 'shop' | 'state'> & {
   state: PRODUCT_STATES_USER_CAN_MODIFY
 } & Partial<IProductInventoryCanModify>;
 
@@ -103,7 +103,7 @@ type IVariantGetProducts = Omit<IProductVariant, 'variant_options'> & {
 export type ResponseGetProducts = Override<IProduct, {
   variants?: IVariantGetProducts[]
   inventory: IProductInventory
-  shop: IShop
+  shop: IShop & Document
   summary_inventory: Record<
   'lowest_price' | 'highest_price' | 'stock'
   ,number>

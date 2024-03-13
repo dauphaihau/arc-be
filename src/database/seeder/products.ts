@@ -9,7 +9,7 @@ import {
   Product, ProductInventory, Category, Attribute
 } from '@/models';
 
-const productAmountPerShop = 10;
+const productAmountPerShop = 50;
 
 function getRandomInt(max) {
   return Math.floor(Math.random() * max);

@@ -1,5 +1,4 @@
 import express from 'express';
-import { productValidation } from '@/validations/product.validation';
 import { shopValidation, memberValidation, couponValidation } from '@/validations';
 import {
   productController, shopController, memberController, couponController
@@ -54,27 +53,27 @@ router
 router
   .route('/:shop/products')
   .post(
-    // validate(productValidation.createProduct),
+    validate(shopValidation.createProductByShop),
     auth('createProduct'),
-    productController.createProduct
+    productController.createProductByShop
   )
-  .get(validate(productValidation.getProducts), productController.getProductsByShop);
+  .get(validate(shopValidation.getProductsByShop), productController.getProductsByShop);
 
 router
   .route('/:shop/products/:id')
   .get(
-    validate(productValidation.getProduct),
-    productController.getProduct
+    validate(shopValidation.getDetailProductByShop),
+    productController.getDetailProduct
   )
   .patch(
-    validate(productValidation.updateProduct),
+    validate(shopValidation.updateProductByShop),
     auth('updateProduct'),
-    productController.updateProduct
+    productController.updateProductByShop
   )
   .delete(
-    validate(productValidation.deleteProduct),
+    validate(shopValidation.deleteProductByShop),
     auth('deleteProduct'),
-    productController.deleteProduct
+    productController.deleteProductByShop
   );
 
 // Coupon

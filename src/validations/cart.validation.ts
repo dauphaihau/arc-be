@@ -16,7 +16,7 @@ export const cartValidation = {
           shop: true,
           coupon_codes: true,
           note: true,
-        })),
+        })).optional(),
       })
       .strict()
       .refine((val) => {
@@ -25,7 +25,7 @@ export const cartValidation = {
     ,
   }),
   deleteProduct: z.object({
-    body: productCartSchema
+    query: productCartSchema
       .pick({ inventory: true })
       .strict(),
   }),

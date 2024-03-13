@@ -3,7 +3,8 @@ import { Request } from 'express';
 import {
   CreateCouponParams,
   CreateCouponPayload,
-  DeleteCouponParams, GetCouponsParams, GetCouponParams, UpdateCouponParams,
+  DeleteCouponParams, GetCouponsQueryParams, GetCouponParams, UpdateCouponParams,
+  GetCouponsParams,
   UpdateCouponPayload
 } from '@/interfaces/models/coupon';
 import { couponService } from '@/services';
@@ -30,9 +31,10 @@ const getCoupon = catchAsync(async (
 });
 
 const getCouponsByShop = catchAsync(async (
-  req: Request<GetCouponsParams>,
+  req: Request<GetCouponsParams, unknown, unknown, GetCouponsQueryParams>,
   res
 ) => {
+
   const filter = pick(
     {
       ...req.query,
@@ -40,6 +42,9 @@ const getCouponsByShop = catchAsync(async (
     },
     ['shop', 'code']
   );
+  if (req.query?.is_auto_sale) {
+    filter['is_auto_sale'] = req.query.is_auto_sale.toString() === 'true';
+  }
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
   const result = await couponService.queryCoupons(filter, options);
   res.send(result);

@@ -9,14 +9,15 @@ import {
 import { PRODUCT_CONFIG } from '@/config/enums/product';
 import { Coupon, Product } from '@/models';
 
-const couponAmountPerShop = 10;
+const couponAmountPerShop = 50;
 const limitApplyCoupon = 3;
 
 const initBaseCoupon = async (
   shop,
   type,
   min_order_type = COUPON_MIN_ORDER_TYPES.NONE,
-  applies_to = COUPON_APPLIES_TO.ALL
+  applies_to = COUPON_APPLIES_TO.ALL,
+  isAutoSale = false
 ) => {
 
   const max_uses_per_user = faker.number.int({
@@ -46,6 +47,8 @@ const initBaseCoupon = async (
 
     start_date: moment().add(start_date, 'days'),
     end_date: moment().add(end_date, 'days'),
+
+    is_auto_sale: isAutoSale,
   };
 
   if (type === COUPON_TYPES.PERCENTAGE) {
@@ -90,12 +93,14 @@ export async function generateCouponDB(shops) {
             initBaseCoupon(
               shop, COUPON_TYPES.FIXED_AMOUNT,
               COUPON_MIN_ORDER_TYPES.ORDER_TOTAL,
-              COUPON_APPLIES_TO.SPECIFIC
+              COUPON_APPLIES_TO.SPECIFIC,
+              true
             ) :
             initBaseCoupon(
               shop, COUPON_TYPES.PERCENTAGE,
               COUPON_MIN_ORDER_TYPES.NUMBER_OF_PRODUCTS,
-              COUPON_APPLIES_TO.SPECIFIC
+              COUPON_APPLIES_TO.SPECIFIC,
+              true
             )
       );
       // products.push(initBaseCoupon(shop));

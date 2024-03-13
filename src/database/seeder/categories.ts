@@ -4,7 +4,7 @@ const categories = [
   {
     name: 'Clothing',
     rank: 1,
-    relative_url: '',
+    relative_url_image: 'categories/clothing.jpg',
     attributes: [
       {
         name: 'Brand',
@@ -50,11 +50,48 @@ const categories = [
         relative_url_image: 'categories/women-fasion.jpg',
         sub: [
           {
+            name: 'Sweaters',
+            attributes: [
+              {
+                name: 'Material',
+                options: ['Cotton', 'Linen'],
+              },
+            ],
+          },
+          {
             name: 'Dresses',
             attributes: [
               {
                 name: 'Material',
                 options: ['Cotton', 'Linen'],
+              },
+            ],
+          },
+          {
+            name: 'Tees',
+            sub: [
+              {
+                name: 'T-shirts',
+                sub: [
+                  {
+                    name: 'Graphic Tee',
+                    attributes: [
+                      {
+                        name: 'Material',
+                        options: ['Cotton', 'Linen'],
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                name: 'Polos',
+                attributes: [
+                  {
+                    name: 'Material',
+                    options: ['Cotton', 'Linen'],
+                  },
+                ],
               },
             ],
           },
@@ -74,6 +111,7 @@ const categories = [
   {
     name: 'Accessories',
     rank: 2,
+    relative_url_image: 'categories/accessories.jpeg',
     attributes: [
       {
         name: 'Brands',
@@ -81,9 +119,13 @@ const categories = [
       },
     ],
     sub: [
-      { name: 'Hat & Cap' },
+      {
+        name: 'Hat & Cap',
+        relative_url_image: 'categories/hat.webp',
+      },
       {
         name: 'Bag',
+        relative_url_image: 'categories/bag.webp',
         sub: [
           { name: 'Totes' },
           { name: 'Wallet' },
@@ -94,6 +136,7 @@ const categories = [
   {
     name: 'Electronics',
     rank: 3,
+    relative_url_image: 'categories/electronics.jpg',
     attributes: [
       {
         name: 'Brands',
@@ -101,15 +144,28 @@ const categories = [
       },
     ],
     sub: [
-      { name: 'Camera' },
-      { name: 'Video Games' },
-      { name: 'Ebook Readers' },
-      { name: 'Headphones' },
+      {
+        name: 'Camera',
+        relative_url_image: 'categories/camera.webp',
+      },
+      {
+        name: 'Video Games',
+        relative_url_image: 'categories/toy-video-games.webp',
+      },
+      {
+        name: 'Ebook Readers',
+        relative_url_image: 'categories/ebook-reader.webp',
+      },
+      {
+        name: 'Headphones',
+        relative_url_image: 'categories/headphone.jpg',
+      },
     ],
   },
   {
     name: 'Art',
     rank: 4,
+    relative_url_image: 'categories/art.jpg',
     attributes: [
       {
         name: 'Brands',
@@ -117,19 +173,28 @@ const categories = [
       },
     ],
     sub: [
-      { name: 'Crafting' },
-      { name: 'Painting' },
+      {
+        name: 'Crafting',
+        relative_url_image: 'categories/crafting.webp',
+      },
+      {
+        name: 'Painting',
+        relative_url_image: 'categories/painting.webp',
+      },
     ],
   },
   {
     name: 'Home',
     rank: 5,
+    relative_url_image: 'categories/home.jpg',
     sub: [
       {
         name: 'Furniture',
+        relative_url_image: 'categories/furniture.webp',
         sub: [
           {
             name: 'Table',
+            relative_url_image: 'categories/table.jpg',
             attributes: [
               {
                 name: 'Brand',
@@ -141,9 +206,11 @@ const categories = [
       },
       {
         name: 'Bathroom',
+        relative_url_image: 'categories/bathroom.jpg',
         sub: [
           {
             name: 'Towel',
+            relative_url_image: 'categories/towel.jpg',
           },
         ],
       },
@@ -152,9 +219,16 @@ const categories = [
   {
     name: 'Toys & Games',
     rank: 6,
+    relative_url_image: 'categories/toy-video-games.webp',
     sub: [
-      { name: 'Games' },
-      { name: 'Puppets' },
+      {
+        name: 'Games',
+        relative_url_image: 'categories/toy-video-games.webp',
+      },
+      {
+        name: 'Puppets',
+        relative_url_image: 'categories/puppets.webp',
+      },
     ],
   },
 ];
@@ -176,43 +250,38 @@ export async function generateCategoriesDB() {
   await Promise.all(
     categories.map(async (rootCategory, indexRoot) => {
 
-      const rootCategoryCreated = await createCategory(null, rootCategory.name, indexRoot + 1);
+      const rootCategoryCreated = await createCategory(null,
+        rootCategory.name,
+        indexRoot + 1,
+        rootCategory?.relative_url_image
+      );
       if (rootCategory?.attributes) {
         await createAttributes(rootCategoryCreated.id, rootCategory.attributes);
       }
 
-      if (rootCategory?.sub && rootCategoryCreated) {
-        await Promise.all(
-          rootCategory.sub.map(async (subCategory1, indexCategory1) => {
-            const subCategory1Created = await createCategory(
-              rootCategoryCreated.id,
-              subCategory1.name,
-              indexCategory1 + 1
-              // subCategory1?.relative_url_image
-            );
-
-            if (subCategory1?.attributes) {
-              await createAttributes(subCategory1Created.id, subCategory1.attributes);
-            }
-
-            if (subCategory1?.sub && subCategory1Created) {
-              await Promise.all(
-                subCategory1.sub.map(async (subCategory2, indexCategory2) => {
-                  const subCategory2Created = await createCategory(
-                    subCategory1Created.id,
-                    subCategory2.name,
-                    indexCategory2 + 1
-                  );
-
-                  if (subCategory2?.attributes) {
-                    await createAttributes(subCategory2Created.id, subCategory2.attributes);
-                  }
-                })
+      async function initDeepCategories(parentCategory, parentCreated) {
+        if (parentCategory?.sub && parentCreated) {
+          await Promise.all(
+            parentCategory.sub.map(async (subCategory, indexCategory) => {
+              const subCategoryCreated = await createCategory(
+                parentCreated.id,
+                subCategory.name,
+                indexCategory + 1,
+                subCategory?.relative_url_image
               );
-            }
-          })
-        );
+
+              if (subCategory?.attributes) {
+                await createAttributes(subCategoryCreated.id, subCategory.attributes);
+              }
+
+              if (subCategory?.sub && subCategoryCreated) {
+                await initDeepCategories(subCategory, subCategoryCreated);
+              }
+            })
+          );
+        }
       }
+      await initDeepCategories(rootCategory, rootCategoryCreated);
     })
   );
 }

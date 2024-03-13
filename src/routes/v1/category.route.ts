@@ -8,15 +8,12 @@ router
   .get(
     categoryController.getCategories
   )
+  .delete(
+    categoryController.getSearchCategories
+  )
   .post(
     categoryController.createRootOrSubCategory
   );
-
-// router
-//   .route('/:id')
-//   .get(
-//     categoryController.getCategories
-//   );
 
 // Attributes
 router

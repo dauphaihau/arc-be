@@ -49,7 +49,7 @@ const productInventorySchema = new Schema<IProductInventory, IProductInventoryMo
     },
     price: {
       type: Number,
-      min: 0,
+      min: PRODUCT_CONFIG.MIN_PRICE,
       max: PRODUCT_CONFIG.MAX_PRICE,
       required: true,
     },

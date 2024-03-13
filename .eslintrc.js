@@ -42,7 +42,7 @@ module.exports = {
     '@stylistic/max-statements-per-line': ['error', { max: 1 }],
     '@stylistic/max-len': ['error',
       {
-        code: 100,
+        code: 110,
         ignoreUrls: true,
         ignoreStrings: true,
         ignoreComments: true,

@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import { Document, Schema, model } from 'mongoose';
 import { CATEGORY_CONFIG } from '@/config/enums/category';
 import { toJSON } from '@/models/plugins';
 import { ICategory } from '@/interfaces/models/category';
@@ -30,7 +30,24 @@ const categorySchema = new Schema<ICategory>(
   }
 );
 
+categorySchema.post(['find', 'findOne', 'findOneAndUpdate'], function (res) {
+  if (!this.mongooseOptions().lean) {
+    return;
+  }
+  if (Array.isArray(res)) {
+    res.forEach(transformDoc);
+    return;
+  }
+  transformDoc(res);
+});
+
 // Plugins
 categorySchema.plugin(toJSON);
+
+function transformDoc(doc: Document) {
+  doc.id = doc._id;
+  delete doc._id;
+  delete doc.__v;
+}
 
 export const Category = model<ICategory>('Category', categorySchema);

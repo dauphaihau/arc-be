@@ -115,7 +115,9 @@ export const couponValidation = {
     query: mixBaseQueryOptionsSchema(
       couponSchema.pick({
         code: true,
-      })
+      }).merge(z.object({
+        is_auto_sale: z.string(),
+      }))
     ),
   }),
   getCoupon: z.object({

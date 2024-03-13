@@ -20,6 +20,8 @@ export type CreateCouponParams = Partial<Pick<ICoupon, 'shop'>>;
 
 export type CreateCouponPayload = Omit<ICoupon, 'id'>;
 
+export type GetCouponsQueryParams = Partial<Pick<ICoupon, 'is_auto_sale'>>;
+
 export type GetCouponsParams = Partial<Pick<ICoupon, 'shop'>>;
 
 export type GetCouponParams = Partial<Pick<ICoupon, 'id'>>;
