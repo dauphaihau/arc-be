@@ -100,12 +100,12 @@ const populateCart = async (cart: ICart) => {
       select: 'product variant stock price',
       populate: {
         path: 'product',
-        select: 'images title',
+        select: 'images title variant_group_name sub_variant_group_name',
       },
     },
     {
       path: 'items.products.variant',
-      select: 'variant_group_name sub_variant_group_name',
+      select: 'variant_name',
     },
   ]);
 };

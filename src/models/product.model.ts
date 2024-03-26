@@ -5,7 +5,8 @@ import {
   PRODUCT_REGEX_SLUG,
   PRODUCT_REGEX_NOT_URL,
   PRODUCT_CONFIG,
-  PRODUCT_VARIANT_TYPES, PRODUCT_WHO_MADE
+  PRODUCT_VARIANT_TYPES,
+  PRODUCT_WHO_MADE
 } from '@/config/enums/product';
 import {
   IProductModel,
@@ -76,8 +77,24 @@ const productSchema = new Schema<IProduct, IProductModel>(
       enum: Object.values(PRODUCT_VARIANT_TYPES),
       default: PRODUCT_VARIANT_TYPES.NONE,
     },
+    variant_group_name: {
+      type: String,
+      max: PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME,
+      required: function (this: IProduct) {
+        return this.variant_type === PRODUCT_VARIANT_TYPES.SINGLE ||
+          this.variant_type === PRODUCT_VARIANT_TYPES.COMBINE;
+      },
+    },
+    variant_sub_group_name: {
+      type: String,
+      max: PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME,
+      required: function (this: IProduct) {
+        return this.variant_type === PRODUCT_VARIANT_TYPES.COMBINE;
+      },
+    },
     variants: {
       type: [{ type: Schema.Types.ObjectId, ref: 'product_variant' }],
+      default: [],
     },
     attributes: {
       type: [attributeSchema],
@@ -109,7 +126,6 @@ const productSchema = new Schema<IProduct, IProductModel>(
     },
     tags: {
       type: [String],
-      min: PRODUCT_CONFIG.MIN_TAGS,
       max: PRODUCT_CONFIG.MAX_TAGS,
       default: [],
     },

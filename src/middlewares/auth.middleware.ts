@@ -47,6 +47,7 @@ const verifyCallback = (
 
 export const auth = (...requiredRights: string[]) => {
   return async (req: IParamsRequest<VerifyCbParams>, res: Response, next: NextFunction) => {
+    // eslint-disable-next-line promise/avoid-new
     return new Promise((resolve, reject) => {
       passport.authenticate(
         'jwt',

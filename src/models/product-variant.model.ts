@@ -12,21 +12,13 @@ import {
 // define Variant Option Schema
 const productVariantOptSchema = new Schema<IProductVariantOpt>(
   {
+    variant: {
+      type: Schema.Types.ObjectId,
+      ref: 'product_variant',
+    },
     inventory: {
       type: Schema.Types.ObjectId,
       ref: 'product_inventory',
-    },
-    variant_name: {
-      type: String,
-      max: PRODUCT_CONFIG.MAX_CHAR_VARIANT_NAME,
-    },
-    image_relative_url: {
-      type: String,
-      validate(value: string) {
-        if (!value.match(PRODUCT_REGEX_NOT_URL)) {
-          throw new Error('should not absolute url');
-        }
-      },
     },
   }, {
     timestamps: true,
@@ -45,15 +37,6 @@ const productVariantSchema = new Schema<IProductVariant>(
     inventory: {
       type: Schema.Types.ObjectId,
       ref: 'product_inventory',
-    },
-    variant_group_name: {
-      type: String,
-      max: PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME,
-      required: true,
-    },
-    sub_variant_group_name: {
-      type: String,
-      max: PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME,
     },
     variant_name: {
       type: String,

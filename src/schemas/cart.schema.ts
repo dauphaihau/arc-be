@@ -6,9 +6,10 @@ import { PRODUCT_CONFIG } from '@/config/enums/product';
 import { objectIdSchema } from '@/schemas/sub/objectId.schema';
 
 export const productCartSchema = z.object({
+  id: objectIdSchema,
   inventory: objectIdSchema,
   variant: objectIdSchema.optional(),
-  quantity: z.number().max(PRODUCT_CONFIG.MAX_QUANTITY),
+  quantity: z.number().max(PRODUCT_CONFIG.MAX_STOCK),
   is_select_order: z
     .boolean()
     .default(true)
@@ -31,5 +32,4 @@ export const cartSchema = z.object({
   items: z
     .array(itemCartSchema)
     .max(CART_CONFIG.MAX_ITEMS),
-  // count_products: z.number().max(20),
 });

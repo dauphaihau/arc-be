@@ -21,7 +21,7 @@ describe('Auth routes', () => {
       };
     });
 
-    test('should return 201 and successfully register user if request data is ok', async () => {
+    test('should return 201 and successfully register user if request data-seed is ok', async () => {
       const res = await request(app).post('/v1/auth/register')
         .send(newUser)
         .expect(StatusCodes.CREATED);

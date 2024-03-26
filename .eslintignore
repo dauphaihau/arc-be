@@ -2,5 +2,5 @@ node_modules
 dist
 pnpm-lock.yaml
 coverage
-data
+src/database
 *.config.js

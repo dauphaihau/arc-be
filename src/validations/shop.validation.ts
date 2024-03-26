@@ -1,12 +1,10 @@
 import { z } from 'zod';
-import { mixBaseQueryOptionsSchema } from '@/schemas/sub/queryOptions.schema';
 import {
   shopSchema,
   productSchema,
-  productImageSchema
+  createProductBodySchema, updateProductSchema
 } from '@/schemas';
-import { productStateUserCanModify } from '@/schemas/product.schema';
-import { PRODUCT_CONFIG } from '@/config/enums/product';
+import { mixBaseQueryOptionsSchema } from '@/schemas/sub/queryOptions.schema';
 
 export const shopValidation = {
   getShops: z.object({
@@ -25,36 +23,23 @@ export const shopValidation = {
   // Product
   createProductByShop: z.object({
     params: productSchema.pick({ shop: true }),
-    body: productSchema
-      .omit({
-        id: true,
-        shop: true,
-        views: true,
-        rating_average: true,
-        inventory: true,
-      })
-    // override prop images
-      .merge(
-        z.object({
-          images: z
-            .array(productImageSchema
-              .omit({ id: true })
-              .strict()
-            )
-            .max(PRODUCT_CONFIG.MAX_IMAGES),
-          state: productStateUserCanModify,
-          variants: z.array(z.any()),
-        })
-      )
-    //     .merge(
-    //       productInventorySchema.pick({
-    //         price: true,
-    //         stock: true,
-    //         sku: true,
-    //       })
-    // )
-      .strict(),
+    body: createProductBodySchema.omit({ shop: true }),
+    // .superRefine((val, ctx) => {
+    //   if (val.variant_type === PRODUCT_VARIANT_TYPES.NONE && !val?.price) {
+    //     ctx.addIssue({
+    //       code: z.ZodIssueCode.custom,
+    //       message: 'require price',
+    //     });
+    //   }
+    //   if (val.variant_type === PRODUCT_VARIANT_TYPES.COMBINE && !val?.sub_variant_names) {
+    //     ctx.addIssue({
+    //       code: z.ZodIssueCode.custom,
+    //       message: 'require sub_variant_names',
+    //     });
+    //   }
+    // }),
   }),
+
   getProductsByShop: z.object({
     params: productSchema.pick({ shop: true }),
     query: mixBaseQueryOptionsSchema(
@@ -75,24 +60,6 @@ export const shopValidation = {
   }),
   updateProductByShop: z.object({
     params: productSchema.pick({ shop: true, id: true }),
-    body: productSchema
-      .omit({
-        id: true,
-        shop: true,
-        category: true,
-        views: true,
-        rating_average: true,
-      })
-    // override prop images
-      .merge(
-        z.object({
-          images: z
-            .array(productImageSchema.partial().strict())
-            .max(PRODUCT_CONFIG.MAX_IMAGES),
-          state: productStateUserCanModify,
-        })
-      )
-      .strict()
-      .partial(),
+    body: updateProductSchema,
   }),
 };

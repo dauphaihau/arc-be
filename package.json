@@ -11,7 +11,7 @@
     "seed": "ts-node --files --transpile-only -r tsconfig-paths/register src/database/seeder/db-seeder.ts",
     "lint": "eslint .",
     "lint:src": "eslint src/**/*.ts",
-    "lint:fix": "eslint . --fix",
+    "lint:fix": "eslint . --fix --quiet",
     "test": "vitest --run tests/integration tests/unit",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",

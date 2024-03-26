@@ -4,7 +4,10 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import {
   PutObjectCommand,
   DeleteObjectCommand,
-  GetObjectCommand, DeleteObjectsCommand
+  CopyObjectCommand,
+  ListObjectsCommandInput,
+  ListObjectsCommand, CopyObjectCommandInput,
+  GetObjectCommand, DeleteObjectsCommand, GetObjectCommandOutput
 } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import { ApiError } from '@/utils';
@@ -13,12 +16,12 @@ import { FolderObjectS3 } from '@/interfaces/common/upload';
 
 const Bucket = env.aws_s3.bucket;
 
-async function getObject(Key: string) {
-  const command = new GetObjectCommand({ Bucket, Key });
-
+async function getObject(Key: string): Promise<GetObjectCommandOutput> {
   try {
+    const command = new GetObjectCommand({ Bucket, Key });
     const response = await awsS3Client.send(command);
     log.debug('response: %o', response);
+    return response;
   } catch (err) {
     log.error(err);
     throw new ApiError(
@@ -31,7 +34,7 @@ async function getObject(Key: string) {
 async function getPresignedUrl(folder: FolderObjectS3, objectId: ObjectId) {
   const key = `${folder}/${objectId}/${uuidv4()}.jpeg`;
   const command = new PutObjectCommand({
-    Bucket: env.aws_s3.bucket,
+    Bucket,
     Key: key,
   });
   const presignedUrl = await getSignedUrl(awsS3Client, command, { expiresIn: 3600 });
@@ -39,14 +42,13 @@ async function getPresignedUrl(folder: FolderObjectS3, objectId: ObjectId) {
 }
 
 async function deleteObject(key: string) {
-  await getObject(key);
-
-  const command = new DeleteObjectCommand({
-    Bucket: env.aws_s3.bucket,
-    Key: key,
-  });
-
   try {
+    await getObject(key);
+
+    const command = new DeleteObjectCommand({
+      Bucket,
+      Key: key,
+    });
     const response = await awsS3Client.send(command);
     log.debug('response: %o', response);
   } catch (err) {
@@ -59,15 +61,14 @@ async function deleteObject(key: string) {
 }
 
 async function deleteMultiObject(keys: string[]) {
-  log.debug('keys %o', keys);
-  const command = new DeleteObjectsCommand({
-    Bucket,
-    Delete: {
-      Objects: keys.map((Key) => ({ Key })),
-    },
-  });
-
   try {
+    log.debug('keys %o', keys);
+    const command = new DeleteObjectsCommand({
+      Bucket,
+      Delete: {
+        Objects: keys.map((Key) => ({ Key })),
+      },
+    });
     const response = await awsS3Client.send(command);
     log.debug('response deleted objects s3 %o', response);
   } catch (err) {
@@ -78,6 +79,16 @@ async function deleteMultiObject(keys: string[]) {
     );
   }
 }
+
+export const getListObjects = async (input: ListObjectsCommandInput) => {
+  const command = new ListObjectsCommand(input);
+  return awsS3Client.send(command);
+};
+
+export const copyObject = async (input: CopyObjectCommandInput) => {
+  const command = new CopyObjectCommand(input);
+  return awsS3Client.send(command);
+};
 
 export const awsS3Service = {
   getPresignedUrl,

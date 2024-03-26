@@ -22,7 +22,7 @@ const productCartSchema = new Schema<IProductCart>(
     },
     quantity: {
       type: Number,
-      max: PRODUCT_CONFIG.MAX_QUANTITY,
+      max: PRODUCT_CONFIG.MAX_STOCK,
     },
     is_select_order: {
       type: Boolean,

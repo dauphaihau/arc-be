@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import { z } from 'zod';
 import { FilterQuery, Schema } from 'mongoose';
 import { Override } from '@/interfaces/utils';
@@ -29,7 +27,7 @@ export const paginate = (schema: Schema) => {
   /**
    * Query for documents with pagination
    * [options.sortBy] - Sorting criteria using the format: sortField:(desc|asc). Multiple sorting criteria should be separated by commas (,)
-   * [options.populate] - Populate data fields. Hierarchy of fields should be separated by (.). Multiple populating criteria should be separated by commas (,)
+   * [options.populate] - Populate data-seed fields. Hierarchy of fields should be separated by (.). Multiple populating criteria should be separated by commas (,)
    * [options.limit] - Maximum number of results per page (default = 10)
    * [options.page] - Current page (default = 1)
    * [options.select] - Select/unselect fields ex: '-name,email' (starts with (-) will unselect name, otherwise will select)
@@ -87,6 +85,8 @@ export const paginate = (schema: Schema) => {
           populateOption
             .split('.')
             .reverse()
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-expect-error
             .reduce((a, b) => ({ path: b, populate: a }))
         );
       });

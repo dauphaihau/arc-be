@@ -39,7 +39,7 @@ const initBaseCoupon = async (
     max_uses_per_user,
     max_uses: faker.number.int({
       min: max_uses_per_user,
-      max: PRODUCT_CONFIG.MAX_QUANTITY,
+      max: PRODUCT_CONFIG.MAX_STOCK,
     }),
 
     min_order_type,

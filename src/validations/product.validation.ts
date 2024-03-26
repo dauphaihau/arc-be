@@ -10,7 +10,7 @@ export const productValidation = {
   }),
   getProductsByCategory: z.object({
     query: mixBaseQueryOptionsSchema(
-      productSchema.pick({ category: true })
+      productSchema.pick({ category: true, shop: true })
     ),
   }),
   getDetailProduct: z.object({

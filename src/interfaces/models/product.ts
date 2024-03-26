@@ -12,13 +12,13 @@ import {
   productVariantSchema,
   productInventorySchema,
   productVariantOptSchema,
-  productInventoryReservationSchema
+  productInventoryReservationSchema, createProductBodySchema
 } from '@/schemas';
 import {
   IBaseQueryOptions,
   IQueryResult
 } from '@/models/plugins/paginate.plugin';
-import { productStateUserCanModify } from '@/schemas/product.schema';
+import { updateProductSchema } from '@/schemas/product.schema';
 import { BaseQueryParamsGetList } from '@/interfaces/common/request';
 
 // ----- Base
@@ -30,16 +30,12 @@ export type IProductVariantOpt = z.infer<typeof productVariantOptSchema>;
 export type IProductAttribute = z.infer<typeof productAttributeSchema>;
 export type IProductInventoryReservationSchema = z.infer<typeof productInventoryReservationSchema>;
 
-// export type IPopulatedProduct = PopulatedDoc<IProduct>;
-
 export interface IProductModel extends Model<IProduct, unknown> {
   // eslint-disable-next-line @stylistic/max-len
   paginate: (filter: FilterQuery<IProduct>, options: IBaseQueryOptions) => Promise<IQueryResult<ResponseGetProducts>>;
 }
 
 export interface IProductInventoryModel extends Model<IProductInventory, unknown> {}
-
-export type PRODUCT_STATES_USER_CAN_MODIFY = z.infer<typeof productStateUserCanModify>;
 
 // ------- API Request
 
@@ -56,25 +52,16 @@ export type ReservationInventoryPayload =
 
 export type CreateProductParams = Partial<Pick<IProduct, 'shop'>>;
 
-type IProductInventoryCanModify = Pick<IProductInventory, 'price' | 'stock' | 'sku'>;
+export type CreateProductBody = z.infer<typeof createProductBodySchema>;
 
-type VariantOption = Pick<IProductVariant, 'variant_name'> & {
-  inventory: IProductInventory
-} & Partial<IProductInventoryCanModify>;
-
-export type IVariantCreateProduct = Omit<IProductVariant, 'variant_options'> & {
-  variant_options: VariantOption[];
-} & Partial<IProductInventoryCanModify>;
-
-export type CreateProductBody =
-  Omit<IProduct, 'id' | 'rating_average' | 'views' | 'state' | 'variants'>
-  & {
-    state: PRODUCT_STATES_USER_CAN_MODIFY
-    variants?: IVariantCreateProduct[]
-  }
-  & Partial<IProductInventoryCanModify>;
+export type CreateProductVariantBody = Override<IProductVariant, {
+  id?: IProductVariant['id']
+  variant_options?: Omit<IProductVariantOpt, 'id'>[]
+}>;
 
 export type GetProductParams = Partial<Pick<IProduct, 'id'>>;
+
+export type GetDetailProductByShopParams = Partial<Pick<IProduct, 'id' | 'shop'>>;
 
 export type GetProductByShopParams = Partial<Pick<IProduct, 'shop'>>;
 
@@ -86,10 +73,7 @@ export type DeleteProductParams = Partial<Pick<IProduct, 'id'>>;
 
 export type UpdateProductParams = Partial<Pick<IProduct, 'id' | 'shop'>>;
 
-export type UpdateProductBody = Omit<IProduct, 'id' | 'shop' | 'state'> & {
-  state: PRODUCT_STATES_USER_CAN_MODIFY
-} & Partial<IProductInventoryCanModify>;
-
+export type UpdateProductBody = z.infer<typeof updateProductSchema>;
 
 // ------- API Response
 

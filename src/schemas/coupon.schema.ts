@@ -51,8 +51,8 @@ export const couponSchema = z.object({
   max_uses: z
     .number()
     .min(1)
-    .max(PRODUCT_CONFIG.MAX_QUANTITY,
-      `the maximum number cannot exceed ${PRODUCT_CONFIG.MAX_QUANTITY}`),
+    .max(PRODUCT_CONFIG.MAX_STOCK,
+      `the maximum number cannot exceed ${PRODUCT_CONFIG.MAX_STOCK}`),
   min_order_type: z
     .nativeEnum(COUPON_MIN_ORDER_TYPES)
     .default(COUPON_MIN_ORDER_TYPES.NONE),

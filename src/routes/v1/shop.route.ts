@@ -62,8 +62,9 @@ router
 router
   .route('/:shop/products/:id')
   .get(
+    auth('detailProduct'),
     validate(shopValidation.getDetailProductByShop),
-    productController.getDetailProduct
+    productController.getDetailProductByShop
   )
   .patch(
     validate(shopValidation.updateProductByShop),

@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import express, { Express } from 'express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';

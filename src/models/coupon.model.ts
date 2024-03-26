@@ -71,7 +71,7 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
     },
     max_uses: {
       type: Number,
-      max: PRODUCT_CONFIG.MAX_QUANTITY,
+      max: PRODUCT_CONFIG.MAX_STOCK,
       required: true,
     },
     max_uses_per_user: {
