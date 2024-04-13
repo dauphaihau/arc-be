@@ -1,4 +1,4 @@
-import { Model } from 'mongoose';
+import { Model, Document } from 'mongoose';
 import { z } from 'zod';
 import { ILineItemOrder } from '@/interfaces/models/order';
 import { IProductInventory, IProduct } from '@/interfaces/models/product';
@@ -9,7 +9,7 @@ import { IShop } from '@/interfaces/models/shop';
 
 // ------  Base
 
-export type ICart = z.infer<typeof cartSchema>;
+export type ICart = z.infer<typeof cartSchema> & Document;
 export type IItemCart = z.infer<typeof itemCartSchema>;
 export type IProductCart = z.infer<typeof productCartSchema>;
 
@@ -28,12 +28,6 @@ export type UpdateProductCartBody =
     additionInfoItems?: IAdditionInfoItem[]
   }
 ;
-
-export type IMinusQtyProdCart = {
-  shop: IShop['id'],
-  inventory: IProductInventory['id']
-  quantity: number
-};
 
 export type IItemCartPopulated = Override<IItemCart, {
   shop: IShop & { _id: IShop['id'] },

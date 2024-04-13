@@ -70,7 +70,6 @@ const updateOrderById = async (
  * 3. validate coupons & calculate discount total
  */
 
-// async function getSummaryOrder(cart: ICart, additionInfoItems?: IAdditionInfoItem[]) {
 async function getSummaryOrder(cart: ICartPopulated, additionInfoItems?: IAdditionInfoItem[]) {
   const { items, user } = cart;
   const summaryOrder = {
@@ -270,7 +269,7 @@ async function getSummaryOrder(cart: ICartPopulated, additionInfoItems?: IAdditi
  *
  */
 async function createOrderFromCart(
-  payload: CreateOrderFromCartBody,
+  body: CreateOrderFromCartBody,
   session: ClientSession
 ) {
   const {
@@ -278,20 +277,19 @@ async function createOrderFromCart(
     address,
     payment_type,
     additionInfoItems,
-  } = payload;
+  } = body;
 
   const cart = await cartService.getCartByUserId(user);
   if (!cart) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Cart not found');
   }
-  await cartService.populateCart(cart);
+  const cartPopulated = await cartService.populateCart(cart);
 
   const {
     summaryOrder,
     itemsSelected,
     itemNotSelected,
-    // @ts-expect-error:next-line
-  } = await getSummaryOrder(cart, additionInfoItems);
+  } = await getSummaryOrder(cartPopulated, additionInfoItems);
 
   if (summaryOrder.totalPrice > ORDER_CONFIG.MAX_ORDER_TOTAL) {
     throw new ApiError(StatusCodes.BAD_REQUEST,

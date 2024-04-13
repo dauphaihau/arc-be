@@ -9,7 +9,8 @@ export const transactionWrapper = async (
     await callback(session);
     await session.commitTransaction();
     await session.endSession();
-  } catch (err) {
+  }
+  catch (err) {
     await session.abortTransaction();
     await session.endSession();
     throw err;

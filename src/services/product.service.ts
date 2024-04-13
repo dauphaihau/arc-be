@@ -96,7 +96,8 @@ const generateCombineVariantProducts = async (
     variants[0].variant_options.map(async (subVariant) => {
       if (subVariant.variant) {
         variantsCache.set(subVariant.variant_name, subVariant.variant);
-      } else {
+      }
+      else {
         const variantCreated = await createProductVariant(
           {
             product: product.id,
@@ -454,7 +455,8 @@ const updateProduct = async (
                   );
 
                   // case variant child
-                } else {
+                }
+                else {
 
                   const inventoryIdsDelete: IProductVariant['inventory'][] = [];
 
@@ -574,7 +576,8 @@ const updateProduct = async (
       updateBody.images = updateBody.images.map((img, index) => ({
         ...img, rank: index + 1,
       }));
-    } else {
+    }
+    else {
       updateBody.images = product.images;
     }
   }

@@ -1,14 +1,14 @@
 import { ClientSession } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
 import {
-  CreateUserPayload,
-  UpdateUserPayload,
+  CreateUserBody,
+  UpdateUserBody,
   IUser
 } from '@/interfaces/models/user';
 import { User } from '@/models';
 import { ApiError } from '@/utils/ApiError';
 
-const createUser = async (userBody: CreateUserPayload, session?: ClientSession) => {
+const createUser = async (userBody: CreateUserBody, session?: ClientSession) => {
   if (await User.isEmailTaken(userBody.email)) {
     throw new ApiError(StatusCodes.CONFLICT, 'Email already taken');
   }
@@ -26,15 +26,23 @@ const getUserByEmail = async (email: IUser['email']) => {
 
 const updateUserById = async (
   userId: IUser['id'],
-  updateBody: UpdateUserPayload,
+  updateBody: UpdateUserBody,
   session: ClientSession
 ) => {
   const user = await getUserById(userId);
   if (!user) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
   }
-  if (updateBody.email && (await User.isEmailTaken(updateBody.email, userId))) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, 'Email already taken');
+  if (updateBody.email) {
+    if (await User.isEmailTaken(updateBody.email, userId)) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Email already taken');
+    }
+    updateBody.is_email_verified = false;
+  }
+  if (updateBody.market_preferences) {
+    updateBody.market_preferences = {
+      ...user.market_preferences, ...updateBody.market_preferences,
+    };
   }
   Object.assign(user, updateBody);
   await user.save({ session });

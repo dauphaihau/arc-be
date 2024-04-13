@@ -10,7 +10,8 @@ export const onEventWebhook = (req: Request) => {
   const sig = req.headers['stripe-signature'];
   try {
     return Stripe.webhooks.constructEvent(req.body, sig as string, env.stripe.webhook_secret);
-  } catch (err) {
+  }
+  catch (err) {
     throw new ApiError(StatusCodes.BAD_REQUEST, `Webhook Error: ${err}`);
   }
 };

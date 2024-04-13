@@ -16,6 +16,7 @@ module.exports = {
   ],
   plugins: ['@typescript-eslint', '@stylistic', 'import', 'promise'],
   rules: {
+    '@stylistic/brace-style': ['error', 'stroustrup', { allowSingleLine: true }],
     'no-console': 'error',
     'func-names': 'off',
     'no-return-await': 'error',

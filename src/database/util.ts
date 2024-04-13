@@ -16,10 +16,10 @@ export const copyFolderS3 = async (
 
     if (listObjectsResponse.Contents) {
       const fromObjectKeys = listObjectsResponse.Contents.map(content => content.Key);
-  
+
       for (const fromObjectKey of fromObjectKeys) {
         const toObjectKey = fromObjectKey && fromObjectKey.replace(fromFolderKey, toFolderKey);
-  
+
         await copyObject({
           Bucket: toBucket,
           CopySource: `${fromBucket}/${fromObjectKey}`,
@@ -61,4 +61,11 @@ export const deleteFolderS3 = async (key: string) => {
 
 export function getRandomInt(max: number) {
   return Math.floor(Math.random() * max);
+}
+
+export function capitalizeSentence(sentence: string) {
+  return sentence.replace(
+    /(^\w{1})|(\s+\w{1})/g,
+      letter => letter.toUpperCase()
+  );
 }

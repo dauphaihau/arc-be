@@ -22,7 +22,8 @@ async function getObject(Key: string): Promise<GetObjectCommandOutput> {
     const response = await awsS3Client.send(command);
     log.debug('response: %o', response);
     return response;
-  } catch (err) {
+  }
+  catch (err) {
     log.error(err);
     throw new ApiError(
       StatusCodes.INTERNAL_SERVER_ERROR,
@@ -51,7 +52,8 @@ async function deleteObject(key: string) {
     });
     const response = await awsS3Client.send(command);
     log.debug('response: %o', response);
-  } catch (err) {
+  }
+  catch (err) {
     log.error(err);
     throw new ApiError(
       StatusCodes.INTERNAL_SERVER_ERROR,
@@ -71,7 +73,8 @@ async function deleteMultiObject(keys: string[]) {
     });
     const response = await awsS3Client.send(command);
     log.debug('response deleted objects s3 %o', response);
-  } catch (err) {
+  }
+  catch (err) {
     log.error(err);
     throw new ApiError(
       StatusCodes.INTERNAL_SERVER_ERROR,

@@ -4,7 +4,9 @@ import { tokenSchema, userSchema } from '@/schemas';
 export const authValidation = {
   register: z.object({
     body: userSchema
-      .pick({ name: true, email: true, password: true })
+      .pick({
+        name: true, email: true, password: true, market_preferences: true,
+      })
       .strict(),
   }),
   login: z.object({

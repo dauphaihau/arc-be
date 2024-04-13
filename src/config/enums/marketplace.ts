@@ -1,0 +1,30 @@
+
+export enum MARKETPLACE_CURRENCIES {
+  USD = 'USD',
+  AUD = 'AUD',
+  EUR = 'EUR',
+  GBP = 'GBP',
+  CAD = 'CAD',
+  TWD = 'TWD' ,
+  JPY = 'JPY',
+  KRW = 'KRW',
+  HKD = 'HKD',
+  SGD = 'SGD',
+  VND = 'VND'
+}
+
+export enum MARKETPLACE_LANGUAGES {
+  EN = 'en',
+  LA = 'la',
+  FR = 'fr'
+}
+export enum MARKETPLACE_REGIONS {
+  UNITED_STATES = 'United States',
+  VIET_NAM = 'Vietnam'
+}
+
+export const MARKETPLACE_CONFIG = {
+  BASE_LANGUAGE: MARKETPLACE_LANGUAGES.EN,
+  BASE_REGION: MARKETPLACE_REGIONS.UNITED_STATES,
+  BASE_CURRENCY: MARKETPLACE_CURRENCIES.USD,
+};

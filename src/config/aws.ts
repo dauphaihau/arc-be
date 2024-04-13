@@ -14,7 +14,8 @@ export const aws = {
       if (err) {
         log.error(err);
         log.error(`Connect to bucket ${Bucket} on AWS S3 failed`);
-      } else {
+      }
+      else {
         log.info(`Connected to bucket ${Bucket} on AWS S3`);
       }
     });

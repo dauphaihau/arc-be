@@ -3,7 +3,7 @@ import { productCartSchema, lineItemSchema } from '@/schemas';
 
 export const cartValidation = {
   addProduct: z.object({
-    body: productCartSchema.strict(),
+    body: productCartSchema.omit({ id: true }).strict(),
   }),
   updateProduct: z.object({
     body: z

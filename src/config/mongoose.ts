@@ -7,7 +7,8 @@ export const mongoose = {
     try {
       await connect(env.mongoose.url);
       log.info('Connected to MongoDB');
-    } catch (error) {
+    }
+    catch (error) {
       log.error(error);
       throw error;
     }
@@ -16,7 +17,8 @@ export const mongoose = {
   stop: async () => {
     try {
       return await connection.destroy();
-    } catch (error) {
+    }
+    catch (error) {
       log.error(error);
     }
   },

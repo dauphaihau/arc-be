@@ -2,6 +2,7 @@ import { Model, FilterQuery } from 'mongoose';
 import { z } from 'zod';
 import { IProductInventory } from './product';
 import { IAddress } from './address';
+import { MARKETPLACE_CURRENCIES } from '@/config/enums/marketplace';
 import { IAdditionInfoItem } from '@/interfaces/models/cart';
 import { ICoupon } from '@/interfaces/models/coupon';
 import { AtLeastOne, Override } from '@/interfaces/utils';
@@ -33,16 +34,19 @@ export type IGetSummaryOrderBody = {
 export type IGetCheckoutSessionUrlPayload = {
   newOrder: IOrder,
   userAddress: IAddress
+  currency: MARKETPLACE_CURRENCIES
 };
 
 export type CreateOrderForBuyNowBody = Pick<IOrder, 'user' | 'address' | 'payment_type'> & {
   additionInfoItems?: IAdditionInfoItem[]
   inventory: IProductInventory['id'],
   quantity: number,
+  currency?: MARKETPLACE_CURRENCIES
 };
 
 export type CreateOrderFromCartBody = Pick<IOrder, 'user' | 'address' | 'payment_type'> & {
   additionInfoItems?: IAdditionInfoItem[]
+  currency?: MARKETPLACE_CURRENCIES
 };
 
 export type IClearProductsReverseByOrder = Override<IOrder, {

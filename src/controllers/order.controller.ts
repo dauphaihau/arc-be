@@ -1,5 +1,6 @@
 import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { MARKETPLACE_CONFIG } from '@/config/enums/marketplace';
 import { PAYMENT_TYPES } from '@/config/enums/order';
 import {
   IGetOrderParams,
@@ -67,7 +68,8 @@ const createOrderFromCart = catchAsync(async (
     req.body.user = req.user.id;
     const result = await orderService.createOrderFromCart(req.body, session);
     if (req.body.payment_type === PAYMENT_TYPES.CARD) {
-      const checkoutSessionUrl = await stripeService.getCheckoutSessionUrl(req.user, result);
+      const currency = req.body.currency || MARKETPLACE_CONFIG.BASE_CURRENCY;
+      const checkoutSessionUrl = await stripeService.getCheckoutSessionUrl(req.user, { ...result, currency });
       res.status(StatusCodes.OK).send({ checkoutSessionUrl });
       return;
     }
@@ -83,7 +85,8 @@ const createOrderForBuyNow = catchAsync(async (
     req.body.user = req.user.id;
     const result = await orderService.createOrderForBuyNow(req.body, session);
     if (req.body.payment_type === PAYMENT_TYPES.CARD) {
-      const checkoutSessionUrl = await stripeService.getCheckoutSessionUrl(req.user, result);
+      const currency = req.body.currency || MARKETPLACE_CONFIG.BASE_CURRENCY;
+      const checkoutSessionUrl = await stripeService.getCheckoutSessionUrl(req.user, { ...result, currency });
       res.status(StatusCodes.OK).send({ checkoutSessionUrl });
       return;
     }

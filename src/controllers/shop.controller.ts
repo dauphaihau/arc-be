@@ -2,13 +2,13 @@ import { StatusCodes } from 'http-status-codes';
 import { log } from '@/config';
 import { IBodyRequest } from '@/interfaces/common/request';
 import { CreateShopPayload } from '@/interfaces/models/shop';
-import { shopService, memberService } from '@/services';
+import { shopService, memberService, userService } from '@/services';
 import { MEMBER_ROLES } from '@/config/enums/member';
 import {
   catchAsync, transactionWrapper, ApiError, pick
 } from '@/utils';
 import {
-  Shop, Member, Product, Coupon, ProductInventory, User
+  Shop, Member, Product, Coupon, ProductInventory
 } from '@/models';
 
 const createShop = catchAsync(async (
@@ -37,9 +37,10 @@ const createShop = catchAsync(async (
     }, session);
 
     // Attach shop to user
-    const updatedUser = await User.findOneAndUpdate({ _id: userId }, {
+    const updatedUser = await userService.updateUserById(userId, {
       shop: shop.id,
-    }, { session });
+    }, session);
+
     if (!updatedUser || updatedUser.id.toString() !== userId) {
       log.error('update user failed');
       throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR);

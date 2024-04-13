@@ -11,6 +11,12 @@ export const productValidation = {
   getProductsByCategory: z.object({
     query: mixBaseQueryOptionsSchema(
       productSchema.pick({ category: true, shop: true })
+        .merge(
+          z.object({
+            title: z.string(),
+            s: z.string(),
+          })
+        )
     ),
   }),
   getDetailProduct: z.object({

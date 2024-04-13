@@ -1,24 +1,22 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import mongoose, { ClientSession } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
-import { productService } from '@/services/product.service';
+import mongoose from 'mongoose';
 import { log } from '@/config';
-import { inventoryService } from '@/services/inventory.service';
 import {
   ICart,
   IItemCart,
-  IMinusQtyProdCart,
   IProductCart,
-  UpdateProductCartBody
+  UpdateProductCartBody,
+  ICartPopulated
 } from '@/interfaces/models/cart';
 import { Cart, ProductInventory, Product } from '@/models';
+import { inventoryService } from '@/services/inventory.service';
+import { productService } from '@/services/product.service';
 import { ApiError } from '@/utils';
 
 const getProductsForHeader = async (userId: ICart['user']) => {
   const limit = 3;
   const result = await Cart.aggregate([
-    { $match: { user: mongoose.Types.ObjectId(userId) } },
+    { $match: { user: new mongoose.Types.ObjectId(userId) } },
     { $unwind: '$items' },
     { $unwind: '$items.products' },
     { $sort: { 'items.products.createdAt': -1 } },
@@ -77,7 +75,7 @@ const getProductsForHeader = async (userId: ICart['user']) => {
       },
     },
   ]);
-  // log.debug('result %o', result);
+  // // log.debug('result %o', result);
   const resultAsObj = result[0];
   const restProducts = resultAsObj.countProducts - limit;
 
@@ -92,22 +90,24 @@ const getCartByUserId = async (userId: ICart['user']) => {
 };
 
 const populateCart = async (cart: ICart) => {
-// const populateCart = async (cart: ICartModel) => {
-  await cart?.populate('items.shop', 'shop_name');
-  await cart?.populate([
+  return cart.populate<ICartPopulated>([
+    {
+      path: 'items.shop',
+      select: 'shop_name',
+    },
     {
       path: 'items.products.inventory',
       select: 'product variant stock price',
       populate: {
         path: 'product',
-        select: 'images title variant_group_name sub_variant_group_name',
+        select: 'images title variant_type variant_group_name sub_variant_group_name',
       },
     },
     {
       path: 'items.products.variant',
       select: 'variant_name',
     },
-  ]);
+  ]).then(doc => doc);
 };
 
 async function createUserCart(
@@ -154,14 +154,14 @@ async function deleteProduct(
   const cartUpdated = await Cart.findOneAndUpdate(filter, update, options);
 
   if (cartUpdated) {
-    // log.debug('item-cart %o', cartUpdated);
+    log.debug('item-cart %o', cartUpdated);
     const itemCart = cartUpdated.items.find((item) => {
       if (item.shop && inventoryInDB.shop) {
         return item.shop.toString() === inventoryInDB.shop.toString();
       }
       return null;
     });
-    log.debug('item-cart %o', itemCart);
+    // log.debug('item-cart %o', itemCart);
     if (itemCart && !itemCart.products.length) {
       // log.info('pull item-shop cause by products is empty');
       const update = {
@@ -235,7 +235,7 @@ async function addProduct(userId: ICart['user'], payload: IProductCart) {
   const inventoryInDB = await inventoryService.getInventoryById(payload.inventory);
   if (payload?.variant) {
     const variantInDB = await productService.getProductVariantById(payload.variant);
-    log.debug('variant-in-db %o', variantInDB);
+    // log.debug('variant-in-db %o', variantInDB);
     if (
       !inventoryInDB || !variantInDB || !inventoryInDB?.product ||
       (variantInDB.product.toString() !== inventoryInDB.product.toString())
@@ -243,7 +243,7 @@ async function addProduct(userId: ICart['user'], payload: IProductCart) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'Product is invalid');
     }
   }
-  log.debug('inventory-in-db %o', inventoryInDB);
+  // log.debug('inventory-in-db %o', inventoryInDB);
 
   if (!inventoryInDB) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
@@ -253,9 +253,9 @@ async function addProduct(userId: ICart['user'], payload: IProductCart) {
   }
 
   const userCart = await getCartByUserId(userId);
-  log.debug('user-cart %o', userCart);
+  // log.debug('user-cart %o', userCart);
   if (!userCart || !userCart.items.length) {
-    log.info('none-user-cart');
+    // log.info('none-user-cart');
     return createUserCart(userId, inventoryInDB.shop, payload);
   }
 
@@ -265,7 +265,7 @@ async function addProduct(userId: ICart['user'], payload: IProductCart) {
     }
     return null;
   });
-  log.debug('item-cart %o', itemCart);
+  // log.debug('item-cart %o', itemCart);
   if (!itemCart) {
     return createUserCart(userId, inventoryInDB.shop, payload);
   }
@@ -273,7 +273,7 @@ async function addProduct(userId: ICart['user'], payload: IProductCart) {
   const productCart = itemCart.products.find((prod) => {
     return prod.inventory.toString() === inventoryInDB.id.toString();
   });
-  log.debug('product-cart %o', productCart);
+  // log.debug('product-cart %o', productCart);
   if (!productCart) {
     return Cart.findOneAndUpdate(
       {
@@ -309,41 +309,9 @@ async function addProduct(userId: ICart['user'], payload: IProductCart) {
     }
   );
 }
-
-async function minusQuantityProduct(
-  userId: ICart['user'],
-  payload: IMinusQtyProdCart,
-  session: ClientSession
-) {
-  const { shop, inventory, quantity } = payload;
-  if (quantity === 0) {
-    return deleteProduct(userId, inventory);
-  }
-
-  const filter = {
-    user: userId,
-    'items.shop': shop,
-  };
-  const update = {
-    $inc: {
-      'items.$[e1].products.$[e2].quantity': quantity,
-    },
-  };
-  const options = {
-    arrayFilters: [
-      { 'e1.shop': shop },
-      { 'e2.inventory': inventory },
-    ],
-    new: true,
-    session,
-  };
-  return Cart.findOneAndUpdate(filter, update, options);
-}
-
 export const cartService = {
   addProduct,
   getCartByUserId,
-  minusQuantityProduct,
   deleteProduct,
   updateProduct,
   populateCart,

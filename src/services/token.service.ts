@@ -66,7 +66,8 @@ const verifyToken = async (token: string, type: string) => {
       throw new Error('Token not found');
     }
     return tokenDoc;
-  } catch (error) {
+  }
+  catch (error) {
     throw new Error('Token is invalid');
   }
 };

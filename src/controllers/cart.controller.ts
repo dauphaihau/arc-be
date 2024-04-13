@@ -27,10 +27,9 @@ const getCart = catchAsync(async (req, res) => {
     init += item.products.length;
     return init;
   }, 0);
-  await cartService.populateCart(cart);
-  // log.debug('cart %o', cart);
-  // @ts-expect-error:next-line
-  const { summaryOrder } = await orderService.getSummaryOrder(cart);
+
+  const cartPopulated = await cartService.populateCart(cart);
+  const { summaryOrder } = await orderService.getSummaryOrder(cartPopulated);
 
   res.status(StatusCodes.OK).send({
     cart, summaryOrder, totalProducts,
@@ -48,9 +47,9 @@ const getCartWithCoupons = catchAsync(async (req, res) => {
     totalProducts += item.products.length;
   });
 
-  await cartService.populateCart(cart);
-  // @ts-expect-error:next-line
-  const { summaryOrder } = await orderService.getSummaryOrder(cart, req.body);
+  const cartPopulated = await cartService.populateCart(cart);
+  const { summaryOrder } = await orderService.getSummaryOrder(cartPopulated, req.body);
+
   res.status(StatusCodes.OK).send({ cart, summaryOrder, totalProducts });
 });
 
@@ -60,9 +59,9 @@ const addProduct = catchAsync(async (req, res) => {
     res.status(StatusCodes.OK).send({ cart });
     return;
   }
-  await cartService.populateCart(cart);
-  // @ts-expect-error:next-line
-  const { summaryOrder } = await orderService.getSummaryOrder(cart);
+  const cartPopulated = await cartService.populateCart(cart);
+  const { summaryOrder } = await orderService.getSummaryOrder(cartPopulated);
+
   res.status(StatusCodes.OK).send({ summaryOrder });
 });
 
@@ -76,9 +75,8 @@ const updateProduct = catchAsync(async (
     res.status(StatusCodes.OK).send({ cart });
     return;
   }
-  await cartService.populateCart(cart);
-  // @ts-expect-error:next-line
-  const { summaryOrder } = await orderService.getSummaryOrder(cart, additionInfoItems);
+  const cartPopulated = await cartService.populateCart(cart);
+  const { summaryOrder } = await orderService.getSummaryOrder(cartPopulated, additionInfoItems);
 
   res.status(StatusCodes.OK).send({ summaryOrder });
 });
@@ -92,10 +90,9 @@ const deleteProduct = catchAsync(async (
     res.status(StatusCodes.OK).send({ cart });
     return;
   }
-  await cartService.populateCart(cart);
-  // log.debug('cart %o', cart);
-  // @ts-expect-error:next-line
-  const { summaryOrder } = await orderService.getSummaryOrder(cart);
+
+  const cartPopulated = await cartService.populateCart(cart);
+  const { summaryOrder } = await orderService.getSummaryOrder(cartPopulated);
   res.status(StatusCodes.OK).send({ summaryOrder });
 });
 

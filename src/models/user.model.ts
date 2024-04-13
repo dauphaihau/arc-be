@@ -1,17 +1,21 @@
 import { model, Schema, SchemaTypes } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import validator from 'validator';
+import {
+  MARKETPLACE_CONFIG,
+  MARKETPLACE_LANGUAGES, MARKETPLACE_REGIONS, MARKETPLACE_CURRENCIES
+} from '@/config/enums/marketplace';
 import { IUser, IUserMethods, IUserModel } from '@/interfaces/models/user';
 import { toJSON } from '@/models/plugins';
-import { USER_REGEX_NAME } from '@/config/enums/user';
+import { USER_REGEX_NAME, USER_CONFIG } from '@/config/enums/user';
 
 // define Schema.
 const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
   {
     name: {
       type: String,
-      min: 3,
-      max: 60,
+      min: USER_CONFIG.MIN_CHAR_NAME,
+      max: USER_CONFIG.MAX_CHAR_NAME,
       trim: true,
       validate(value: string) {
         if (!value.match(USER_REGEX_NAME)) {
@@ -22,8 +26,8 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
     },
     email: {
       type: String,
-      min: 6,
-      max: 254,
+      min: USER_CONFIG.MIN_CHAR_EMAIL,
+      max: USER_CONFIG.MAX_CHAR_EMAIL,
       required: true,
       unique: true,
       trim: true,
@@ -38,7 +42,8 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
       type: String,
       required: true,
       trim: true,
-      minlength: 8,
+      min: USER_CONFIG.MIN_CHAR_PASSWORD,
+      max: USER_CONFIG.MAX_CHAR_PASSWORD,
       // validate(value: string) {
       //   if (!value.match(USER_REGEX_PASSWORD)) {
       //     throw new Error('password must contain at least 1 lower letter, 1 uppercase letter, 1 number and 1 special character');
@@ -53,6 +58,23 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
     shop: {
       type: SchemaTypes.ObjectId,
       ref: 'Shop',
+    },
+    market_preferences: {
+      region: {
+        type: String,
+        enum: Object.values(MARKETPLACE_REGIONS),
+        default: MARKETPLACE_CONFIG.BASE_REGION,
+      },
+      language: {
+        type: String,
+        enum: Object.values(MARKETPLACE_LANGUAGES),
+        default: MARKETPLACE_CONFIG.BASE_LANGUAGE,
+      },
+      currency: {
+        type: String,
+        enum: Object.values(MARKETPLACE_CURRENCIES),
+        default: MARKETPLACE_CURRENCIES.USD,
+      },
     },
   },
   {

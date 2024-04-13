@@ -1,4 +1,5 @@
 import express from 'express';
+import { userValidation } from '@/validations/user.validation';
 import {
   cartValidation,
   orderValidation,
@@ -15,6 +16,14 @@ import { auth, validate } from '@/middlewares';
 const router = express.Router();
 
 router
+  .route('/')
+  .patch(
+    validate(userValidation.updateUser),
+    auth(),
+    userController.updateUser
+  );
+
+router
   .route('/me')
   .get(auth(), userController.me);
 
@@ -22,8 +31,8 @@ router
 router
   .route('/addresses')
   .post(
-    auth(),
     validate(addressValidation.createAddress),
+    auth(),
     addressController.createAddress
   )
   .get(
@@ -35,18 +44,18 @@ router
 router
   .route('/addresses/:id')
   .patch(
-    auth(),
     validate(addressValidation.updateAddress),
+    auth(),
     addressController.updateAddress
   )
   .delete(
-    auth(),
     validate(addressValidation.deleteAddress),
+    auth(),
     addressController.deleteAddress
   )
   .get(
-    auth(),
     validate(addressValidation.getAddress),
+    auth(),
     addressController.getAddress
   );
 

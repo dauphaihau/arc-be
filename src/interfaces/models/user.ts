@@ -14,6 +14,6 @@ export type IUser = z.infer<typeof userSchema> & Document & IUserMethods;
 
 export interface IUserModel extends Model<IUser, unknown, IUserMethods>, IUserStatics {}
 
-export type CreateUserPayload = Pick<IUser, 'email' | 'password'>;
+export type CreateUserBody = Pick<IUser, 'email' | 'password'>;
 
-export type UpdateUserPayload = Partial<IUser>;
+export type UpdateUserBody = Partial<IUser>;

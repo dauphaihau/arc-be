@@ -67,7 +67,8 @@ const getSearchCategories = catchAsync(async (
       if (subCategory) {
         const result = await startOrMidToDeepestCategory(category, limit - categories.length);
         categories = [...categories, ...result];
-      } else {
+      }
+      else {
         const result = await deepestToRootCategory(category);
         categories.push(result);
       }
@@ -167,7 +168,8 @@ const getSearchCategories = catchAsync(async (
                 ...tempCategorySearch.categoriesRelated,
               ],
             });
-          } else {
+          }
+          else {
             tempCategoriesRelated.push(tempCategorySearch);
           }
         });

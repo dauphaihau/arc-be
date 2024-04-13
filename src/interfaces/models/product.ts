@@ -22,7 +22,7 @@ import { updateProductSchema } from '@/schemas/product.schema';
 import { BaseQueryParamsGetList } from '@/interfaces/common/request';
 
 // ----- Base
-export type IProduct = z.infer<typeof productSchema>;
+export type IProduct = z.infer<typeof productSchema> & Document;
 export type IProductInventory = z.infer<typeof productInventorySchema>;
 export type IProductImage = z.infer<typeof productImageSchema>;
 export type IProductVariant = z.infer<typeof productVariantSchema>;

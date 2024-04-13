@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MARKETPLACE_CURRENCIES } from '@/config/enums/marketplace';
 import {
   lineItemSchema,
   orderSchema,
@@ -16,7 +17,16 @@ export const orderValidation = {
   createOrderFromCart: z.object({
     body: orderSchema
       .pick({ address: true, payment_type: true })
-      .merge(lineItemSchema.omit({ products: true }))
+      .merge(
+        z.object({
+          additionInfoItems: z.array(lineItemSchema.pick({
+            shop: true,
+            coupon_codes: true,
+            note: true,
+          })).optional(),
+          currency: z.nativeEnum(MARKETPLACE_CURRENCIES).optional(),
+        })
+      )
       .strict()
     ,
   }),
@@ -25,6 +35,11 @@ export const orderValidation = {
       .pick({ address: true, payment_type: true })
       .merge(productInLineSchema.pick({ inventory: true, quantity: true }))
       .merge(lineItemSchema.pick({ coupon_codes: true, note: true }))
+      .merge(
+        z.object({
+          currency: z.nativeEnum(MARKETPLACE_CURRENCIES).optional(),
+        })
+      )
       .strict()
     ,
   }),

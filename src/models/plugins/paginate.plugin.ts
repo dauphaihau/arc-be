@@ -46,7 +46,8 @@ export const paginate = (schema: Schema) => {
         sortingCriteria.push((order === 'desc' ? '-' : '') + key);
       });
       sort = sortingCriteria.join(' ');
-    } else {
+    }
+    else {
       sort = '-createdAt';
     }
 

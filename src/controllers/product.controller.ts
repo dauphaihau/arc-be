@@ -55,7 +55,8 @@ const createProductByShop = catchAsync(async (
         inventory: inventoryCreated.id,
       }, { session });
 
-    } else {
+    }
+    else {
 
       // case single & combine variant
       if (!new_variants) throw new ApiError(StatusCodes.BAD_REQUEST);
@@ -115,7 +116,6 @@ const getProductsByShop = catchAsync(async (
         if (idx === 0 || (vari.inventory.price > prod.summary_inventory.highest_price)) {
           prod.summary_inventory.highest_price = vari.inventory.price;
         }
-
       }
 
       if (prod.variant_type === PRODUCT_VARIANT_TYPES.COMBINE) {

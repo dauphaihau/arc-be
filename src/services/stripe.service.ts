@@ -1,5 +1,9 @@
 import { StatusCodes } from 'http-status-codes';
 import Stripe from 'stripe';
+import {
+  MARKETPLACE_CURRENCIES,
+  MARKETPLACE_CONFIG
+} from '@/config/enums/marketplace';
 import { inventoryService } from '@/services/inventory.service';
 import { stripeClient, env, log } from '@/config';
 import { ORDER_STATUSES } from '@/config/enums/order';
@@ -10,24 +14,48 @@ import { IUser } from '@/interfaces/models/user';
 import { orderService } from '@/services/order.service';
 import { ApiError, transactionWrapper } from '@/utils';
 
-// x 100: with USD, stripe use cents ( ex: $1000 -> $10.00 )
-const convertCurrencyStripe = (price: number) => Math.round(price * 100);
+const zeroDecimalCurrencies = [
+  MARKETPLACE_CURRENCIES.KRW, MARKETPLACE_CURRENCIES.JPY, MARKETPLACE_CURRENCIES.VND,
+];
+
+/*
+   API requests expect amounts to be provided in a currency’s smallest unit
+
+   so with decimal currencies need x100
+   ex: charge $10.00, x100 -> 1000 ( cents )
+
+   if zero decimal currencies without x100
+ */
+const convertCurrencyStripe = (price: number, currency = MARKETPLACE_CONFIG.BASE_CURRENCY) => {
+  if (zeroDecimalCurrencies.includes(currency)) {
+    return Math.round(price);
+  }
+  return Math.round(price * 100);
+};
 
 async function getCheckoutSessionUrl(
   user: IUser,
   payload: IGetCheckoutSessionUrlPayload
 ) {
   const { id: user_id, email } = user;
-  const { newOrder, userAddress } = payload;
+  const { newOrder, userAddress, currency } = payload;
 
   const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
+  let rateCurrency = 1;
+  if (currency !== MARKETPLACE_CONFIG.BASE_CURRENCY) {
+    const response = await fetch(`https://open.er-api.com/v6/latest/${MARKETPLACE_CONFIG.BASE_CURRENCY}`);
+    const exchangeRate = await response.json();
+    rateCurrency = exchangeRate.rates[currency];
+  }
+
+  log.debug('newOrder %o', newOrder);
   newOrder.lines.forEach((line) => {
     return line.products.forEach(product => {
       line_items.push(
         {
           price_data: {
-            currency: 'usd',
+            currency,
             product_data: {
               name: product.title,
               images: [product.image_url],
@@ -35,7 +63,8 @@ async function getCheckoutSessionUrl(
                 order_id: newOrder.id as string,
               },
             },
-            unit_amount: convertCurrencyStripe(product.price),
+            // unit_amount: convertCurrencyStripe(product.price),
+            unit_amount: convertCurrencyStripe(product.price * rateCurrency, currency),
           },
           quantity: product.quantity,
         }
@@ -43,7 +72,7 @@ async function getCheckoutSessionUrl(
     });
   });
 
-  // log.debug('line-item %o', line_items);
+  log.debug('line-item %o', line_items);
 
   const params: Stripe.Checkout.SessionCreateParams = {
     submit_type: 'pay',
@@ -59,8 +88,9 @@ async function getCheckoutSessionUrl(
         shipping_rate_data: {
           type: 'fixed_amount',
           fixed_amount: {
-            amount: convertCurrencyStripe(newOrder.shipping_fee),
-            currency: 'usd',
+            // amount: convertCurrencyStripe(newOrder.shipping_fee),
+            amount: convertCurrencyStripe(newOrder.shipping_fee * rateCurrency, currency),
+            currency,
           },
           display_name: 'Total shops',
         },
@@ -87,7 +117,8 @@ async function getCheckoutSessionUrl(
         },
       },
     };
-  } else {
+  }
+  else {
     params.phone_number_collection = { enabled: true };
     params.shipping_address_collection = { allowed_countries: ['US', 'CA', 'AU', 'IT', 'JP', 'SG', 'FR', 'DE', 'GB'] };
   }
@@ -96,8 +127,10 @@ async function getCheckoutSessionUrl(
     const coupon = await stripeClient.coupons.create({
       name: 'DISCOUNT',
       duration: 'once',
-      currency: 'usd',
-      amount_off: convertCurrencyStripe(newOrder.total_discount),
+      // currency: 'usd',
+      currency,
+      // amount_off: convertCurrencyStripe(newOrder.total_discount),
+      amount_off: convertCurrencyStripe(newOrder.total_discount * rateCurrency, currency),
       metadata: {
         user_id,
         order_id: newOrder.id as string,
@@ -109,7 +142,7 @@ async function getCheckoutSessionUrl(
     params.discounts = [{ coupon: coupon.id }];
   }
 
-  log.debug('params checkout session %o', params);
+  // log.debug('params checkout session %o', params);
   const session = await stripeClient.checkout.sessions.create(params);
   return session.url;
 }

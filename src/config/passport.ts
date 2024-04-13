@@ -30,7 +30,8 @@ const jwtVerify = async (payload: JwtPayload, done: VerifiedCallback) => {
       return done(null, false);
     }
     done(null, user);
-  } catch (error) {
+  }
+  catch (error) {
     done(error, false);
   }
 };
