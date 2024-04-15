@@ -4,7 +4,7 @@ import request from 'supertest';
 
 import app from '../../src/app';
 import { setupTestDB } from '../utils/setupTestDB';
-// import { insertUsers, userOne } from '../fixtures/user.fixture';
+import { MARKETPLACE_CONFIG } from '@/config/enums/marketplace';
 import { IUser } from '@/interfaces/models/user';
 import { User } from '@/models';
 
@@ -18,6 +18,11 @@ describe('Auth routes', () => {
         name: faker.person.fullName(),
         email: faker.internet.email().toLowerCase(),
         password: 'passworD1.',
+        market_preferences: {
+          region: MARKETPLACE_CONFIG.BASE_REGION,
+          language: MARKETPLACE_CONFIG.BASE_LANGUAGE,
+          currency: MARKETPLACE_CONFIG.BASE_CURRENCY,
+        },
       };
     });
 
@@ -31,6 +36,7 @@ describe('Auth routes', () => {
         name: newUser.name,
         email: newUser.email,
         is_email_verified: false,
+        market_preferences: newUser.market_preferences,
       });
 
       const dbUser = await User.findById(res.body.user.id);

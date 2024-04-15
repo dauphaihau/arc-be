@@ -73,7 +73,7 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
       currency: {
         type: String,
         enum: Object.values(MARKETPLACE_CURRENCIES),
-        default: MARKETPLACE_CURRENCIES.USD,
+        default: MARKETPLACE_CONFIG.BASE_CURRENCY,
       },
     },
   },

@@ -11,9 +11,9 @@ const getPresignedUrl = catchAsync(async (
   let folder: FolderObjectS3 = 'user';
   let id = req.user.id;
 
-  if (req.query.shop_id) {
+  if (req.query.shop) {
     folder = 'shop';
-    id = req.query.shop_id;
+    id = req.query.shop;
   }
   const result = await awsS3Service.getPresignedUrl(folder, id);
   res.status(StatusCodes.OK).send(result);
