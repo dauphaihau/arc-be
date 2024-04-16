@@ -6,6 +6,8 @@ node_modules
 # Express dev/build outputs
 .data
 dist
+ts
+tsconfig.build.tsbuildinfo
 
 # IDE
 .idea
