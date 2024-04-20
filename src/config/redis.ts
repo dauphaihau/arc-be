@@ -1,7 +1,13 @@
 import RedLock, { ResourceLockedError } from 'redlock';
 import Redis from 'ioredis';
-import { log } from '@/config';
-export const redisClient = new Redis({ host: 'redis' });
+import { log, env } from '@/config';
+
+export const redisClient = new Redis({
+  host: env.redis.host,
+  port: env.redis.port,
+  username: env.redis.username || '',
+  password: env.redis.password || '',
+});
 
 redisClient.on('connect', () => {
   log.info('Connected to redis');
