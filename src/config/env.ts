@@ -7,7 +7,7 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 const envVarsZodSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.preprocess(Number, z.number()).default(3000),
-  CORS_ORIGIN: z.string().url().default('*'),
+  CORS_ORIGIN: z.string().url().or(z.literal('*')),
   MONGODB_URL: z.string().url().describe('Mongo DB url'),
   JWT_SECRET: z.string().describe('JWT secret key'),
   JWT_ACCESS_EXPIRATION_MINUTES: z.preprocess(Number, z.number())
