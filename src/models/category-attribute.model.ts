@@ -1,9 +1,9 @@
 import { Schema, model } from 'mongoose';
 import { toJSON } from '@/models/plugins';
-import { IAttribute } from '@/interfaces/models/attribute';
+import { ICategoryAttribute } from '@/interfaces/models/category-attribute';
 
 // define Schema
-const attributeSchema = new Schema<IAttribute>(
+const categoryAttributeSchema = new Schema<ICategoryAttribute>(
   {
     category: {
       type: Schema.Types.ObjectId,
@@ -24,6 +24,6 @@ const attributeSchema = new Schema<IAttribute>(
 );
 
 // Plugins
-attributeSchema.plugin(toJSON);
+categoryAttributeSchema.plugin(toJSON);
 
-export const Attribute = model<IAttribute>('category_attribute', attributeSchema);
+export const Attribute = model<ICategoryAttribute>('category_attribute', categoryAttributeSchema);

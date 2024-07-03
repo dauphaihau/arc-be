@@ -1,16 +1,17 @@
 import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { RequestParamsBody } from '@/interfaces/common/request';
 import {
-  UpdateAddressPayload,
-  UpdateAddressParams,
-  GetAddressParams,
-  DeleteAddressParams
-} from '@/interfaces/models/address';
-import { addressService } from '@/services';
+  UpdateUserAddressBody,
+  UpdateUserAddressParams,
+  GetUserAddressParams,
+  DeleteUserAddressParams
+} from '@/interfaces/models/user-address';
+import { userAddressService } from '@/services';
 import { catchAsync, pick } from '@/utils';
 
 const createAddress = catchAsync(async (req, res) => {
-  const address = await addressService.createAddress({
+  const address = await userAddressService.create({
     ...req.body,
     user: req.user.id,
   });
@@ -18,37 +19,37 @@ const createAddress = catchAsync(async (req, res) => {
 });
 
 const getAddress = catchAsync(async (
-  req: Request<GetAddressParams>,
+  req: Request<GetUserAddressParams>,
   res
 ) => {
-  const address = await addressService.getAddressById(req.params.id as string);
+  const address = await userAddressService.getById(req.params.id as string);
   res.status(StatusCodes.OK).send({ address });
 });
 
 const getAddresses = catchAsync(async (req, res) => {
   const filter = { user: req.user.id };
   const options = pick(req.query, ['sortBy', 'limit', 'page', 'select', 'populate']);
-  const result = await addressService.queryAddresses(filter, options);
+  const result = await userAddressService.getList(filter, options);
   res.send(result);
 });
 
 const deleteAddress = catchAsync(async (
-  req: Request<DeleteAddressParams>,
+  req: Request<DeleteUserAddressParams>,
   res
 ) => {
-  await addressService.deleteAddressById(req.params.id as string);
+  await userAddressService.deleteById(req.params.id as string);
   res.status(StatusCodes.NO_CONTENT).send();
 });
 
 const updateAddress = catchAsync(async (
-  req: Request<UpdateAddressParams, unknown, UpdateAddressPayload>,
+  req: RequestParamsBody<UpdateUserAddressParams, UpdateUserAddressBody>,
   res
 ) => {
-  const address = await addressService.updateAddress(req.params.id as string, req.body);
+  const address = await userAddressService.update(req.params.id as string, req.body);
   res.send({ address });
 });
 
-export const addressController = {
+export const userAddressController = {
   createAddress,
   getAddress,
   getAddresses,

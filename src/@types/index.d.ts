@@ -1,7 +1,7 @@
-declare namespace Express {
-  type User = import('./src/interfaces/models/user').User;
+import { IUser } from '@/interfaces/models/user';
 
+declare module 'express-serve-static-core' {
   interface Request {
-    user: User;
+    user: IUser;
   }
 }

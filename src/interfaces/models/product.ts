@@ -3,6 +3,10 @@ import {
 } from 'mongoose';
 import { z } from 'zod';
 import { IOrder } from './order';
+import {
+  productShippingSchema,
+  standardShippingSchema
+} from '@/schemas/product-shipping.schema';
 import { Override } from '@/interfaces/utils';
 import { IShop } from '@/interfaces/models/shop';
 import {
@@ -28,13 +32,16 @@ export type IProductImage = z.infer<typeof productImageSchema>;
 export type IProductVariant = z.infer<typeof productVariantSchema>;
 export type IProductVariantOpt = z.infer<typeof productVariantOptSchema>;
 export type IProductAttribute = z.infer<typeof productAttributeSchema>;
-export type IProductInventoryReservationSchema = z.infer<typeof productInventoryReservationSchema>;
+export type IProductShipping = z.infer<typeof productShippingSchema>;
+export type IProductStandardShipping = z.infer<typeof standardShippingSchema>;
+export type IProductInventoryReservation = z.infer<typeof productInventoryReservationSchema>;
 
 export interface IProductModel extends Model<IProduct, unknown> {
   // eslint-disable-next-line @stylistic/max-len
   paginate: (filter: FilterQuery<IProduct>, options: IBaseQueryOptions) => Promise<IQueryResult<ResponseGetProducts>>;
 }
 
+export interface IProductShippingModel extends Model<IProductShippingModel, unknown> {}
 export interface IProductInventoryModel extends Model<IProductInventory, unknown> {}
 
 // ------- API Request
@@ -65,9 +72,7 @@ export type GetDetailProductByShopParams = Partial<Pick<IProduct, 'id' | 'shop'>
 
 export type GetProductByShopParams = Partial<Pick<IProduct, 'shop'>>;
 
-export type GetProductQueries = Partial<
-Pick<IProduct, 'category' | 'title'> & { is_digital: 'true' | 'false' } & BaseQueryParamsGetList
->;
+export type GetProductQueries = Pick<IProduct, 'category' | 'title'> & { is_digital: 'true' | 'false' } & BaseQueryParamsGetList;
 
 export type DeleteProductParams = Partial<Pick<IProduct, 'id'>>;
 

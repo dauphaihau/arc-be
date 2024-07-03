@@ -1,21 +1,25 @@
 import { StatusCodes } from 'http-status-codes';
 import { Request } from 'express';
 import {
+  RequestParamsQuery,
+  RequestParamsBody
+} from '@/interfaces/common/request';
+import {
   CreateCouponParams,
-  CreateCouponPayload,
-  DeleteCouponParams, GetCouponsQueryParams, GetCouponParams, UpdateCouponParams,
+  CreateCouponBody,
+  DeleteCouponParams, GetCouponsQueries, GetCouponParams, UpdateCouponParams,
   GetCouponsParams,
-  UpdateCouponPayload
+  UpdateCouponBody
 } from '@/interfaces/models/coupon';
 import { couponService } from '@/services';
 import { catchAsync, pick } from '@/utils';
 
 const createCoupon = catchAsync(async (
-  req: Request<CreateCouponParams, unknown, CreateCouponPayload>,
+  req: RequestParamsBody<CreateCouponParams, CreateCouponBody>,
   res
 ) => {
 
-  const coupon = await couponService.createCoupon({
+  const coupon = await couponService.create({
     ...req.body,
     shop: req.params.shop as string,
   });
@@ -31,7 +35,7 @@ const getCoupon = catchAsync(async (
 });
 
 const getCouponsByShop = catchAsync(async (
-  req: Request<GetCouponsParams, unknown, unknown, GetCouponsQueryParams>,
+  req: RequestParamsQuery<GetCouponsParams, GetCouponsQueries>,
   res
 ) => {
 
@@ -59,7 +63,7 @@ const deleteCoupon = catchAsync(async (
 });
 
 const updateCoupon = catchAsync(async (
-  req: Request<UpdateCouponParams, unknown, UpdateCouponPayload>,
+  req: RequestParamsBody<UpdateCouponParams, UpdateCouponBody>,
   res
 ) => {
   const coupon_id = req.params.id as string;

@@ -6,56 +6,9 @@ import {
 } from '@/config/enums/order';
 import {
   IOrder,
-  IOrderModel,
-  ILineItemOrder,
-  IProductInLineOrder
+  IOrderModel
 } from '@/interfaces/models/order';
 import { toJSON, paginate } from '@/models/plugins';
-
-// define product in line Schema
-const productInLineSchema = new Schema<IProductInLineOrder>(
-  {
-    inventory: {
-      type: Schema.Types.ObjectId,
-      required: true,
-    },
-    price: {
-      type: Number,
-      required: true,
-    },
-    quantity: {
-      type: Number,
-      required: true,
-    },
-    title: {
-      type: String,
-      required: true,
-    },
-    image_url: {
-      type: String,
-      required: true,
-    },
-  }, { _id: false }
-);
-
-// define reserve Schema
-const lineItemSchema = new Schema<ILineItemOrder>(
-  {
-    shop: {
-      type: Schema.Types.ObjectId,
-      ref: 'Shop',
-      required: true,
-    },
-    products: {
-      type: [productInLineSchema],
-      required: true,
-    },
-    note: {
-      type: String,
-      max: ORDER_CONFIG.MAX_CHAR_NOTE,
-    },
-  }, { _id: false }
-);
 
 // define Schema
 const orderSchema = new Schema<IOrder, IOrderModel>(
@@ -73,10 +26,6 @@ const orderSchema = new Schema<IOrder, IOrderModel>(
     payment_type: {
       type: String,
       enum: paymentTypes,
-      required: true,
-    },
-    lines: {
-      type: [lineItemSchema],
       required: true,
     },
     tracking_number: { type: String },

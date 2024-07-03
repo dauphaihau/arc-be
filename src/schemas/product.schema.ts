@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { productInventorySchema } from './product-inventory.schema';
+import { productShippingSchema } from '@/schemas/product-shipping.schema';
 import {
   PRODUCT_STATES,
   PRODUCT_WHO_MADE,
@@ -55,6 +56,7 @@ export const productSchema = z.object({
   id: objectIdSchema,
   shop: objectIdSchema,
   inventory: objectIdSchema,
+  shipping: objectIdSchema,
   category: objectIdSchema,
   attributes: z.array(productAttributeSchema),
   title: z
@@ -98,9 +100,7 @@ export const productSchema = z.object({
     .max(5, 'Rating must be equal or less than 5.0')
     .default(0)
     .optional(),
-  variant_type: z
-    .nativeEnum(PRODUCT_VARIANT_TYPES)
-    .default(PRODUCT_VARIANT_TYPES.NONE),
+  variant_type: z.nativeEnum(PRODUCT_VARIANT_TYPES),
   variant_group_name: z
     .string()
     .min(1)
@@ -132,6 +132,7 @@ export const createProductBodySchema = productSchema
     rating_average: true,
     inventory: true,
     variants: true,
+    shipping: true,
   })
   .merge(
     z.object({
@@ -142,6 +143,13 @@ export const createProductBodySchema = productSchema
         )
         .max(PRODUCT_CONFIG.MAX_IMAGES),
       state: productStateUserCanModify,
+      shipping:
+        productShippingSchema.pick({
+          country: true,
+          zip: true,
+          process_time: true,
+          standard_shipping: true,
+        }).optional(),
       new_variants: z.array(
         productVariantSchema
           .pick({ variant_name: true })

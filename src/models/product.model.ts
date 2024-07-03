@@ -41,7 +41,7 @@ const imageSchema = new Schema<IProductImage>(
 imageSchema.plugin(toJSON);
 
 // define attribute Schema
-const attributeSchema = new Schema<IProductAttribute>(
+const productAttributeSchema = new Schema<IProductAttribute>(
   {
     attribute: {
       type: Schema.Types.ObjectId,
@@ -53,7 +53,7 @@ const attributeSchema = new Schema<IProductAttribute>(
     },
   }
 );
-attributeSchema.plugin(toJSON);
+productAttributeSchema.plugin(toJSON);
 
 // define product Schema
 const productSchema = new Schema<IProduct, IProductModel>(
@@ -72,10 +72,14 @@ const productSchema = new Schema<IProduct, IProductModel>(
       ref: 'product_inventory',
       default: null,
     },
+    shipping: {
+      type: Schema.Types.ObjectId,
+      ref: 'product_shipping',
+      default: null,
+    },
     variant_type: {
       type: String,
       enum: Object.values(PRODUCT_VARIANT_TYPES),
-      default: PRODUCT_VARIANT_TYPES.NONE,
     },
     variant_group_name: {
       type: String,
@@ -97,7 +101,7 @@ const productSchema = new Schema<IProduct, IProductModel>(
       default: [],
     },
     attributes: {
-      type: [attributeSchema],
+      type: [productAttributeSchema],
     },
     title: {
       type: String,

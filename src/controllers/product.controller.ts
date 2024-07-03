@@ -1,5 +1,7 @@
 import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { RequestQuery, RequestParamsBody } from '@/interfaces/common/request';
+import { ProductShipping } from '@/models/product-shipping.model';
 import { COUPON_TYPES, COUPON_APPLIES_TO } from '@/config/enums/coupon';
 import {
   PRODUCT_VARIANT_TYPES,
@@ -16,7 +18,7 @@ import {
   GetProductByShopParams,
   GetDetailProductByShopParams, IProduct, IProductVariant
 } from '@/interfaces/models/product';
-import { ProductInventory, Coupon } from '@/models';
+import { ProductInventory, Coupon, Product } from '@/models';
 import { ProductVariant } from '@/models/product-variant.model';
 import {
   productService,
@@ -28,20 +30,28 @@ import {
 } from '@/utils';
 
 const createProductByShop = catchAsync(async (
-  req: Request<CreateProductParams, unknown, CreateProductBody>,
+  req: RequestParamsBody<CreateProductParams, CreateProductBody>,
   res
 ) => {
   const shopId = req.params.shop as IProduct['shop'];
 
   await transactionWrapper(async (session) => {
     const {
-      new_variants, stock, price, sku, ...resBody
+      new_variants, shipping, stock, price, sku, ...resBody
     } = req.body;
 
     const product = await productService.createProduct({
       ...resBody,
       shop: shopId,
     }, session);
+
+    const productShipping = await ProductShipping.create({
+      product: product.id,
+      shop: shopId,
+      ...shipping,
+    });
+
+    if (!resBody.variant_type) throw new ApiError(StatusCodes.BAD_REQUEST);
 
     if (resBody.variant_type === PRODUCT_VARIANT_TYPES.NONE) {
 
@@ -51,10 +61,13 @@ const createProductByShop = catchAsync(async (
         price,
         sku,
       }, session);
-      await product.update({
-        inventory: inventoryCreated.id,
-      }, { session });
-
+      const productUpdated = await Product.findOneAndUpdate(
+        { _id: product.id },
+        {
+          inventory: inventoryCreated.id,
+          shipping: productShipping.id,
+        }, { new: true, session });
+      res.status(StatusCodes.CREATED).send({ product: productUpdated });
     }
     else {
 
@@ -72,17 +85,19 @@ const createProductByShop = catchAsync(async (
           product, new_variants, session
         );
       }
-      await product.update({
-        variants: productVariantIds,
-      }, { session });
+      const productUpdated = await Product.findOneAndUpdate(
+        { _id: product.id },
+        {
+          variants: productVariantIds,
+          shipping: productShipping.id,
+        }, { new: true, session });
+      res.status(StatusCodes.CREATED).send({ product: productUpdated });
     }
-
-    res.status(StatusCodes.CREATED).send({ product });
   });
 });
 
 const getProductsByShop = catchAsync(async (
-  req: Request<GetProductByShopParams, unknown, unknown>,
+  req: Request<GetProductByShopParams>,
   res
 ) => {
   const filter = pick(
@@ -196,7 +211,7 @@ const deleteProductByShop = catchAsync(async (
 });
 
 const updateProductByShop = catchAsync(async (
-  req: Request<UpdateProductParams, unknown, UpdateProductBody>,
+  req: RequestParamsBody<UpdateProductParams, UpdateProductBody>,
   res
 ) => {
   const productId = req.params.id as string;
@@ -221,7 +236,7 @@ const updateProductByShop = catchAsync(async (
 });
 
 const getProducts = catchAsync(async (
-  req: Request<unknown, unknown, unknown, GetProductQueries>,
+  req: RequestQuery<GetProductQueries>,
   res
 ) => {
   const filter = pick(req.query, ['shop', 'price', 'title', 'category', 'is_digial']);
@@ -251,7 +266,7 @@ const getProducts = catchAsync(async (
 });
 
 const getProductsByCategory = catchAsync(async (
-  req: Request<unknown, unknown, unknown, GetProductQueries>,
+  req: RequestQuery<GetProductQueries>,
   res
 ) => {
   const defaultPopulate = 'shop,inventory,variants/inventory+variant_options.inventory';
@@ -287,7 +302,7 @@ const getProductsByCategory = catchAsync(async (
   let mapResult = [];
   mapResult = await Promise.all(
     result.results.map(async (prod) => {
-      const obj = {
+      const productCustomFields = {
         id: '',
         shop_name: '',
         title: '',
@@ -300,41 +315,41 @@ const getProductsByCategory = catchAsync(async (
           percent_off: 0,
         },
       };
-      obj.shop_name = prod.shop.shop_name;
-      obj.title = prod.title;
-      obj.id = prod.id as string;
-      obj.image_relative_url = prod.images[0].relative_url;
+      productCustomFields.shop_name = prod.shop?.shop_name;
+      productCustomFields.title = prod.title;
+      productCustomFields.id = prod.id as string;
+      productCustomFields.image_relative_url = prod.images[0].relative_url;
 
       prod.variants && prod.variants.forEach((variant, indexVariant) => {
         if (prod.variant_type === PRODUCT_VARIANT_TYPES.SINGLE && variant?.inventory?.price) {
-          // obj.summary_inventory.stock += variant.inventory.stock;
+          // productCustomFields.summary_inventory.stock += variant.inventory.stock;
           if (indexVariant === 0 ||
-            (variant.inventory.price < obj.summary_inventory.lowest_price)) {
-            obj.summary_inventory.lowest_price = variant.inventory.price;
+            (variant.inventory.price < productCustomFields.summary_inventory.lowest_price)) {
+            productCustomFields.summary_inventory.lowest_price = variant.inventory.price;
           }
           if (indexVariant === 0 ||
-            (variant.inventory.price > obj.summary_inventory.highest_price)) {
-            obj.summary_inventory.highest_price = variant.inventory.price;
+            (variant.inventory.price > productCustomFields.summary_inventory.highest_price)) {
+            productCustomFields.summary_inventory.highest_price = variant.inventory.price;
           }
         }
 
         if (prod.variant_type === PRODUCT_VARIANT_TYPES.COMBINE) {
           variant.variant_options.forEach((varOpt, indexVarOpt) => {
-            // obj.summary_inventory.stock += varOpt.inventory.stock;
+            // productCustomFields.summary_inventory.stock += varOpt.inventory.stock;
             if (indexVarOpt === 0 ||
-              (varOpt.inventory.price < obj.summary_inventory.lowest_price)) {
-              obj.summary_inventory.lowest_price = varOpt.inventory.price;
+              (varOpt.inventory.price < productCustomFields.summary_inventory.lowest_price)) {
+              productCustomFields.summary_inventory.lowest_price = varOpt.inventory.price;
             }
             if (indexVarOpt === 0 ||
-              (varOpt.inventory.price > obj.summary_inventory.highest_price)) {
-              obj.summary_inventory.highest_price = varOpt.inventory.price;
+              (varOpt.inventory.price > productCustomFields.summary_inventory.highest_price)) {
+              productCustomFields.summary_inventory.highest_price = varOpt.inventory.price;
             }
           });
         }
       });
 
       if (prod.variant_type === PRODUCT_VARIANT_TYPES.NONE) {
-        obj.summary_inventory.lowest_price = prod.inventory?.price;
+        productCustomFields.summary_inventory.lowest_price = prod.inventory?.price;
         // prod.summary_inventory.stock = prod.inventory.stock;
       }
 
@@ -354,24 +369,26 @@ const getProductsByCategory = catchAsync(async (
             }
 
             if (coupon.applies_to === COUPON_APPLIES_TO.ALL || isCouponSpecifyValid) {
-              const { lowest_price } = obj.summary_inventory;
+              const { lowest_price } = productCustomFields.summary_inventory;
               if (coupon.type) {
-                obj.summary_inventory.discount_types.push(coupon.type);
+                productCustomFields.summary_inventory.discount_types.push(coupon.type);
               }
               if (coupon.type === COUPON_TYPES.FIXED_AMOUNT && coupon?.amount_off) {
-                obj.summary_inventory.sale_price = lowest_price - coupon.amount_off;
-                // obj.summary_inventory.percent_off = coupon.percent_off;
+                productCustomFields.summary_inventory.sale_price = lowest_price - coupon.amount_off;
+                // productCustomFields.summary_inventory.percent_off = coupon.percent_off;
               }
               if (coupon.type === COUPON_TYPES.PERCENTAGE && coupon?.percent_off) {
-                obj.summary_inventory.sale_price = lowest_price - (lowest_price * (coupon.percent_off / 100));
-                obj.summary_inventory.percent_off = coupon.percent_off;
+                productCustomFields.summary_inventory.sale_price = lowest_price - (
+                  lowest_price * (coupon.percent_off / 100)
+                );
+                productCustomFields.summary_inventory.percent_off = coupon.percent_off;
               }
             }
           }
         });
       }
 
-      return obj;
+      return productCustomFields;
     })
   );
 
@@ -398,11 +415,14 @@ const getDetailProduct = catchAsync(async (
   req: Request<GetProductParams>,
   res
 ) => {
-  const product = await productService.getProductById(req.params.id as string);
-  await product?.populate('shop', {
+  const product = await productService.getProductById(req.params.id);
+  if (!product) {
+    throw new ApiError(StatusCodes.NOT_FOUND);
+  }
+  await product.populate('shop', {
     shop_name: 1,
   });
-  await product?.populate({
+  await product.populate({
     path: 'variants',
     populate: [
       { path: 'inventory' },
@@ -410,7 +430,8 @@ const getDetailProduct = catchAsync(async (
       { path: 'variant_options.variant', select: 'variant_name' },
     ],
   });
-  await product?.populate('inventory');
+  await product.populate('inventory');
+  await product.populate('shipping');
   res.status(StatusCodes.OK).send({ product });
 });
 

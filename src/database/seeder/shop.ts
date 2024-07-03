@@ -2,7 +2,7 @@ import { env } from '@/config';
 import { MEMBER_ROLES } from '@/config/enums/member';
 import { copyFolderS3, deleteFolderS3 } from '@/database/util';
 import { IUser } from '@/interfaces/models/user';
-import { Shop, User, Member } from '@/models';
+import { Shop, User, ShopMember } from '@/models';
 
 const keySourceImagesEx = 'shop-images-ex';
 
@@ -12,7 +12,7 @@ export async function generateShopsDB(users: IUser[]) {
 
       const shop = await Shop.create({
         user: user.id,
-        shop_name: user.name + ' Shop ' + index,
+        shop_name: `${user.name} Shop ${index}`
       });
 
       await copyFolderS3(
@@ -22,7 +22,7 @@ export async function generateShopsDB(users: IUser[]) {
         `shop/${shop.id}`
       );
 
-      await Member.create({
+      await ShopMember.create({
         shop: shop.id,
         user: user.id,
         role: MEMBER_ROLES.OWNER,

@@ -15,6 +15,7 @@ export const productValidation = {
           z.object({
             title: z.string(),
             s: z.string(),
+            is_digital: z.union([z.literal('true'), z.literal('false')]),
           })
         )
     ),

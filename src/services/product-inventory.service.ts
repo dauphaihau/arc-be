@@ -1,7 +1,9 @@
 import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
 import { ApiError } from '@/utils';
-import { IClearProductsReverseByOrder } from '@/interfaces/models/order';
+import {
+  IOrderShop, IOrder
+} from '@/interfaces/models/order';
 import {
   CreateInventoryPayload,
   UpdateInventoryPayload, ReservationInventoryPayload, IProductInventory
@@ -69,19 +71,19 @@ const minusStock = async (
 };
 
 const clearProductsReversedByOrder = async (
-  order: IClearProductsReverseByOrder,
+  order: IOrder,
+  orderShops: IOrderShop[],
   session: ClientSession
 ) => {
   const promises: unknown[] = [];
 
-  order.lines.forEach((item) => {
-    const { shop, products = [] } = item;
-    products.forEach((prod) => {
+  orderShops.forEach((orderShop) => {
+    orderShop.products.forEach((prod) => {
       promises.push(
         ProductInventory.findOneAndUpdate(
           {
             _id: prod.inventory,
-            shop,
+            // shop: order.shop,
           },
           {
             $pull: {
@@ -93,6 +95,26 @@ const clearProductsReversedByOrder = async (
       );
     });
   });
+
+  // order.lines.forEach((item) => {
+  //   const { shop, products = [] } = item;
+  //   products.forEach((prod) => {
+  //     promises.push(
+  //       ProductInventory.findOneAndUpdate(
+  //         {
+  //           _id: prod.inventory,
+  //           shop,
+  //         },
+  //         {
+  //           $pull: {
+  //             reservations: { order: order.id },
+  //           },
+  //         },
+  //         { session }
+  //       )
+  //     );
+  //   });
+  // });
 
   const results = await Promise.allSettled(promises);
   results.forEach(rel => {

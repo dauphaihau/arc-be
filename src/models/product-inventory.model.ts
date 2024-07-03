@@ -4,11 +4,11 @@ import { toJSON } from '@/models/plugins';
 import {
   IProductInventory,
   IProductInventoryModel,
-  IProductInventoryReservationSchema
+  IProductInventoryReservation
 } from '@/interfaces/models/product';
 
 // define reserve Schema
-const reserveSchema = new Schema<IProductInventoryReservationSchema>(
+const reserveSchema = new Schema<IProductInventoryReservation>(
   {
     order: {
       type: Schema.Types.ObjectId,

@@ -1,5 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
+import { OrderShop } from '@/models/order-shop.model';
 import { log, env } from '@/config';
 import {
   COUPONS_MAX_USE_PER_ORDER,
@@ -8,7 +9,7 @@ import {
 } from '@/config/enums/coupon';
 import { SHIPPING_FEE_PERCENT, ORDER_CONFIG } from '@/config/enums/order';
 import {
-  IAdditionInfoItem,
+  IAdditionInfoOrderShop,
   ICartPopulated,
   IItemCartPopulated
 } from '@/interfaces/models/cart';
@@ -16,13 +17,13 @@ import {
   IOrder,
   IUpdateOrderBody,
   CreateOrderForBuyNowBody,
-  IOrderModel, CreateOrderFromCartBody
+  IOrderModel, CreateOrderFromCartBody, IOrderShopModel, IOrderShop
 } from '@/interfaces/models/order';
 import { Order } from '@/models';
-import { addressService } from '@/services/address.service';
+import { userAddressService } from '@/services/user-address.service';
 import { cartService } from '@/services/cart.service';
 import { couponService } from '@/services/coupon.service';
-import { inventoryService } from '@/services/inventory.service';
+import { inventoryService } from '@/services/product-inventory.service';
 import { redisService } from '@/services/redis.service';
 import { ApiError, roundNumAndFixed } from '@/utils';
 import { ICoupon } from '@/interfaces/models/coupon';
@@ -31,18 +32,12 @@ const getOrderById = async (id: IOrder['id']) => {
   return Order.findById(id);
 };
 
-/**
- * Query for orders
- * @param filter - Mongo filter
- * @param options - Query options
- * @param [options.sortBy] - Sort option in the format: sortField:(desc|asc)
- * @param [options.limit] - Maximum number of results per page (default = 10)
- * @param [options.page] - Current page (default = 1)
- * @returns {Promise<QueryResult>}
- *
- **/
 const queryOrders: IOrderModel['paginate'] = async (filter, options) => {
   return Order.paginate(filter, options);
+};
+
+const queryOrderShopList: IOrderShopModel['paginate'] = async (filter, options) => {
+  return OrderShop.paginate(filter, options);
 };
 
 const updateOrderById = async (
@@ -69,8 +64,10 @@ const updateOrderById = async (
  *
  * 3. validate coupons & calculate discount total
  */
-
-async function getSummaryOrder(cart: ICartPopulated, additionInfoItems?: IAdditionInfoItem[]) {
+async function getSummaryOrder(
+  cart: ICartPopulated,
+  additionInfoItems?: IAdditionInfoOrderShop[]
+) {
   const { items, user } = cart;
   const summaryOrder = {
     subTotalPrice: 0,
@@ -81,10 +78,9 @@ async function getSummaryOrder(cart: ICartPopulated, additionInfoItems?: IAdditi
     totalProducts: 0,
   };
 
-  const itemShops: { [key: string]: Pick<IAdditionInfoItem, 'note' | 'coupon_codes'> } = {};
+  const itemShops: { [key: string]: Pick<IAdditionInfoOrderShop, 'note' | 'coupon_codes'> } = {};
   if (additionInfoItems && additionInfoItems.length > 0) {
     additionInfoItems.forEach((ele) => {
-      // itemShops[ele.shop as string] = ele.coupon_codes;
       itemShops[ele.shop as string] = {
         note: ele?.note ?? '',
         coupon_codes: ele?.coupon_codes ?? [],
@@ -120,11 +116,13 @@ async function getSummaryOrder(cart: ICartPopulated, additionInfoItems?: IAdditi
       const product = ele.inventory.product ;
 
       return {
+        product: ele?.inventory.product,
         inventory: ele?.inventory?.id,
         quantity: ele.quantity,
         price: ele?.inventory?.price,
         title: product?.title,
-        image_url: env.aws_s3.host_bucket + '/' + product?.images[0]?.relative_url,
+        image_url: `${env.aws_s3.host_bucket}/${product?.images[0]?.relative_url}`,
+        // image_url: env.aws_s3.host_bucket + '/' + product?.images[0]?.relative_url,
       };
     });
 
@@ -139,11 +137,12 @@ async function getSummaryOrder(cart: ICartPopulated, additionInfoItems?: IAdditi
     summaryOrder.shippingFee += roundNumAndFixed(subTotalPrice * SHIPPING_FEE_PERCENT);
 
     // validate per coupon
+    let totalDiscount = 0;
     if (coupon_codes && coupon_codes.length > 0) {
 
       if (coupon_codes.length > COUPONS_MAX_USE_PER_ORDER) {
         throw new ApiError(
-          StatusCodes.BAD_REQUEST,
+          StatusCodes.UNPROCESSABLE_ENTITY,
           `Only ${COUPONS_MAX_USE_PER_ORDER} coupons use at same time`
         );
       }
@@ -160,10 +159,10 @@ async function getSummaryOrder(cart: ICartPopulated, additionInfoItems?: IAdditi
         coupon_types.push(coupon.type);
 
         if (!coupon.is_active) {
-          throw new ApiError(StatusCodes.BAD_REQUEST, 'Coupon not active');
+          throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'Coupon not active');
         }
         if (coupon.uses_count >= coupon.max_uses) {
-          throw new ApiError(StatusCodes.BAD_REQUEST, `Coupon ${coupon_code} reach max count use`);
+          throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, `Coupon ${coupon_code} reach max count use`);
         }
 
         if (
@@ -171,7 +170,7 @@ async function getSummaryOrder(cart: ICartPopulated, additionInfoItems?: IAdditi
           subTotalPrice < (coupon.min_order_value as number)
         ) {
           throw new ApiError(
-            StatusCodes.BAD_REQUEST,
+            StatusCodes.UNPROCESSABLE_ENTITY,
             `Shop ${shop?.shop_name} require order total must be large than
              ${coupon.min_order_value}`
           );
@@ -182,7 +181,7 @@ async function getSummaryOrder(cart: ICartPopulated, additionInfoItems?: IAdditi
           count_shop_products < (coupon.min_products as number)
         ) {
           throw new ApiError(
-            StatusCodes.BAD_REQUEST,
+            StatusCodes.UNPROCESSABLE_ENTITY,
             `Coupon ${coupon_code} require order must 
             be at least ${coupon.min_products} products`
           );
@@ -201,27 +200,27 @@ async function getSummaryOrder(cart: ICartPopulated, additionInfoItems?: IAdditi
           );
         }
 
-        let discount = 0;
+        // let totalDiscount = 0;
         switch (coupon.type) {
           case COUPON_TYPES.FIXED_AMOUNT:
-            discount = coupon.amount_off as number;
+            totalDiscount = coupon.amount_off as number;
             break;
           case COUPON_TYPES.PERCENTAGE:
-            discount = subTotalPrice * (coupon.percent_off as number / 100);
+            totalDiscount = subTotalPrice * (coupon.percent_off as number / 100);
             break;
           case COUPON_TYPES.FREE_SHIP:
             summaryOrder.shippingFee -= roundNumAndFixed(subTotalPrice * SHIPPING_FEE_PERCENT);
             // summaryOrder.shippingFee -= subTotalPrice * SHIPPING_FEE_PERCENT;
             break;
         }
-        summaryOrder.totalDiscount += roundNumAndFixed(discount);
+        summaryOrder.totalDiscount += roundNumAndFixed(totalDiscount);
       }
 
       if (
         coupon_codes.length === COUPONS_MAX_USE_PER_ORDER &&
         !coupon_types.includes(COUPON_TYPES.FREE_SHIP)
       ) {
-        throw new ApiError(StatusCodes.BAD_REQUEST, 'The only coupon that can be used with another coupon is Free Shipping');
+        throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'The only coupon that can be used with another coupon is Free Shipping');
       }
     }
 
@@ -235,6 +234,9 @@ async function getSummaryOrder(cart: ICartPopulated, additionInfoItems?: IAdditi
     itemsSelected.push({
       shop: shopId,
       products: productsMappedFields,
+      subtotal: roundNumAndFixed(subTotalPrice),
+      total_discount: roundNumAndFixed(totalDiscount),
+      total: roundNumAndFixed(subTotalPrice - totalDiscount),
       coupon_codes,
       note,
     });
@@ -296,7 +298,7 @@ async function createOrderFromCart(
       `The total amount due must be no more than ${ORDER_CONFIG.MAX_ORDER_TOTAL}`);
   }
 
-  const userAddress = await addressService.getAddressById(address);
+  const userAddress = await userAddressService.getById(address);
   if (!userAddress || userAddress.user.toString() !== user) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Address not found');
   }
@@ -305,7 +307,7 @@ async function createOrderFromCart(
     user,
     address,
     payment_type,
-    lines: itemsSelected,
+    // lines: itemsSelected,
     subtotal: summaryOrder.subTotalPrice,
     shipping_fee: summaryOrder.shippingFee,
     total_discount: summaryOrder.totalDiscount,
@@ -313,6 +315,7 @@ async function createOrderFromCart(
   }], { session });
   const newOrder = newOrderCreated[0];
 
+  const orderShops: IOrderShop[] = [];
   for (const item of itemsSelected) {
     const { products = [], shop, coupon_codes = [] } = item;
     for (const product of products) {
@@ -347,12 +350,17 @@ async function createOrderFromCart(
         shop, user, codes: coupon_codes,
       }, session);
     }
+
+    const orderShopCreated = await OrderShop.create([{ ...item, order: newOrder.id }], { session });
+    const newOrderShop = orderShopCreated[0];
+    orderShops.push(newOrderShop);
   }
 
   await cart.updateOne({ items: itemNotSelected }, session);
 
   return {
     newOrder,
+    orderShops,
     userAddress,
   };
 }
@@ -365,7 +373,8 @@ async function createOrderForBuyNow(
     user,
     address,
     payment_type,
-    additionInfoItems,
+    coupon_codes,
+    note,
     inventory,
     quantity,
   } = payload;
@@ -375,14 +384,21 @@ async function createOrderForBuyNow(
     throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
   }
 
-  await inventoryInDB?.populate('product');
+  await inventoryInDB.populate('product');
   const items = [{
     shop: inventoryInDB.shop,
     products: [{
+      product: inventoryInDB.product,
+      inventory: inventoryInDB,
       is_select_order: true,
       quantity,
-      inventory: inventoryInDB,
     }],
+  }];
+
+  const additionInfoItems = [{
+    shop: inventoryInDB.shop,
+    coupon_codes,
+    note,
   }];
 
   const {
@@ -391,7 +407,7 @@ async function createOrderForBuyNow(
     // @ts-expect-error:next-line
   } = await getSummaryOrder({ user, items }, additionInfoItems);
 
-  const userAddress = await addressService.getAddressById(address);
+  const userAddress = await userAddressService.getById(address);
   if (!userAddress || userAddress.user.toString() !== user) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Address not found');
   }
@@ -400,7 +416,6 @@ async function createOrderForBuyNow(
     user,
     address,
     payment_type,
-    lines: itemsSelected,
     subtotal: summaryOrder.subTotalPrice,
     shipping_fee: summaryOrder.shippingFee,
     total_discount: summaryOrder.totalDiscount,
@@ -408,10 +423,11 @@ async function createOrderForBuyNow(
   }], { session });
   const newOrder = newOrderCreated[0];
 
+  const orderShops: IOrderShop[] = [];
   for (const item of itemsSelected) {
     const { products = [], shop, coupon_codes = [] } = item;
     for (const product of products) {
-      const key = `lock_v2024_${product.inventory}`;
+      const key = `lock_${new Date().getFullYear()}_${product.inventory}`;
 
       log.info('Asking for lock');
       const lock = await redisService.retrieveLock(key);
@@ -442,16 +458,22 @@ async function createOrderForBuyNow(
         shop, user, codes: coupon_codes,
       }, session);
     }
+
+    const orderShopCreated = await OrderShop.create([{ ...item, order: newOrder.id }], { session });
+    const newOrderShop = orderShopCreated[0];
+    orderShops.push(newOrderShop);
   }
 
   return {
     newOrder,
+    orderShops,
     userAddress,
   };
 }
 
 export const orderService = {
   queryOrders,
+  queryOrderShopList,
   getOrderById,
   getSummaryOrder,
   createOrderFromCart,

@@ -1,5 +1,5 @@
 import express from 'express';
-import { shopValidation, memberValidation, couponValidation } from '@/validations';
+import { shopValidation, shopMemberValidation, couponValidation } from '@/validations';
 import {
   productController, shopController, memberController, couponController
 } from '@/controllers';
@@ -15,9 +15,9 @@ router
     shopController.getListShops
   )
   .post(
-    validate(shopValidation.createShop),
+    validate(shopValidation.create),
     auth(),
-    shopController.createShop
+    shopController.create
   )
   .delete(
     auth('deleteShop'),
@@ -28,23 +28,23 @@ router
 router
   .route('/:shop_id/members')
   .post(
-    validate(memberValidation.addMember),
+    validate(shopMemberValidation.addMember),
     auth('addMember'),
     memberController.addMember
   )
   .get(
-    validate(memberValidation.getMembers),
+    validate(shopMemberValidation.getMembers),
     memberController.getMembers
   );
 router
   .route('/:shop_id/members/:user_id')
   .delete(
-    validate(memberValidation.deleteMember),
+    validate(shopMemberValidation.deleteMember),
     auth('deleteMembers'),
     memberController.deleteMember
   )
   .patch(
-    validate(memberValidation.updateMember),
+    validate(shopMemberValidation.updateMember),
     auth('updateMembers'),
     memberController.updateMember
   );

@@ -9,11 +9,11 @@ import {
   ICartPopulated
 } from '@/interfaces/models/cart';
 import { Cart, ProductInventory, Product } from '@/models';
-import { inventoryService } from '@/services/inventory.service';
+import { inventoryService } from '@/services/product-inventory.service';
 import { productService } from '@/services/product.service';
 import { ApiError } from '@/utils';
 
-const getProductsForHeader = async (userId: ICart['user']) => {
+const getProductsRecentlyAdded = async (userId: ICart['user']) => {
   const limit = 3;
   const result = await Cart.aggregate([
     { $match: { user: new mongoose.Types.ObjectId(userId) } },
@@ -100,7 +100,7 @@ const populateCart = async (cart: ICart) => {
       select: 'product variant stock price',
       populate: {
         path: 'product',
-        select: 'images title variant_type variant_group_name sub_variant_group_name',
+        select: 'images title variant_type variant_group_name variant_sub_group_name',
       },
     },
     {
@@ -230,7 +230,10 @@ async function updateProduct(
  * if cart, item exist, add new product into item
  *
  */
-async function addProduct(userId: ICart['user'], payload: IProductCart) {
+async function addProduct(
+  userId: ICart['user'],
+  payload: IProductCart
+) {
 
   const inventoryInDB = await inventoryService.getInventoryById(payload.inventory);
   if (payload?.variant) {
@@ -315,5 +318,5 @@ export const cartService = {
   deleteProduct,
   updateProduct,
   populateCart,
-  getProductsForHeader,
+  getProductsRecentlyAdded,
 };

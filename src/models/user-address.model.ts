@@ -1,9 +1,9 @@
 import { Schema, model, Document } from 'mongoose';
-import { IAddress, IAddressModel } from '@/interfaces/models/address';
+import { IUserAddress, IUserAddressModel } from '@/interfaces/models/user-address';
 import { toJSON, paginate } from '@/models/plugins';
 
 // define Schema
-const addressSchema = new Schema<IAddress, IAddressModel>(
+const userAddressSchema = new Schema<IUserAddress, IUserAddressModel>(
   {
     user: {
       type: Schema.Types.ObjectId,
@@ -59,10 +59,10 @@ const addressSchema = new Schema<IAddress, IAddressModel>(
 );
 
 // Plugins
-addressSchema.plugin(toJSON);
-addressSchema.plugin(paginate);
+userAddressSchema.plugin(toJSON);
+userAddressSchema.plugin(paginate);
 
-addressSchema.post(['find', 'findOne', 'findOneAndUpdate'], function (res) {
+userAddressSchema.post(['find', 'findOne', 'findOneAndUpdate'], function (res) {
   if (!this.mongooseOptions().lean) {
     return;
   }
@@ -79,4 +79,4 @@ function transformDoc(doc: Document) {
   delete doc.__v;
 }
 
-export const Address: IAddressModel = model<IAddress, IAddressModel>('Address', addressSchema);
+export const UserAddress: IUserAddressModel = model<IUserAddress, IUserAddressModel>('user_address', userAddressSchema);

@@ -1,15 +1,14 @@
+import httpStatus from 'http-status-codes';
 import { ClientSession, ObjectId } from 'mongoose';
 import jwt from 'jsonwebtoken';
 import moment from 'moment';
+import { ApiError } from '@/utils';
 import { TOKEN_TYPES } from '@/config/enums/token';
 import { env, log } from '@/config';
 import { userService } from '@/services';
 import { Token } from '@/models';
 import { IUser } from '@/interfaces/models/user';
 
-/**
- * Generate token
- */
 const generateToken = (
   userId: ObjectId,
   expires: moment.Moment,
@@ -68,7 +67,7 @@ const verifyToken = async (token: string, type: string) => {
     return tokenDoc;
   }
   catch (error) {
-    throw new Error('Token is invalid');
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Token is invalid');
   }
 };
 
@@ -99,7 +98,7 @@ const generateAuthTokens = async (user: IUser, session?: ClientSession) => {
  * Generate reset password token
  */
 const generateResetPasswordToken = async (email: string) => {
-  const user = await userService.getUserByEmail(email);
+  const user = await userService.getByEmail(email);
   if (!user) {
     log.error('No users found with this email');
     // throw new ApiError(StatusCodes.NOT_FOUND, 'No users found with this email');

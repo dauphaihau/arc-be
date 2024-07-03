@@ -67,7 +67,8 @@ export const paginate = (schema: Schema) => {
     const countPromise = this.countDocuments(filter).exec();
     let docsPromise = this.find(filter).sort(sort).skip(skip).limit(limit).select(select);
 
-    if (options.populate) {
+    // if (options.populate) {
+    if (typeof options.populate === 'string') {
       options.populate.split(',').forEach((populateOption) => {
         if (populateOption.includes('/')) {
           const [root, subs] = populateOption.split('/');
@@ -91,7 +92,9 @@ export const paginate = (schema: Schema) => {
             .reduce((a, b) => ({ path: b, populate: a }))
         );
       });
-
+    }
+    else if (typeof options.populate === 'object') {
+      docsPromise = docsPromise.populate(options.populate);
     }
 
     docsPromise = docsPromise.lean({ virtual: true }).exec();

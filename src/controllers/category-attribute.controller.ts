@@ -1,15 +1,16 @@
 import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { RequestParamsBody } from '@/interfaces/common/request';
 import {
-  CreateAttributePayload,
+  CreateCategoryAttributeBody,
   GetAttributesByCategoryParams,
-  CreateAttributeParams
-} from '@/interfaces/models/attribute';
+  CreateCategoryAttributeParams
+} from '@/interfaces/models/category-attribute';
 import { Attribute } from '@/models';
 import { catchAsync } from '@/utils';
 
 const createAttribute = catchAsync(async (
-  req: Request<CreateAttributeParams, unknown, CreateAttributePayload>,
+  req: RequestParamsBody<CreateCategoryAttributeParams, CreateCategoryAttributeBody>,
   res
 ) => {
   const attribute = await Attribute.create({
@@ -29,7 +30,7 @@ const getAttributesByCategory = catchAsync(async (
   res.status(StatusCodes.OK).send({ attributes });
 });
 
-export const attributeController = {
+export const categoryAttributeController = {
   createAttribute,
   getAttributesByCategory,
 };

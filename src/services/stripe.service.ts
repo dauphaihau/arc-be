@@ -1,15 +1,14 @@
 import { StatusCodes } from 'http-status-codes';
 import Stripe from 'stripe';
+import { OrderShop } from '@/models/order-shop.model';
 import {
   MARKETPLACE_CURRENCIES,
   MARKETPLACE_CONFIG
 } from '@/config/enums/marketplace';
-import { inventoryService } from '@/services/inventory.service';
+import { inventoryService } from '@/services/product-inventory.service';
 import { stripeClient, env, log } from '@/config';
 import { ORDER_STATUSES } from '@/config/enums/order';
-import {
-  IGetCheckoutSessionUrlPayload, IClearProductsReverseByOrder
-} from '@/interfaces/models/order';
+import { IGetCheckoutSessionUrlPayload } from '@/interfaces/models/order';
 import { IUser } from '@/interfaces/models/user';
 import { orderService } from '@/services/order.service';
 import { ApiError, transactionWrapper } from '@/utils';
@@ -36,9 +35,12 @@ const convertCurrencyStripe = (price: number, currency = MARKETPLACE_CONFIG.BASE
 async function getCheckoutSessionUrl(
   user: IUser,
   payload: IGetCheckoutSessionUrlPayload
-) {
+): Promise<string> {
   const { id: user_id, email } = user;
-  const { newOrder, userAddress, currency } = payload;
+  const {
+    newOrder, orderShops, userAddress, currency,
+  } = payload;
+  log.debug('getCheckoutSessionUrl newOrder %o', newOrder);
 
   const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
@@ -49,9 +51,8 @@ async function getCheckoutSessionUrl(
     rateCurrency = exchangeRate.rates[currency];
   }
 
-  log.debug('newOrder %o', newOrder);
-  newOrder.lines.forEach((line) => {
-    return line.products.forEach(product => {
+  orderShops.forEach((order) => {
+    return order.products.forEach(product => {
       line_items.push(
         {
           price_data: {
@@ -63,7 +64,6 @@ async function getCheckoutSessionUrl(
                 order_id: newOrder.id as string,
               },
             },
-            // unit_amount: convertCurrencyStripe(product.price),
             unit_amount: convertCurrencyStripe(product.price * rateCurrency, currency),
           },
           quantity: product.quantity,
@@ -72,7 +72,7 @@ async function getCheckoutSessionUrl(
     });
   });
 
-  log.debug('line-item %o', line_items);
+  log.debug('getCheckoutSessionUrl line-items %o', line_items);
 
   const params: Stripe.Checkout.SessionCreateParams = {
     submit_type: 'pay',
@@ -88,7 +88,6 @@ async function getCheckoutSessionUrl(
         shipping_rate_data: {
           type: 'fixed_amount',
           fixed_amount: {
-            // amount: convertCurrencyStripe(newOrder.shipping_fee),
             amount: convertCurrencyStripe(newOrder.shipping_fee * rateCurrency, currency),
             currency,
           },
@@ -127,9 +126,7 @@ async function getCheckoutSessionUrl(
     const coupon = await stripeClient.coupons.create({
       name: 'DISCOUNT',
       duration: 'once',
-      // currency: 'usd',
       currency,
-      // amount_off: convertCurrencyStripe(newOrder.total_discount),
       amount_off: convertCurrencyStripe(newOrder.total_discount * rateCurrency, currency),
       metadata: {
         user_id,
@@ -137,13 +134,17 @@ async function getCheckoutSessionUrl(
       },
     });
     if (!coupon) {
-      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Create stripe coupon failed');
+      throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'Create stripe coupon failed');
     }
     params.discounts = [{ coupon: coupon.id }];
   }
 
-  // log.debug('params checkout session %o', params);
+  log.debug('getCheckoutSessionUrl params checkout session %o', params);
   const session = await stripeClient.checkout.sessions.create(params);
+  if (!session.url) {
+    log.error('getCheckoutSessionUrl session url being null', session.url);
+    throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY);
+  }
   return session.url;
 }
 
@@ -161,8 +162,10 @@ async function onEventStripe(event: Stripe.Event) {
             status: ORDER_STATUSES.PAID,
           }, sessionMongo);
           log.debug('order %o', order);
+          const orderShops = await OrderShop.find({ order: order.id });
           await inventoryService.clearProductsReversedByOrder(
-            order as IClearProductsReverseByOrder,
+            order,
+            orderShops,
             sessionMongo
           );
         }
@@ -174,7 +177,19 @@ async function onEventStripe(event: Stripe.Event) {
   }
 }
 
+async function getCheckoutSession(sessionId?: string) {
+  if (!sessionId) throw new ApiError(StatusCodes.BAD_REQUEST);
+  try {
+    return await stripeClient.checkout.sessions.retrieve(sessionId);
+  }
+  catch (error) {
+    log.error(error);
+    throw new ApiError(StatusCodes.NOT_FOUND);
+  }
+}
+
 export const stripeService = {
   onEventStripe,
   getCheckoutSessionUrl,
+  getCheckoutSession,
 };

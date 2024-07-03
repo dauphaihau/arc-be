@@ -1,11 +1,11 @@
-import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { RequestQuery } from '@/interfaces/common/request';
 import { awsS3Service } from '@/services';
 import { catchAsync } from '@/utils';
 import { FolderObjectS3, GetPresignedUrlQueries } from '@/interfaces/common/upload';
 
 const getPresignedUrl = catchAsync(async (
-  req: Request<unknown, unknown, unknown, GetPresignedUrlQueries>,
+  req: RequestQuery<GetPresignedUrlQueries>,
   res
 ) => {
   let folder: FolderObjectS3 = 'user';

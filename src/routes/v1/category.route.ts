@@ -1,12 +1,12 @@
 import express from 'express';
-import { categoryController, attributeController } from '@/controllers';
+import { categoryController, categoryAttributeController } from '@/controllers';
 
 const router = express.Router();
 
 router
   .route('/')
   .get(
-    categoryController.getCategories
+    categoryController.getList
   )
   .delete(
     categoryController.getSearchCategories
@@ -19,10 +19,10 @@ router
 router
   .route('/:id/attributes')
   .post(
-    attributeController.createAttribute
+    categoryAttributeController.createAttribute
   )
   .get(
-    attributeController.getAttributesByCategory
+    categoryAttributeController.getAttributesByCategory
   );
 
 export default router;

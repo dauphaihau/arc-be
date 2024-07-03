@@ -1,5 +1,5 @@
-import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { RequestBody, RequestQuery } from '@/interfaces/common/request';
 import { cartService, orderService } from '@/services';
 import { catchAsync } from '@/utils';
 import {
@@ -10,7 +10,7 @@ import {
 const getCart = catchAsync(async (req, res) => {
   const { type } = req.query;
   if (type && type === 'header') {
-    const result = await cartService.getProductsForHeader(req.user.id);
+    const result = await cartService.getProductsRecentlyAdded(req.user.id);
     res.status(StatusCodes.OK).send({ cart: result });
     return;
   }
@@ -66,7 +66,7 @@ const addProduct = catchAsync(async (req, res) => {
 });
 
 const updateProduct = catchAsync(async (
-  req: Request<unknown, unknown, UpdateProductCartBody>,
+  req: RequestBody<UpdateProductCartBody>,
   res
 ) => {
   const { additionInfoItems, ...resBody } = req.body;
@@ -82,7 +82,7 @@ const updateProduct = catchAsync(async (
 });
 
 const deleteProduct = catchAsync(async (
-  req: Request<unknown, unknown, unknown, DeleteProductCartQueries>,
+  req: RequestQuery<DeleteProductCartQueries>,
   res
 ) => {
   const cart = await cartService.deleteProduct(req.user.id, req.query.inventory);

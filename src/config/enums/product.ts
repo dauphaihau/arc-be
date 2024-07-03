@@ -45,5 +45,11 @@ export enum PRODUCT_SORT_BY {
   PRICE_DESC = 'priceDesc'
 }
 
+export enum PRODUCT_SHIPPING_CHARGE {
+  FIXED_PRICE = 'fixed_price',
+  FREE_SHIPPING = 'free_shipping'
+}
+
+
 export const PRODUCT_REGEX_SLUG = /^[a-z0-9]+(?:(?:-|_)+[a-z0-9]+)*$/;
 export const PRODUCT_REGEX_NOT_URL = /^(?!http.*$).*/;

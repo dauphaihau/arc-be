@@ -14,7 +14,7 @@ import {
 import { Product, ProductInventory } from '@/models';
 import { ProductVariant } from '@/models/product-variant.model';
 import { awsS3Service } from '@/services/aws-s3.service';
-import { inventoryService } from '@/services/inventory.service';
+import { inventoryService } from '@/services/product-inventory.service';
 import { ApiError } from '@/utils';
 
 const getProductById = async (id: IProduct['id']) => {
@@ -600,15 +600,6 @@ const createProductVariant = async (
   return productVariant[0];
 };
 
-/**
- * Query for products
- * @param filter - Mongo filter
- * @param options - Query options
- * @param [options.sortBy] - Sort option in the format: sortField:(desc|asc)
- * @param [options.limit] - Maximum number of results per page (default = 10)
- * @param [options.page] - Current page (default = 1)
- * @returns {Promise<QueryResult>}
- */
 const queryProducts: IProductModel['paginate'] = async (filter, options) => {
   return Product.paginate(filter, options);
 };

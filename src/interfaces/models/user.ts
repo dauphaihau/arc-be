@@ -12,6 +12,7 @@ interface IUserStatics {
 
 export type IUser = z.infer<typeof userSchema> & Document & IUserMethods;
 
+export type User = z.infer<typeof userSchema> & Document & IUserMethods;
 export interface IUserModel extends Model<IUser, unknown, IUserMethods>, IUserStatics {}
 
 export type CreateUserBody = Pick<IUser, 'email' | 'password'>;

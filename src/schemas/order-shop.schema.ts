@@ -3,13 +3,12 @@ import { itemCartSchema } from '@/schemas/cart.schema';
 import { productInventorySchema } from '@/schemas/product-inventory.schema';
 import { productSchema } from '@/schemas/product.schema';
 import {
-  PAYMENT_TYPES,
-  ORDER_STATUSES,
-  ORDER_CONFIG
+  ORDER_CONFIG, ORDER_SHIPPING_STATUSES
 } from '@/config/enums/order';
 import { objectIdSchema } from '@/schemas/sub/objectId.schema';
 
-export const productInLineSchema = z.object({
+export const orderShopProductSchema = z.object({
+  product: objectIdSchema,
   inventory: objectIdSchema,
   price: productInventorySchema.shape.price,
   quantity: z.number(),
@@ -17,32 +16,20 @@ export const productInLineSchema = z.object({
   image_url: z.string(),
 });
 
-export const lineItemSchema = z.object({
+export const orderShopSchema = z.object({
+  order: objectIdSchema,
   shop: objectIdSchema,
   coupon_codes: itemCartSchema.shape.coupon_codes,
+  shipping_status: z.nativeEnum(ORDER_SHIPPING_STATUSES).default(ORDER_SHIPPING_STATUSES.PRE_TRANSIT),
   products: z
-    .array(productInLineSchema)
+    .array(orderShopProductSchema)
     .min(1)
     .max(20),
+  subtotal: z.number(),
+  total_discount: z.number(),
+  total: z.number(),
   note: z
     .string()
     .max(ORDER_CONFIG.MAX_CHAR_NOTE)
     .optional(),
-});
-
-export const orderSchema = z.object({
-  id: objectIdSchema,
-  user: objectIdSchema,
-  address: objectIdSchema,
-  payment_type: z.nativeEnum(PAYMENT_TYPES),
-  tracking_number: z.string(),
-  stripe_charge_id: z.string(),
-  currency: z.string().max(3),
-  status: z.nativeEnum(ORDER_STATUSES),
-  subtotal: z.number(),
-  shipping_fee: z.number(),
-  total_discount: z.number(),
-  total: z.number().max(ORDER_CONFIG.MAX_ORDER_TOTAL),
-  createdAt: z.date(),
-  updatedAt: z.date(),
 });

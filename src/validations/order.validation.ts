@@ -43,4 +43,9 @@ export const orderValidation = {
       .strict()
     ,
   }),
+  getOrderByCheckoutSession: z.object({
+    query: z.object({
+      session_id: z.string(),
+    }),
+  }),
 };

@@ -1,19 +1,21 @@
 import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
-import { Product } from '@/models';
 import {
   COUPON_TYPES,
   COUPON_MIN_ORDER_TYPES,
   COUPON_APPLIES_TO
 } from '@/config/enums/coupon';
 import {
-  CreateCouponPayload,
+  CreateCouponBody,
   ICoupon,
   GetCouponByCode,
-  UpdateCouponPayload, UpdateCouponShopAfterUsed, ICouponModel
+  UpdateCouponBody,
+  UpdateCouponShopAfterUsed,
+  ICouponModel
 } from '@/interfaces/models/coupon';
-import { productService } from '@/services/product.service';
+import { Product } from '@/models';
 import { Coupon } from '@/models/coupon.model';
+import { productService } from '@/services/product.service';
 import { ApiError } from '@/utils';
 
 const getCouponById = async (id: ICoupon['id']) => {
@@ -24,7 +26,7 @@ const getCouponByCode = async (filter: GetCouponByCode) => {
   return Coupon.findOne(filter);
 };
 
-const createCoupon = async (createBody: CreateCouponPayload) => {
+const create = async (createBody: CreateCouponBody) => {
   const {
     shop,
     title,
@@ -80,19 +82,8 @@ const createCoupon = async (createBody: CreateCouponPayload) => {
   });
 };
 
-/**
- * Query for coupons
- * @param filter - Mongo filter
- * @param options - Query options
- * @param [options.sortBy] - Sort option in the format: sortField:(desc|asc)
- * @param [options.limit] - Maximum number of results per page (default = 10)
- * @param [options.page] - Current page (default = 1)
- * @returns {Promise<QueryResult>}
- */
-
 const queryCoupons: ICouponModel['paginate'] = async (filter, options) => {
-  const coupons = await Coupon.paginate(filter, options);
-  return coupons;
+  return Coupon.paginate(filter, options);
 };
 
 const deleteCouponById = async (id: ICoupon['id']) => {
@@ -105,7 +96,7 @@ const deleteCouponById = async (id: ICoupon['id']) => {
 
 const updateCoupon = async (
   couponId: ICoupon['id'],
-  updateBody: UpdateCouponPayload
+  updateBody: UpdateCouponBody
 ) => {
   const coupon = await getCouponById(couponId);
   if (!coupon) throw new ApiError(StatusCodes.NOT_FOUND, 'Coupon not found');
@@ -162,7 +153,7 @@ const updateCouponsShopAfterUsed = async (
 };
 
 export const couponService = {
-  createCoupon,
+  create,
   queryCoupons,
   deleteCouponById,
   getCouponById,

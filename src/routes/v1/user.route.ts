@@ -3,10 +3,10 @@ import { userValidation } from '@/validations/user.validation';
 import {
   cartValidation,
   orderValidation,
-  addressValidation
+  userAddressValidation
 } from '@/validations';
 import {
-  addressController,
+  userAddressController,
   orderController,
   cartController,
   userController
@@ -25,38 +25,38 @@ router
 
 router
   .route('/me')
-  .get(auth(), userController.me);
+  .get(auth(), userController.getCurrentUser);
 
 // Address
 router
   .route('/addresses')
   .post(
-    validate(addressValidation.createAddress),
+    validate(userAddressValidation.create),
     auth(),
-    addressController.createAddress
+    userAddressController.createAddress
   )
   .get(
     auth(),
-    validate(addressValidation.getAddresses),
-    addressController.getAddresses
+    validate(userAddressValidation.getList),
+    userAddressController.getAddresses
   );
 
 router
   .route('/addresses/:id')
   .patch(
-    validate(addressValidation.updateAddress),
+    validate(userAddressValidation.update),
     auth(),
-    addressController.updateAddress
+    userAddressController.updateAddress
   )
   .delete(
-    validate(addressValidation.deleteAddress),
+    validate(userAddressValidation.delete),
     auth(),
-    addressController.deleteAddress
+    userAddressController.deleteAddress
   )
   .get(
-    validate(addressValidation.getAddress),
+    validate(userAddressValidation.getDetail),
     auth(),
-    addressController.getAddress
+    userAddressController.getAddress
   );
 
 // Cart
@@ -104,9 +104,17 @@ router
     auth(),
     orderController.createOrderForBuyNow
   )
-  .get(auth(), orderController.getListOrders);
+  .get(auth(), orderController.getOrderShopList);
 router
   .route('/orders/:id')
   .get(auth(), orderController.getOrder);
+
+router
+  .route('/order/session')
+  .get(
+    validate(orderValidation.getOrderByCheckoutSession),
+    auth(),
+    orderController.getOrderByCheckoutSession
+  );
 
 export default router;

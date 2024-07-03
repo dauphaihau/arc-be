@@ -4,12 +4,16 @@ export enum ORDER_STATUSES {
   AWAITING_PAYMENT = 'awaiting_payment',
   EXPIRED = 'expired', // expired link checkout session stripe
   PAID = 'paid',
-  SHIPPED = 'shipped',
-  IN_TRANSIT = 'in_transit',
-  DELIVERED = 'delivered',
   REFUNDED = 'refunded',
   COMPLETED = 'completed', // order has been shipped/picked up, and receipt is confirmed; user has paid
   ARCHIVED = 'archived'
+}
+
+export enum ORDER_SHIPPING_STATUSES {
+  PRE_TRANSIT = 'pre_transit',
+  IN_TRANSIT = 'in_transit',
+  SHIPPED = 'shipped',
+  DELIVERED = 'delivered'
 }
 
 export enum PAYMENT_TYPES {
@@ -19,7 +23,7 @@ export enum PAYMENT_TYPES {
 
 export const ORDER_CONFIG = {
   MAX_CHAR_NOTE: 10000,
-  MAX_ORDER_TOTAL: 999999.99,
+  MAX_ORDER_TOTAL: 999999.99, // USD
 };
 
 export const SHIPPING_FEE_PERCENT = 5 / 100; // suppose 5% is standard

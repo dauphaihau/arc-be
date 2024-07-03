@@ -14,7 +14,7 @@ export const shopValidation = {
         .strict()
     ),
   }),
-  createShop: z.object({
+  create: z.object({
     body: shopSchema
       .pick({ shop_name: true })
       .strict(),
@@ -24,20 +24,6 @@ export const shopValidation = {
   createProductByShop: z.object({
     params: productSchema.pick({ shop: true }),
     body: createProductBodySchema.omit({ shop: true }),
-    // .superRefine((val, ctx) => {
-    //   if (val.variant_type === PRODUCT_VARIANT_TYPES.NONE && !val?.price) {
-    //     ctx.addIssue({
-    //       code: z.ZodIssueCode.custom,
-    //       message: 'require price',
-    //     });
-    //   }
-    //   if (val.variant_type === PRODUCT_VARIANT_TYPES.COMBINE && !val?.sub_variant_names) {
-    //     ctx.addIssue({
-    //       code: z.ZodIssueCode.custom,
-    //       message: 'require sub_variant_names',
-    //     });
-    //   }
-    // }),
   }),
 
   getProductsByShop: z.object({

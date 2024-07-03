@@ -1,10 +1,10 @@
 import { Schema, model, SchemaTypes } from 'mongoose';
 import { toJSON, paginate } from './plugins';
 import { memberRoles } from '@/config/enums/member';
-import { IMember, IMemberModel } from '@/interfaces/models/member';
+import { IShopMember, IShopMemberModel } from '@/interfaces/models/shop-member';
 
 // define Schema
-const memberSchema = new Schema<IMember, IMemberModel>(
+const memberSchema = new Schema<IShopMember, IShopMemberModel>(
   {
     shop: {
       type: SchemaTypes.ObjectId,
@@ -31,4 +31,4 @@ const memberSchema = new Schema<IMember, IMemberModel>(
 memberSchema.plugin(toJSON);
 memberSchema.plugin(paginate);
 
-export const Member: IMemberModel = model<IMember, IMemberModel>('Shop_Member', memberSchema);
+export const ShopMember: IShopMemberModel = model<IShopMember, IShopMemberModel>('shop_member', memberSchema);

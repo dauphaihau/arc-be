@@ -3,12 +3,12 @@ import { ICategory } from '@/interfaces/models/category';
 import { Category } from '@/models';
 import { ApiError } from '@/utils';
 
-const getCategoryById = async (id: ICategory['id']) => {
+const getById = async (id: ICategory['id']) => {
   return Category.findById(id);
 };
 
 const getSubCategoriesByCategory = async (id: ICategory['id']) => {
-  const category = await getCategoryById(id);
+  const category = await getById(id);
   if (!category) throw new ApiError(StatusCodes.NOT_FOUND, 'Category not found');
 
   let categoryIds = [category.id];
@@ -30,8 +30,7 @@ const getSubCategoriesByCategory = async (id: ICategory['id']) => {
   return categoryIds;
 };
 
-
 export const categoryService = {
-  getCategoryById,
+  getById,
   getSubCategoriesByCategory,
 };

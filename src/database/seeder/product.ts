@@ -8,6 +8,7 @@ import { getRandomInt, capitalizeSentence } from '@/database/util';
 import { IProduct } from '@/interfaces/models/product';
 import { IShop } from '@/interfaces/models/shop';
 import { Product, ProductInventory, Category, Attribute } from '@/models';
+import { ProductShipping } from '@/models/product-shipping.model';
 import { ProductVariant } from '@/models/product-variant.model';
 import { getListObjects } from '@/services/aws-s3.service';
 import { faker } from '@faker-js/faker';
@@ -102,6 +103,27 @@ const initBaseProduct = async (shop: IShop, relative_urls: (string | undefined)[
     category: category.id,
     attributes: attributesSelected,
     images,
+  });
+};
+
+const initShippingProduct = async (product: IProduct) => {
+  const shipping = await ProductShipping.create({
+    shop: product.shop,
+    product: product.id,
+    country: 'United State',
+    zip: '27006',
+    process_time: '1d',
+    standard_shipping: [
+      {
+        country: 'United State',
+        service: 'other',
+        delivery_time: '1-2d',
+      }
+    ]
+  });
+
+  await product.updateOne({
+    shipping: shipping.id,
   });
 };
 
@@ -244,6 +266,8 @@ export async function generateProductsDB(shops: IShop[]) {
 
       const product = await initBaseProduct(shop, relative_urls);
       if (!product) return;
+
+      await initShippingProduct(product);
 
       if (i % 2 === 0) products.push(initProductSingleVariant(product));
       if (i % 3 === 0) products.push(initProductCombineVariant(product));

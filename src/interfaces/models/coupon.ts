@@ -18,9 +18,9 @@ export interface ICouponModel extends Model<ICoupon, unknown> {
 // ------- API Request
 export type CreateCouponParams = Partial<Pick<ICoupon, 'shop'>>;
 
-export type CreateCouponPayload = Omit<ICoupon, 'id'>;
+export type CreateCouponBody = Omit<ICoupon, 'id'>;
 
-export type GetCouponsQueryParams = Partial<Pick<ICoupon, 'is_auto_sale'>>;
+export type GetCouponsQueries = Pick<ICoupon, 'is_auto_sale'>;
 
 export type GetCouponsParams = Partial<Pick<ICoupon, 'shop'>>;
 
@@ -32,7 +32,7 @@ export type DeleteCouponParams = Partial<Pick<ICoupon, 'shop' | 'id'>>;
 
 export type UpdateCouponParams = Partial<Pick<ICoupon, 'id' | 'shop'>>;
 
-export type UpdateCouponPayload = Omit<ICoupon, 'id' | 'shop' | 'code' | 'users_used' | 'max_uses_per_user'>;
+export type UpdateCouponBody = Omit<ICoupon, 'id' | 'shop' | 'code' | 'users_used' | 'max_uses_per_user'>;
 
 export type UpdateCouponShopAfterUsed = {
   user: IUser['id']

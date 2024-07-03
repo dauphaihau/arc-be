@@ -1,23 +1,23 @@
-import { Request } from 'express';
+import { RequestBody } from '@/interfaces/common/request';
 import { UpdateUserBody } from '@/interfaces/models/user';
 import { userService } from '@/services';
 import { catchAsync, transactionWrapper } from '@/utils';
 
-const me = catchAsync(async (req, res) => {
+const getCurrentUser = catchAsync(async (req, res) => {
   res.send({ user: req.user });
 });
 
 const updateUser = catchAsync(async (
-  req: Request<unknown, unknown, UpdateUserBody>,
+  req: RequestBody<UpdateUserBody>,
   res
 ) => {
   await transactionWrapper(async (session) => {
-    const userUpdated = await userService.updateUserById(req.user.id, req.body, session);
+    const userUpdated = await userService.updateById(req.user.id, req.body, session);
     res.send({ user: userUpdated });
   });
 });
 
 export const userController = {
-  me,
+  getCurrentUser,
   updateUser,
 };

@@ -1,8 +1,9 @@
-import { Response, Request } from 'express';
-import { StatusCodes } from 'http-status-codes';
+import { Response } from 'express';
+import httpStatus, { StatusCodes } from 'http-status-codes';
+import { IUser } from '@/interfaces/models/user';
 import { TokensResponse } from '@/interfaces/models/token';
-import { IBodyRequest } from '@/interfaces/common/request';
-import { transactionWrapper, catchAsync } from '@/utils';
+import { RequestBody, RequestQuery } from '@/interfaces/common/request';
+import { transactionWrapper, catchAsync, ApiError } from '@/utils';
 import {
   emailService, authService, userService, tokenService
 } from '@/services';
@@ -28,15 +29,16 @@ const setCookieTokens = (res: Response, tokens: TokensResponse) => {
 
 const register = catchAsync(async (req, res) => {
   await transactionWrapper(async (session) => {
-    const user = await userService.createUser(req.body, session);
+    const user = await userService.create(req.body, session);
     const tokens = await tokenService.generateAuthTokens(user, session);
     setCookieTokens(res, tokens);
     res.status(StatusCodes.CREATED).send({ user });
   });
 });
 
-const login = catchAsync(async (req: IBodyRequest<LoginPayload>, res) => {
+const login = catchAsync(async (req: RequestBody<LoginPayload>, res) => {
   const user = await authService.login(req.body);
+  await user.populate('shop', 'shop_name _id');
   const tokens = await tokenService.generateAuthTokens(user);
   setCookieTokens(res, tokens);
   res.send({ user });
@@ -46,28 +48,37 @@ const logout = catchAsync(async (req, res) => {
   await authService.logout(req.cookies[TOKEN_TYPES.REFRESH]);
   res.clearCookie(TOKEN_TYPES.ACCESS);
   res.clearCookie(TOKEN_TYPES.REFRESH);
-  res.status(StatusCodes.NO_CONTENT).send();
+  res.status(StatusCodes.OK).send();
 });
 
 const refreshTokens = catchAsync(async (req, res) => {
   const tokens = await authService.refreshAuth(req.cookies[TOKEN_TYPES.REFRESH]);
   setCookieTokens(res, tokens);
-  res.status(StatusCodes.NO_CONTENT).send();
+  res.status(StatusCodes.OK).send();
 });
 
-const forgotPassword = catchAsync(async (req, res) => {
+const forgotPassword = catchAsync(async (
+  req: RequestBody<{ email: IUser['email'] }>,
+  res
+) => {
   const resetPasswordToken = await tokenService.generateResetPasswordToken(req.body.email);
   if (!resetPasswordToken) {
-    res.status(StatusCodes.NO_CONTENT).send();
+    res.status(StatusCodes.OK).send();
     return;
   }
   await emailService.sendResetPasswordEmail(req.body.email, resetPasswordToken);
-  res.status(StatusCodes.NO_CONTENT).send();
+  res.status(StatusCodes.OK).send();
 });
 
-const resetPassword = catchAsync(async (req, res) => {
+const resetPassword = catchAsync(async (
+  req: RequestQuery<{ token: string }>,
+  res
+) => {
   await transactionWrapper(async (session) => {
-    const user = await authService.resetPassword(req.query['token'] as string, req.body.password, session);
+    if (!req.query.token) {
+      throw new ApiError(httpStatus.BAD_REQUEST);
+    }
+    const user = await authService.resetPassword(req.query.token, req.body.password, session);
     const tokens = await tokenService.generateAuthTokens(user, session);
     setCookieTokens(res, tokens);
     res.send({ user });
@@ -81,18 +92,24 @@ const sendVerificationEmail = catchAsync(async (req, res) => {
 });
 
 const verifyToken = catchAsync(async (
-  req: Request<unknown, unknown, unknown, VerifyTokenQueries>,
+  req: RequestQuery<VerifyTokenQueries>,
   res
 ) => {
-  await tokenService.verifyToken(req.query.token as string, req.query.type as string);
-  res.status(StatusCodes.NO_CONTENT).send();
+  if (!req.query.token || !req.query.type) {
+    throw new ApiError(httpStatus.BAD_REQUEST);
+  }
+  await tokenService.verifyToken(req.query.token, req.query.type);
+  res.status(StatusCodes.OK).send();
 });
 
 const verifyEmail = catchAsync(async (
-  req: Request<unknown, unknown, unknown, VerifyEmailQueries>,
+  req: RequestQuery<VerifyEmailQueries>,
   res
 ) => {
-  await authService.verifyEmail(req.query.token as string);
+  if (!req.query.token) {
+    throw new ApiError(httpStatus.BAD_REQUEST);
+  }
+  await authService.verifyEmail(req.query.token);
   res.status(StatusCodes.NO_CONTENT).send();
 });
 

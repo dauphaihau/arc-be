@@ -1,25 +1,25 @@
-import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { RequestQuery, RequestBody } from '@/interfaces/common/request';
 import { log } from '@/config';
 import { Category } from '@/models/category.model';
 import {
   GetCategoryQueries,
-  CreateCategoryPayload,
+  CreateCategoryBody,
   ICategorySearch,
   ICategory
 } from '@/interfaces/models/category';
 import { catchAsync } from '@/utils';
 
 const createRootOrSubCategory = catchAsync(async (
-  req: Request<unknown, unknown, CreateCategoryPayload>,
+  req: RequestBody<CreateCategoryBody>,
   res
 ) => {
   const category = await Category.create(req.body);
   res.status(StatusCodes.CREATED).send({ category });
 });
 
-const getCategories = catchAsync(async (
-  req: Request<unknown, unknown, unknown, GetCategoryQueries>,
+const getList = catchAsync(async (
+  req: RequestQuery<GetCategoryQueries>,
   res
 ) => {
 
@@ -41,7 +41,7 @@ const getCategories = catchAsync(async (
 });
 
 const getSearchCategories = catchAsync(async (
-  req: Request<unknown, unknown, unknown, GetCategoryQueries>,
+  req: RequestQuery<GetCategoryQueries>,
   res
 ) => {
 
@@ -200,6 +200,6 @@ const getSearchCategories = catchAsync(async (
 
 export const categoryController = {
   createRootOrSubCategory,
-  getCategories,
+  getList,
   getSearchCategories,
 };

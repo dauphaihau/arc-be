@@ -1,13 +1,17 @@
 import { model, Schema, SchemaTypes } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import validator from 'validator';
+import type { IUser, IUserMethods, IUserModel } from '@/interfaces/models/user';
 import {
   MARKETPLACE_CONFIG,
   MARKETPLACE_LANGUAGES, MARKETPLACE_REGIONS, MARKETPLACE_CURRENCIES
 } from '@/config/enums/marketplace';
-import { IUser, IUserMethods, IUserModel } from '@/interfaces/models/user';
 import { toJSON } from '@/models/plugins';
-import { USER_REGEX_NAME, USER_CONFIG } from '@/config/enums/user';
+import {
+  USER_REGEX_NAME,
+  USER_CONFIG,
+  USER_REGEX_PASSWORD
+} from '@/config/enums/user';
 
 // define Schema.
 const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
@@ -44,11 +48,11 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
       trim: true,
       min: USER_CONFIG.MIN_CHAR_PASSWORD,
       max: USER_CONFIG.MAX_CHAR_PASSWORD,
-      // validate(value: string) {
-      //   if (!value.match(USER_REGEX_PASSWORD)) {
-      //     throw new Error('password must contain at least 1 lower letter, 1 uppercase letter, 1 number and 1 special character');
-      //   }
-      // },
+      validate(value: string) {
+        if (!value.match(USER_REGEX_PASSWORD)) {
+          throw new Error('password must contain at least 1 lower letter, 1 uppercase letter, 1 number and 1 special character');
+        }
+      },
       private: true, // used by the toJSON plugin
     },
     is_email_verified: {

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { objectIdSchema } from '@/schemas/sub/objectId.schema';
 
-export const addressSchema = z.object({
+export const userAddressSchema = z.object({
   id: objectIdSchema,
   user: objectIdSchema,
   full_name: z.string().max(50),

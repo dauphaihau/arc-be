@@ -1,14 +1,15 @@
 import { Response, NextFunction } from 'express';
 import passport, { AuthenticateCallback } from 'passport';
 import { StatusCodes } from 'http-status-codes';
+import { IUser } from '@/interfaces/models/user';
 import { VerifyCbParams } from '@/interfaces/common/auth';
-import { IParamsRequest } from '@/interfaces/common/request';
+import { RequestParams } from '@/interfaces/common/request';
 import { roleRights, MEMBER_ROLES } from '@/config/enums/member';
-import { memberService } from '@/services';
+import { shopMemberService } from '@/services';
 import { ApiError } from '@/utils/ApiError';
 
 const verifyCallback = (
-  req: IParamsRequest<VerifyCbParams>,
+  req: RequestParams<VerifyCbParams>,
   resolve: (reason?: never) => void,
   reject: (reason?: unknown) => void,
   requiredRights: string[]
@@ -17,11 +18,11 @@ const verifyCallback = (
     if (err || info || !user) {
       return reject(new ApiError(StatusCodes.UNAUTHORIZED, 'Please authenticate'));
     }
-    req.user = user;
+    req.user = user as IUser;
 
     const shopId = req.params.shop;
     if (requiredRights.length && shopId) {
-      const member = await memberService.findMemberShop(shopId, user.id);
+      const member = await shopMemberService.findMemberShop(shopId, (user as IUser).id);
       if (!member) {
         return reject(new ApiError(StatusCodes.UNAUTHORIZED, 'Please authenticate'));
       }
@@ -46,7 +47,7 @@ const verifyCallback = (
 };
 
 export const auth = (...requiredRights: string[]) => {
-  return async (req: IParamsRequest<VerifyCbParams>, res: Response, next: NextFunction) => {
+  return async (req: RequestParams<VerifyCbParams>, res: Response, next: NextFunction) => {
     // eslint-disable-next-line promise/avoid-new
     return new Promise((resolve, reject) => {
       passport.authenticate(
