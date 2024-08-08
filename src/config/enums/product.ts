@@ -11,7 +11,7 @@ export const PRODUCT_CONFIG = {
   MAX_STOCK: 999,
   MAX_CHAR_VARIANT_GROUP_NAME: 14,
   MAX_CHAR_VARIANT_NAME: 20,
-  MAX_CHAR_SKU: 100,
+  MAX_CHAR_SKU: 32,
   MAX_TAGS: 11,
   MIN_CHAR_TAG: 2,
   MAX_CHAR_TAG: 21,
@@ -41,8 +41,8 @@ export enum PRODUCT_VARIANT_TYPES {
 
 export enum PRODUCT_SORT_BY {
   DESC = 'desc',
-  PRICE_ASC = 'priceAsc',
-  PRICE_DESC = 'priceDesc'
+  PRICE_ASC = 'price_asc',
+  PRICE_DESC = 'price_desc'
 }
 
 export enum PRODUCT_SHIPPING_CHARGE {
@@ -50,6 +50,6 @@ export enum PRODUCT_SHIPPING_CHARGE {
   FREE_SHIPPING = 'free_shipping'
 }
 
-
 export const PRODUCT_REGEX_SLUG = /^[a-z0-9]+(?:(?:-|_)+[a-z0-9]+)*$/;
+
 export const PRODUCT_REGEX_NOT_URL = /^(?!http.*$).*/;

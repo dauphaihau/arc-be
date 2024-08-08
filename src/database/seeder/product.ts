@@ -1,13 +1,15 @@
-import { env } from '@/config';
+import { env, log } from '@/config';
 import {
   PRODUCT_CONFIG,
   PRODUCT_VARIANT_TYPES,
   PRODUCT_WHO_MADE,
 } from '@/config/enums/product';
 import { getRandomInt, capitalizeSentence } from '@/database/util';
-import { IProduct } from '@/interfaces/models/product';
+import {
+  IProductDoc,
+} from '@/interfaces/models/product';
 import { IShop } from '@/interfaces/models/shop';
-import { Product, ProductInventory, Category, Attribute } from '@/models';
+import { Product, ProductInventory, Category, CategoryAttribute } from '@/models';
 import { ProductShipping } from '@/models/product-shipping.model';
 import { ProductVariant } from '@/models/product-variant.model';
 import { getListObjects } from '@/services/aws-s3.service';
@@ -63,14 +65,13 @@ const combine_variants = [
   },
 ];
 
-
 const initBaseProduct = async (shop: IShop, relative_urls: (string | undefined)[]) => {
 
   const categoryName = arrCategoryName[getRandomInt(arrCategoryName.length)];
   const category = await Category.findOne({ name: categoryName });
   if (!category) return;
 
-  const attributes = await Attribute.find({ category: category.id });
+  const attributes = await CategoryAttribute.find({ category: category.id });
   const attributesSelected = attributes.map(attr => {
       if (!attr.options) return;
       return {
@@ -106,7 +107,7 @@ const initBaseProduct = async (shop: IShop, relative_urls: (string | undefined)[
   });
 };
 
-const initShippingProduct = async (product: IProduct) => {
+const initShippingProduct = async (product: IProductDoc) => {
   const shipping = await ProductShipping.create({
     shop: product.shop,
     product: product.id,
@@ -118,8 +119,8 @@ const initShippingProduct = async (product: IProduct) => {
         country: 'United State',
         service: 'other',
         delivery_time: '1-2d',
-      }
-    ]
+      },
+    ],
   });
 
   await product.updateOne({
@@ -127,7 +128,7 @@ const initShippingProduct = async (product: IProduct) => {
   });
 };
 
-const initProductNonVariant = async (product: IProduct) => {
+const initProductNonVariant = async (product: IProductDoc) => {
 
   const inventory = await ProductInventory.create({
     shop: product.shop,
@@ -146,7 +147,7 @@ const initProductNonVariant = async (product: IProduct) => {
   });
 };
 
-const initProductSingleVariant = async (product: IProduct) => {
+const initProductSingleVariant = async (product: IProductDoc) => {
 
   const prodVariantsIds: string[] = [];
 
@@ -184,7 +185,7 @@ const initProductSingleVariant = async (product: IProduct) => {
   });
 };
 
-const initProductCombineVariant = async (product: IProduct) => {
+const initProductCombineVariant = async (product: IProductDoc) => {
 
   const productVariantsIds: string[] = [];
 
@@ -244,9 +245,9 @@ const initProductCombineVariant = async (product: IProduct) => {
   });
 };
 
-export async function generateProductsDB(shops: IShop[]) {
+export async function generateProducts(shops: IShop[]): Promise<IProductDoc[] | void> {
 
-  const products = [];
+  const products: IProductDoc[] = [];
 
   for (const shop of shops) {
 
@@ -269,11 +270,17 @@ export async function generateProductsDB(shops: IShop[]) {
 
       await initShippingProduct(product);
 
-      if (i % 2 === 0) products.push(initProductSingleVariant(product));
-      if (i % 3 === 0) products.push(initProductCombineVariant(product));
-      else products.push(initProductNonVariant(product));
+      if (i % 2 === 0) {
+        await initProductSingleVariant(product);
+      } else if (i % 3 === 0) {
+        await initProductCombineVariant(product);
+      } else {
+        await initProductNonVariant(product);
+      }
+      products.push(product);
     }
-
   }
-  await Promise.all(products);
+  const productsCreated = await Promise.all(products);
+  log.info('products, inventories, variants, shipping collections generated');
+  return productsCreated;
 }

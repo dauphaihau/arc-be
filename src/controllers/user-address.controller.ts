@@ -1,6 +1,10 @@
-import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { RequestParamsBody } from '@/interfaces/common/request';
+import { UserAddress } from '@/models';
+import { IBaseQueryOptions } from '@/models/plugins/paginate.plugin';
+import {
+  RequestParamsAndBody,
+  RequestQueryParams, RequestParams
+} from '@/interfaces/express';
 import {
   UpdateUserAddressBody,
   UpdateUserAddressParams,
@@ -19,22 +23,25 @@ const createAddress = catchAsync(async (req, res) => {
 });
 
 const getAddress = catchAsync(async (
-  req: Request<GetUserAddressParams>,
+  req: RequestParams<GetUserAddressParams>,
   res
 ) => {
   const address = await userAddressService.getById(req.params.id as string);
   res.status(StatusCodes.OK).send({ address });
 });
 
-const getAddresses = catchAsync(async (req, res) => {
+const getAddresses = catchAsync(async (
+  req: RequestQueryParams<IBaseQueryOptions>,
+  res
+) => {
   const filter = { user: req.user.id };
   const options = pick(req.query, ['sortBy', 'limit', 'page', 'select', 'populate']);
-  const result = await userAddressService.getList(filter, options);
+  const result = await UserAddress.paginate(filter, options);
   res.send(result);
 });
 
 const deleteAddress = catchAsync(async (
-  req: Request<DeleteUserAddressParams>,
+  req: RequestParams<DeleteUserAddressParams>,
   res
 ) => {
   await userAddressService.deleteById(req.params.id as string);
@@ -42,7 +49,7 @@ const deleteAddress = catchAsync(async (
 });
 
 const updateAddress = catchAsync(async (
-  req: RequestParamsBody<UpdateUserAddressParams, UpdateUserAddressBody>,
+  req: RequestParamsAndBody<UpdateUserAddressParams, UpdateUserAddressBody>,
   res
 ) => {
   const address = await userAddressService.update(req.params.id as string, req.body);

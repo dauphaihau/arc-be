@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { objectIdSchema } from '@/schemas/sub/objectId.schema';
+import { objectIdSchema } from '@/schemas/utils/objectId.schema';
 
 export const shopSchema = z.object({
   id: objectIdSchema,

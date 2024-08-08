@@ -1,9 +1,9 @@
-import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { ShopMember } from '@/models';
 import {
-  RequestParamsBody,
-  RequestParamsQuery
-} from '@/interfaces/common/request';
+  RequestParamsAndBody,
+  RequestParamsAndQueryParams, RequestParams
+} from '@/interfaces/express';
 import {
   AddShopMemberParams,
   AddShopMemberBody,
@@ -17,7 +17,7 @@ import { shopMemberService } from '@/services';
 import { catchAsync, ApiError, pick } from '@/utils';
 
 const addMember = catchAsync(async (
-  req: RequestParamsBody<AddShopMemberParams, AddShopMemberBody>,
+  req: RequestParamsAndBody<AddShopMemberParams, AddShopMemberBody>,
   res
 ) => {
   if (!req.params.shop) {
@@ -35,7 +35,7 @@ const addMember = catchAsync(async (
 });
 
 const getMembers = catchAsync(async (
-  req: RequestParamsQuery<GetShopMemberParams, GetShopMemberQueries>,
+  req: RequestParamsAndQueryParams<GetShopMemberParams, GetShopMemberQueries>,
   res
 ) => {
   const filter = pick(
@@ -43,35 +43,35 @@ const getMembers = catchAsync(async (
     ['shop']
   );
   const options = pick(req.query, ['sortBy', 'limit', 'page', 'populate', 'select']);
-  const result = await shopMemberService.getListMember(filter, options);
+  const result = await ShopMember.paginate(filter, options);
   res.send(result);
 });
 
 const deleteMember = catchAsync(async (
-  req: Request<DeleteShopMemberParams>,
+  req: RequestParams<DeleteShopMemberParams>,
   res
 ) => {
-  if (req.user.id === req.params.user) {
+  if (!req.params.user_id || req.user.id === req.params.user_id) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'invalid userId');
   }
-  if (!req.params.shop) {
+  if (!req.params.shop_id) {
     throw new ApiError(StatusCodes.BAD_REQUEST);
   }
-  await shopMemberService.deleteMember(req.params.shop, req.params.user);
+  await shopMemberService.deleteMember(req.params.shop_id, req.params.user_id);
   res.status(StatusCodes.NO_CONTENT).send();
 });
 
 const updateMember = catchAsync(async (
-  req: RequestParamsBody<UpdateShopMemberParams, UpdateShopMemberBody>,
+  req: RequestParamsAndBody<UpdateShopMemberParams, UpdateShopMemberBody>,
   res
 ) => {
-  if (req.user.id === req.params.user) {
+  if (!req.params.user_id || req.user.id === req.params.user_id) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'invalid userId');
   }
-  if (!req.params.shop) {
+  if (!req.params.shop_id) {
     throw new ApiError(StatusCodes.BAD_REQUEST);
   }
-  await shopMemberService.updateMember(req.params.shop, req.params.user, req.body);
+  await shopMemberService.updateMember(req.params.shop_id, req.params.user_id, req.body);
   res.status(StatusCodes.NO_CONTENT).send();
 });
 

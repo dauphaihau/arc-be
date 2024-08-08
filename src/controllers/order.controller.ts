@@ -1,145 +1,39 @@
-import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import moment from 'moment';
+import { paymentService } from '@/services/payment.service';
 import {
   RequestBody,
-  RequestQuery
-} from '@/interfaces/common/request';
+  RequestQueryParams, RequestParams
+} from '@/interfaces/express';
 import { log } from '@/config';
-import { OrderShop } from '@/models/order-shop.model';
 import { MARKETPLACE_CONFIG } from '@/config/enums/marketplace';
 import { PAYMENT_TYPES } from '@/config/enums/order';
 import {
-  IGetOrderParams,
-  IGetSummaryOrderBody,
-  CreateOrderForBuyNowBody,
-  CreateOrderFromCartBody
+  IOrder
 } from '@/interfaces/models/order';
-import { orderService, inventoryService } from '@/services';
+import { orderService, cartService, userAddressService } from '@/services';
 import { stripeService } from '@/services/stripe.service';
 import {
-  catchAsync, pick, transactionWrapper, ApiError
+  catchAsync,
+  transactionWrapper, ApiError, pick
 } from '@/utils';
+import { CreateOrderForBuyNowBody, CreateOrderFromCartBody } from '@/interfaces/request/order';
+import { CustomMetaData } from '@/interfaces/services/stripe';
+import { Order } from '@/models';
 
 const getOrder = catchAsync(async (
-  req: Request<IGetOrderParams>,
+  req: RequestParams<{ order_id: IOrder['id'] }>,
   res
 ) => {
-  const order = await orderService.getOrderById(req.params.id as string);
+  const order = await orderService.getOrderById(req.params.order_id);
   res.status(StatusCodes.OK).send({ order });
 });
 
 const getOrderShopList = catchAsync(async (req, res) => {
-  const filter = { user_id: req.user.id };
-  const options = pick(req.query, ['sortBy', 'limit', 'page']);
-  options['populate'] = [
-    {
-      path: 'order',
-      match: { user: { $eq: req.user.id } },
-      select: 'user address createdAt',
-    },
-    {
-      path: 'shop',
-      select: 'shop_name',
-    },
-    {
-      path: 'products',
-      populate: {
-        path: 'product',
-        model: 'Product',
-        select: 'shipping',
-        populate: {
-          path: 'shipping',
-          model: 'product_shipping',
-        },
-      },
-    },
-  ];
-  const result = await orderService.queryOrderShopList(filter, options);
-
-  const parseTimeShipping = (time: string) => {
-    const typeTime = time.substring(0, time.length - 1);
-    time = typeTime;
-    const [from, to] = time.split('-');
-    return {
-      from: Number(from),
-      to: Number(to),
-      typeTime,
-      max: Number(to) || Number(from),
-    };
-  };
-
-  // Estimated delivery
-  await Promise.all(
-    result.results.map(async (orderShop) => {
-
-      orderShop.from_countries = [];
-      // address destination
-      // const address = await Address.findById(orderShop.order.address);
-
-      let estimatedDelivery = 0;
-
-      orderShop.products.forEach((prod) => {
-        if (prod?.product?.shipping) {
-
-          if (
-            orderShop?.from_countries &&
-            !orderShop?.from_countries?.includes(prod.product.shipping.country)
-          ) {
-            orderShop.from_countries.push(prod.product.shipping.country);
-          }
-
-          // console.log('prod-product-shipping', prod?.product?.shipping);
-          const { max: processTime } = parseTimeShipping(
-            prod.product.shipping.process_time
-          );
-
-          prod.product.shipping.standard_shipping.forEach((ss) => {
-            const { max: deliveryTime } = parseTimeShipping(
-              ss.delivery_time
-            );
-            estimatedDelivery = Math.max(estimatedDelivery, processTime + deliveryTime);
-          });
-        }
-      });
-      orderShop.estimated_delivery = moment(orderShop.order.createdAt).add(estimatedDelivery, 'd').toDate();
-    })
-  );
-
-  res.send(result);
-});
-
-const getSummaryOrder = catchAsync(async (
-  req: RequestBody<IGetSummaryOrderBody>,
-  res
-) => {
-  const { inventory, quantity, coupon_codes } = req.body;
-  const inventoryInDB = await inventoryService.getInventoryById(inventory);
-  if (!inventoryInDB) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
-  }
-  await inventoryInDB?.populate('product');
-
-  const tempCart = {
-    user: req.user.id,
-    items: [{
-      shop: inventoryInDB.shop,
-      products: [{
-        is_select_order: true,
-        quantity,
-        inventory: inventoryInDB,
-      }],
-    }],
-  };
-  const tempAdditionInfoItems = [{ shop: inventoryInDB.shop, coupon_codes }];
-
-  const { summaryOrder } = await orderService.getSummaryOrder(
-    // @ts-expect-error:next-line
-    tempCart,
-    tempAdditionInfoItems
-  );
-
-  res.status(StatusCodes.OK).send({ summaryOrder });
+  const order_shops = await orderService.getOrderShopList(req.user.id);
+  const new_order_shops = await orderService.calcShopShipping(order_shops);
+  res.send({
+    order_shops: new_order_shops,
+  });
 });
 
 const createOrderFromCart = catchAsync(async (
@@ -147,75 +41,170 @@ const createOrderFromCart = catchAsync(async (
   res
 ) => {
   await transactionWrapper(async (session) => {
-    req.body.user = req.user.id;
-    const result = await orderService.createOrderFromCart(req.body, session);
+    const user_id = req.user.id;
+    const user_address_id = req.body.user_address_id;
+    if (!user_id || !user_address_id) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'some fields are missing');
+    }
+
+    const cart = await cartService.getCart({
+      user_id,
+      product_cart_selected: true,
+    });
+    if (!cart) {
+      throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'Cart be undefined');
+    }
+
+    const summary_order = await cartService.getSummaryOrder(cart, req.body.addition_info_shop_carts);
+
+    const root_order = await orderService.createRootOrder({
+      user: user_id,
+      user_address: user_address_id,
+      subtotal: summary_order.subtotal_price,
+      total_discount: summary_order.total_discount,
+      total_shipping_fee: summary_order.total_shipping_fee,
+      total: summary_order.total_price,
+    }, session);
+
+    const order_shops = await orderService.createOrderShops({
+      root_order,
+      shop_carts: cart.shop_carts,
+    }, session);
+
     if (req.body.payment_type === PAYMENT_TYPES.CARD) {
-      const currency = req.body.currency || MARKETPLACE_CONFIG.BASE_CURRENCY;
-      const checkoutSessionUrl = await stripeService.getCheckoutSessionUrl(req.user, { ...result, currency });
-      res.status(StatusCodes.OK).send({ checkoutSessionUrl });
+      const checkout_session_url = await stripeService.createCheckoutSessionUrl({
+        user: req.user,
+        currency: req.body.currency || MARKETPLACE_CONFIG.BASE_CURRENCY,
+        cart_id: cart.cart_id,
+        root_order,
+        order_shops,
+      });
+      res.status(StatusCodes.OK).send({ checkout_session_url });
       return;
     }
-    for (const orderShop of result.orderShops) {
-      await orderShop.populate('shop', 'shop_name');
+    else if (req.body.payment_type === PAYMENT_TYPES.CASH) {
+      const payment = await paymentService.createPayment({
+        user: user_id,
+        order: root_order.id,
+        currency: req.body.currency || MARKETPLACE_CONFIG.BASE_CURRENCY,
+        type: PAYMENT_TYPES.CASH,
+      }, session);
+      await root_order.update({
+        payment: payment.id,
+      });
+      await cartService.clearProductCartSelected(cart.cart_id, session);
+      const responseOrderShops = [];
+      for (const orderShop of order_shops) {
+        await orderShop.update({
+          payment: payment.id,
+        });
+        await orderShop.populate('shop', 'shop_name');
+        responseOrderShops.push(pick(orderShop.toJSON(), ['id', 'shop']));
+      }
+      res.status(StatusCodes.OK).send({ order_shops: responseOrderShops });
     }
-    res.status(StatusCodes.OK).send({
-      order: result.newOrder,
-      orderShops: result.orderShops,
-    });
+    res.status(StatusCodes.UNPROCESSABLE_ENTITY).send();
   });
 });
+
 
 const createOrderForBuyNow = catchAsync(async (
   req: RequestBody<CreateOrderForBuyNowBody>,
   res
 ) => {
   await transactionWrapper(async (session) => {
-    req.body.user = req.user.id;
-    const result = await orderService.createOrderForBuyNow(req.body, session);
+    const user_id = req.user.id;
+    const { user_address_id, cart_id } = req.body;
+    if (!user_address_id || !cart_id) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'some fields are missing');
+    }
+
+    const userAddress = await userAddressService.getById(user_address_id);
+    if (!userAddress || userAddress.user.toString() !== user_id.toString()) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'User Address not found');
+    }
+
+    const tempCart = await cartService.getCart({
+      cart_id: req.body.cart_id,
+    });
+    if (!tempCart) {
+      throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'tempCart be undefined');
+    }
+
+    const shopCart = tempCart.shop_carts[0];
+    const summary_order = await cartService.getSummaryOrder(tempCart, [{
+      shop_id: shopCart.shop.id,
+      promo_codes: req.body.promo_codes,
+      note: req.body.note,
+    }]);
+
+    const root_order = await orderService.createRootOrder({
+      user: user_id,
+      user_address: userAddress.id,
+      subtotal: summary_order.subtotal_price,
+      total_discount: summary_order.total_discount,
+      total_shipping_fee: summary_order.total_shipping_fee,
+      total: summary_order.total_price,
+    }, session);
+
+    const order_shops = await orderService.createOrderShops({
+      root_order,
+      shop_carts: tempCart.shop_carts,
+    }, session);
+
     if (req.body.payment_type === PAYMENT_TYPES.CARD) {
-      const currency = req.body.currency || MARKETPLACE_CONFIG.BASE_CURRENCY;
-      const checkoutSessionUrl = await stripeService.getCheckoutSessionUrl(req.user, { ...result, currency });
-      res.status(StatusCodes.OK).send({ checkoutSessionUrl });
+      const checkout_session_url = await stripeService.createCheckoutSessionUrl({
+        user: req.user,
+        currency: req.body.currency || MARKETPLACE_CONFIG.BASE_CURRENCY,
+        cart_id: tempCart.cart_id,
+        root_order,
+        order_shops,
+      });
+      res.status(StatusCodes.OK).send({ checkout_session_url });
       return;
     }
-    await result.orderShops[0].populate('shop', 'shop_name');
-    res.status(StatusCodes.OK).send({
-      order: result.newOrder,
-      orderShops: result.orderShops,
-    });
+    else if (req.body.payment_type === PAYMENT_TYPES.CASH) {
+      const orderShop = order_shops[0];
+      await orderShop.populate('shop', 'shop_name');
+      res.status(StatusCodes.OK).send({
+        order_shop: pick(orderShop.toJSON(), ['id', 'shop']),
+      });
+    }
+    res.status(StatusCodes.UNPROCESSABLE_ENTITY).send();
   });
 });
 
 const getOrderByCheckoutSession = catchAsync(async (
-  req: RequestQuery<{ session_id: string }>,
+  req: RequestQueryParams<{ session_id: string }>,
   res
 ) => {
   const checkoutSession = await stripeService.getCheckoutSession(req.query.session_id);
-  if (!checkoutSession.metadata) {
+  log.debug('checkout-session %o', checkoutSession);
+  const metadata = checkoutSession.metadata as CustomMetaData;
+  if (!metadata) {
     log.error('checkoutSession metadata be null');
     throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY);
   }
-  const orderShops = await OrderShop
+  const order_shops = await Order
     .find({
-      order: checkoutSession.metadata['order_id'] as string,
+      parent: metadata.order_id,
     })
     .select('shop')
     .populate({
       path: 'shop',
       select: 'shop_name',
     });
-  if (orderShops.length === 0) {
-    log.error('orderShops be empty list');
+  if (order_shops.length === 0) {
+    log.error('order_shops be empty list');
     throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY);
   }
-  res.status(StatusCodes.OK).send({ orderShops });
+  res.status(StatusCodes.OK).send({ order_shops });
 });
 
 export const orderController = {
   getOrder,
   getOrderShopList,
   createOrderFromCart,
-  getSummaryOrder,
   createOrderForBuyNow,
   getOrderByCheckoutSession,
 };

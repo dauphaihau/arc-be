@@ -19,11 +19,14 @@ const categoryAttributeSchema = new Schema<ICategoryAttribute>(
     },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 
 // Plugins
 categoryAttributeSchema.plugin(toJSON);
 
-export const Attribute = model<ICategoryAttribute>('category_attribute', categoryAttributeSchema);
+export const CategoryAttribute = model<ICategoryAttribute>('category_attribute', categoryAttributeSchema);

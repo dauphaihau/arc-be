@@ -5,12 +5,12 @@ import { transactionWrapper } from '@/utils';
 import { Token } from '@/models';
 import { ApiError } from '@/utils/ApiError';
 import { TOKEN_TYPES } from '@/config/enums/token';
-import { LoginPayload } from '@/interfaces/common/auth';
+import { LoginBody } from '@/interfaces/request/auth';
 
 /**
  * Login with username ( email ) and password
  */
-const login = async ({ email, password }: LoginPayload) => {
+const login = async ({ email, password }: LoginBody) => {
   const user = await userService.getByEmail(email);
   if (!user || !(await user.isPasswordMatch(password))) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
@@ -39,7 +39,7 @@ const logout = async (refreshToken: string) => {
 const refreshAuth = async (refreshToken: string) => {
   try {
     const refreshTokenDoc = await tokenService.verifyToken(refreshToken, TOKEN_TYPES.REFRESH);
-    const user = await userService.getById(refreshTokenDoc.user_id);
+    const user = await userService.getById(refreshTokenDoc.user);
     if (!user) {
       throw new Error();
     }
@@ -64,7 +64,7 @@ const resetPassword = async (
       resetPasswordToken,
       TOKEN_TYPES.RESET_PASSWORD
     );
-    const user = await userService.getById(resetPasswordTokenDoc.user_id);
+    const user = await userService.getById(resetPasswordTokenDoc.user);
     if (!user) {
       throw new Error();
     }
@@ -72,7 +72,7 @@ const resetPassword = async (
       user.id, { password: newPassword }, session
     );
     const deleted = await Token.deleteMany({
-      user_id: user.id,
+      user: user.id,
       type: TOKEN_TYPES.RESET_PASSWORD,
     }, { session });
     if (!deleted.deletedCount) throw new Error();
@@ -94,12 +94,12 @@ const verifyEmail = async (verifyEmailToken: string) => {
         verifyEmailToken,
         TOKEN_TYPES.VERIFY_EMAIL
       );
-      const user = await userService.getById(verifyEmailTokenDoc.user_id);
+      const user = await userService.getById(verifyEmailTokenDoc.user);
       if (!user) {
         throw new Error();
       }
       const deleted = await Token.deleteMany({
-        user_id: user.id,
+        user: user.id,
         type: TOKEN_TYPES.VERIFY_EMAIL,
       }, { session });
       if (!deleted.deletedCount) throw new Error();

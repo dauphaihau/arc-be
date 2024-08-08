@@ -5,8 +5,7 @@ import {
   IProductShipping, IProductShippingModel, IProductStandardShipping
 } from '@/interfaces/models/product';
 
-// define reserve Schema
-const reserveSchema = new Schema<IProductStandardShipping>(
+const shippingSchema = new Schema<IProductStandardShipping>(
   {
     country: {
       type: String,
@@ -28,7 +27,6 @@ const reserveSchema = new Schema<IProductStandardShipping>(
   }, { _id: false }
 );
 
-// define Schema
 const productShippingSchema = new Schema<IProductShipping, IProductShippingModel>(
   {
     shop: {
@@ -54,11 +52,14 @@ const productShippingSchema = new Schema<IProductShipping, IProductShippingModel
       required: true,
     },
     standard_shipping: {
-      type: [reserveSchema],
+      type: [shippingSchema],
     },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 

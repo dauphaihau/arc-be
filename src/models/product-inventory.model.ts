@@ -18,11 +18,14 @@ const reserveSchema = new Schema<IProductInventoryReservation>(
       type: Number,
       default: 0,
     },
-    createdOn: {
-      type: Date,
-      default: new Date(),
+  },
+  {
+    _id: false,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: false,
     },
-  }, { _id: false }
+  }
 );
 
 // define Schema
@@ -55,14 +58,17 @@ const productInventorySchema = new Schema<IProductInventory, IProductInventoryMo
     },
     sku: {
       type: String,
-      max: PRODUCT_CONFIG.MAX_CHAR_SKU,
+      maxlength: PRODUCT_CONFIG.MAX_CHAR_SKU,
     },
     reservations: {
       type: [reserveSchema],
     },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 

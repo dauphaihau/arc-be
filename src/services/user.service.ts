@@ -4,7 +4,7 @@ import { log } from '@/config';
 import {
   CreateUserBody,
   UpdateUserBody,
-  IUser
+  IUserDoc
 } from '@/interfaces/models/user';
 import { User } from '@/models';
 import { ApiError } from '@/utils/ApiError';
@@ -17,16 +17,16 @@ const create = async (userBody: CreateUserBody, session?: ClientSession) => {
   return user[0];
 };
 
-const getById = async (id: IUser['id']) => {
+const getById = async (id: IUserDoc['id']) => {
   return User.findById(id);
 };
 
-const getByEmail = async (email: IUser['email']) => {
+const getByEmail = async (email: IUserDoc['email']) => {
   return User.findOne({ email });
 };
 
 const updateById = async (
-  userId: IUser['id'],
+  userId: IUserDoc['id'],
   updateBody: UpdateUserBody,
   session: ClientSession
 ) => {
@@ -49,7 +49,7 @@ const updateById = async (
   return userUpdated;
 };
 
-const deleteById = async (id: IUser['id']) => {
+const deleteById = async (id: IUserDoc['id']) => {
   const user = await getById(id);
   if (!user) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');

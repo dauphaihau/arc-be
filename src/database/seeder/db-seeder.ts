@@ -1,28 +1,51 @@
+import { generateMe } from '@/database/seeder/me';
 import mongoose from 'mongoose';
-import { generateCategoriesDB } from './category';
-import { generateShopsDB, deleteShopFoldersS3 } from './shop';
-import { generateUsersDB } from './user';
-import { generateProductsDB } from './product';
-import { generateCouponDB } from './coupon';
-import { env } from '@/config';
+import { generateCategories } from './category';
+import { generateShops, deleteShopFoldersS3 } from './shop';
+import { generateUsers } from './user';
+import { generateProducts } from './product';
+import { generateCoupons } from './coupon';
+import { env, log } from '@/config';
 
-async function dbSeed() {
-  await mongoose.connect(env.mongoose.url);
+async function reset(collectionNames: string[] = []) {
+  const db = mongoose.connection.db;
+
+  if (collectionNames.length > 0) {
+    await Promise.all(
+      collectionNames.map(async (name) => {
+        await db.dropCollection(name);
+        log.info(`${name} collection deleted`);
+      }),
+    );
+    return;
+  }
+
+  const collections = await db.listCollections().toArray();
+  await Promise.all(
+    collections.map(async (collection) => {
+      await db.dropCollection(collection.name);
+      log.info(`${collection.name} collection deleted`);
+    }),
+  );
 
   await deleteShopFoldersS3();
+}
 
-  const collections = mongoose.connection.collections;
-  await Promise.all(Object.values(collections).map(async (collection) => {
-    await collection.deleteMany({});
-  }));
+async function seedDB() {
+  await mongoose.connect(env.mongoose.url);
 
-  await generateCategoriesDB();
-  const users = await generateUsersDB();
-  const shops = await generateShopsDB(users);
-  await generateProductsDB(shops);
-  await generateCouponDB(shops);
+  // await reset();
+  // // await reset(['orders', 'carts', 'payments']);
+  //
+  // await generateCategories();
+  // const users = await generateUsers();
+  // const shops = await generateShops(users);
+  // await generateProducts(shops);
+  // await generateCoupons(shops);
+  //
+  await generateMe();
 
   console.log('seed done');
 }
 
-dbSeed();
+seedDB();

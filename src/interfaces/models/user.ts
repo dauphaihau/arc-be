@@ -1,20 +1,21 @@
 import { z } from 'zod';
-import { Model, ObjectId, Document } from 'mongoose';
+import { Model, Document } from 'mongoose';
 import { userSchema } from '@/schemas';
 
 export interface IUserMethods {
   isPasswordMatch: (password: string) => Promise<boolean>;
 }
 
+export type IUser = z.infer<typeof userSchema>;
+
+export type IUserDoc = IUser & Omit<Document, 'id'> & IUserMethods;
+
 interface IUserStatics {
-  isEmailTaken: (email: string, excludeUserId?: ObjectId) => Promise<boolean>;
+  isEmailTaken: (email: string, excludeUserId?: IUserDoc['id']) => Promise<boolean>;
 }
 
-export type IUser = z.infer<typeof userSchema> & Document & IUserMethods;
+export interface IUserModel extends Model<IUserDoc, unknown, IUserMethods>, IUserStatics {}
 
-export type User = z.infer<typeof userSchema> & Document & IUserMethods;
-export interface IUserModel extends Model<IUser, unknown, IUserMethods>, IUserStatics {}
+export type CreateUserBody = Pick<IUserDoc, 'email' | 'password'>;
 
-export type CreateUserBody = Pick<IUser, 'email' | 'password'>;
-
-export type UpdateUserBody = Partial<IUser>;
+export type UpdateUserBody = Partial<IUserDoc>;

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { mixBaseQueryOptionsSchema } from '@/schemas/sub/queryOptions.schema';
+import { mixBaseQueryGetListSchema } from '@/schemas/utils/query-options.schema';
 import { userAddressSchema } from '@/schemas';
 
 export const userAddressValidation = {
@@ -17,7 +17,7 @@ export const userAddressValidation = {
     params: userAddressSchema.pick({ id: true }),
   }),
   getList: z.object({
-    query: mixBaseQueryOptionsSchema(
+    query: mixBaseQueryGetListSchema(
       userAddressSchema.pick({ is_primary: true })
     ),
   }),

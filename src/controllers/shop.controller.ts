@@ -1,9 +1,9 @@
 import { StatusCodes } from 'http-status-codes';
 import { log } from '@/config';
-import { RequestBody } from '@/interfaces/common/request';
-import { CreateShopBody } from '@/interfaces/models/shop';
+import { RequestBody, RequestQueryParams } from '@/interfaces/express';
+import { CreateShopBody, GetListShopQueries } from '@/interfaces/models/shop';
 import { shopService, shopMemberService, userService } from '@/services';
-import { MEMBER_ROLES } from '@/config/enums/member';
+import { SHOP_MEMBER_ROLES } from '@/config/enums/shop';
 import {
   catchAsync, transactionWrapper, ApiError, pick
 } from '@/utils';
@@ -11,7 +11,7 @@ import {
   Shop, ShopMember, Product, Coupon, ProductInventory
 } from '@/models';
 
-const create = catchAsync(async (
+const createShop = catchAsync(async (
   req: RequestBody<CreateShopBody>,
   res
 ) => {
@@ -33,7 +33,7 @@ const create = catchAsync(async (
     const member = await shopMemberService.addMember({
       shop: shop.id,
       user: userId,
-      role: MEMBER_ROLES.OWNER,
+      role: SHOP_MEMBER_ROLES.OWNER,
     }, session);
 
     // Attach shop to user
@@ -87,15 +87,18 @@ const deleteShop = catchAsync(async (req, res) => {
   });
 });
 
-const getListShops = catchAsync(async (req, res) => {
+const getListShops = catchAsync(async (
+  req: RequestQueryParams<GetListShopQueries>,
+  res
+) => {
   const filter = pick(req.query, ['shop_name']);
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
-  const result = await shopService.getList(filter, options);
+  const result = await Shop.paginate(filter, options);
   res.send(result);
 });
 
 export const shopController = {
-  create,
+  createShop,
   getListShops,
   deleteShop,
 };

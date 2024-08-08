@@ -1,26 +1,26 @@
 import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
 import { ApiError } from '@/utils';
+import { IOrderDoc } from '@/interfaces/models/order';
+import { IProductInventory } from '@/interfaces/models/product';
 import {
-  IOrderShop, IOrder
-} from '@/interfaces/models/order';
-import {
-  CreateInventoryPayload,
-  UpdateInventoryPayload, ReservationInventoryPayload, IProductInventory
-} from '@/interfaces/models/product';
+  CreateInventoryBody,
+  UpdateInventoryBody,
+  ReservationInventoryBody
+} from '@/interfaces/request/product';
 import { ProductInventory } from '@/models';
 
-const insertInventory = async (payload: CreateInventoryPayload, session: ClientSession) => {
-  const inventory = await ProductInventory.create([payload], { session });
+const insertInventory = async (body: CreateInventoryBody, session: ClientSession) => {
+  const inventory = await ProductInventory.create([body], { session });
   return inventory[0];
 };
 
-const getInventoryById = async (id: IProductInventory['id']) => {
+const getById = async (id: IProductInventory['id']) => {
   return ProductInventory.findById(id);
 };
 
 const updateStock = async (
-  { shop, product, stock }: UpdateInventoryPayload,
+  { shop, product, stock }: UpdateInventoryBody,
   session: ClientSession
 ) => {
   const filter = { shop, product };
@@ -28,14 +28,14 @@ const updateStock = async (
   return ProductInventory.updateOne(filter, update, { session });
 };
 
-const reservationProduct = async (
-  payload: ReservationInventoryPayload,
+const reserveQuantity = async (
+  payload: ReservationInventoryBody,
   session: ClientSession
 ) => {
-  const { inventoryId, quantity, order } = payload;
+  const { inventory_id, quantity, order_id } = payload;
 
   const filter = {
-    _id: inventoryId,
+    _id: inventory_id,
     // stock: { $gte: quantity },
   };
   const update = {
@@ -44,7 +44,7 @@ const reservationProduct = async (
     },
     $push: {
       reservations: {
-        order,
+        order: order_id,
         quantity,
       },
     },
@@ -71,8 +71,8 @@ const minusStock = async (
 };
 
 const clearProductsReversedByOrder = async (
-  order: IOrder,
-  orderShops: IOrderShop[],
+  order: IOrderDoc,
+  orderShops: IOrderDoc[],
   session: ClientSession
 ) => {
   const promises: unknown[] = [];
@@ -96,26 +96,6 @@ const clearProductsReversedByOrder = async (
     });
   });
 
-  // order.lines.forEach((item) => {
-  //   const { shop, products = [] } = item;
-  //   products.forEach((prod) => {
-  //     promises.push(
-  //       ProductInventory.findOneAndUpdate(
-  //         {
-  //           _id: prod.inventory,
-  //           shop,
-  //         },
-  //         {
-  //           $pull: {
-  //             reservations: { order: order.id },
-  //           },
-  //         },
-  //         { session }
-  //       )
-  //     );
-  //   });
-  // });
-
   const results = await Promise.allSettled(promises);
   results.forEach(rel => {
     if (rel.status === 'rejected') {
@@ -126,11 +106,11 @@ const clearProductsReversedByOrder = async (
   });
 };
 
-export const inventoryService = {
+export const productInventoryService = {
   insertInventory,
   updateStock,
-  reservationProduct,
+  reserveQuantity,
   clearProductsReversedByOrder,
-  getInventoryById,
+  getById,
   minusStock,
 };

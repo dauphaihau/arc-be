@@ -1,17 +1,17 @@
 import { Response } from 'express';
 import httpStatus, { StatusCodes } from 'http-status-codes';
-import { IUser } from '@/interfaces/models/user';
+import { IUserDoc } from '@/interfaces/models/user';
 import { TokensResponse } from '@/interfaces/models/token';
-import { RequestBody, RequestQuery } from '@/interfaces/common/request';
+import { RequestBody, RequestQueryParams } from '@/interfaces/express';
 import { transactionWrapper, catchAsync, ApiError } from '@/utils';
 import {
   emailService, authService, userService, tokenService
 } from '@/services';
 import {
-  LoginPayload,
-  VerifyTokenQueries,
-  VerifyEmailQueries
-} from '@/interfaces/common/auth';
+  LoginBody,
+  VerifyTokenQueryParams,
+  VerifyEmailQueryParams
+} from '@/interfaces/request/auth';
 import { TOKEN_TYPES } from '@/config/enums/token';
 
 const setCookieTokens = (res: Response, tokens: TokensResponse) => {
@@ -36,7 +36,7 @@ const register = catchAsync(async (req, res) => {
   });
 });
 
-const login = catchAsync(async (req: RequestBody<LoginPayload>, res) => {
+const login = catchAsync(async (req: RequestBody<LoginBody>, res) => {
   const user = await authService.login(req.body);
   await user.populate('shop', 'shop_name _id');
   const tokens = await tokenService.generateAuthTokens(user);
@@ -58,7 +58,7 @@ const refreshTokens = catchAsync(async (req, res) => {
 });
 
 const forgotPassword = catchAsync(async (
-  req: RequestBody<{ email: IUser['email'] }>,
+  req: RequestBody<{ email: IUserDoc['email'] }>,
   res
 ) => {
   const resetPasswordToken = await tokenService.generateResetPasswordToken(req.body.email);
@@ -71,7 +71,7 @@ const forgotPassword = catchAsync(async (
 });
 
 const resetPassword = catchAsync(async (
-  req: RequestQuery<{ token: string }>,
+  req: RequestQueryParams<{ token: string }>,
   res
 ) => {
   await transactionWrapper(async (session) => {
@@ -92,7 +92,7 @@ const sendVerificationEmail = catchAsync(async (req, res) => {
 });
 
 const verifyToken = catchAsync(async (
-  req: RequestQuery<VerifyTokenQueries>,
+  req: RequestQueryParams<VerifyTokenQueryParams>,
   res
 ) => {
   if (!req.query.token || !req.query.type) {
@@ -103,7 +103,7 @@ const verifyToken = catchAsync(async (
 });
 
 const verifyEmail = catchAsync(async (
-  req: RequestQuery<VerifyEmailQueries>,
+  req: RequestQueryParams<VerifyEmailQueryParams>,
   res
 ) => {
   if (!req.query.token) {

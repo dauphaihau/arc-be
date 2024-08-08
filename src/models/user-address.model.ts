@@ -1,9 +1,9 @@
 import { Schema, model, Document } from 'mongoose';
-import { IUserAddress, IUserAddressModel } from '@/interfaces/models/user-address';
+import { IUserAddressDoc, IUserAddressModel } from '@/interfaces/models/user-address';
 import { toJSON, paginate } from '@/models/plugins';
 
 // define Schema
-const userAddressSchema = new Schema<IUserAddress, IUserAddressModel>(
+const userAddressSchema = new Schema<IUserAddressDoc, IUserAddressModel>(
   {
     user: {
       type: Schema.Types.ObjectId,
@@ -12,31 +12,31 @@ const userAddressSchema = new Schema<IUserAddress, IUserAddressModel>(
     },
     full_name: {
       type: String,
-      max: 20,
+      maxlength: 20,
       required: true,
     },
     address1: {
       type: String,
-      max: 50,
+      maxlength: 50,
       required: true,
     },
     address2: {
       type: String,
-      max: 50,
+      maxlength: 50,
     },
     city: {
       type: String,
-      max: 20,
+      maxlength: 20,
       required: true,
     },
     state: {
       type: String,
-      max: 20,
+      maxlength: 20,
       required: true,
     },
     zip: {
       type: String,
-      max: 10,
+      maxlength: 10,
       required: true,
     },
     country: {
@@ -45,7 +45,7 @@ const userAddressSchema = new Schema<IUserAddress, IUserAddressModel>(
     },
     phone: {
       type: String,
-      max: 20,
+      maxlength: 20,
       required: true,
     },
     is_primary: {
@@ -54,7 +54,10 @@ const userAddressSchema = new Schema<IUserAddress, IUserAddressModel>(
     },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 
@@ -79,4 +82,4 @@ function transformDoc(doc: Document) {
   delete doc.__v;
 }
 
-export const UserAddress: IUserAddressModel = model<IUserAddress, IUserAddressModel>('user_address', userAddressSchema);
+export const UserAddress: IUserAddressModel = model<IUserAddressDoc, IUserAddressModel>('user_address', userAddressSchema);

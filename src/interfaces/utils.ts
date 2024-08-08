@@ -9,3 +9,7 @@ export type Override<
 > = Omit<T, keyof K> & K;
 
 export type AtLeastOne<T> = { [K in keyof T]: Pick<T, K> }[keyof T];
+
+export type ElementType<T extends Iterable<unknown>> = T extends Iterable<infer E>
+  ? E
+  : never;

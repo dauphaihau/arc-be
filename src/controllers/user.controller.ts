@@ -1,4 +1,4 @@
-import { RequestBody } from '@/interfaces/common/request';
+import { RequestBody } from '@/interfaces/express';
 import { UpdateUserBody } from '@/interfaces/models/user';
 import { userService } from '@/services';
 import { catchAsync, transactionWrapper } from '@/utils';

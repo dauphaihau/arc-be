@@ -20,8 +20,12 @@ const productVariantOptSchema = new Schema<IProductVariantOpt>(
       type: Schema.Types.ObjectId,
       ref: 'product_inventory',
     },
-  }, {
-    timestamps: true,
+  },
+  {
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 productVariantOptSchema.plugin(toJSON);
@@ -40,7 +44,7 @@ const productVariantSchema = new Schema<IProductVariant>(
     },
     variant_name: {
       type: String,
-      max: PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME,
+      maxlength: PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME,
       required: true,
     },
     image_relative_url: {
@@ -53,6 +57,12 @@ const productVariantSchema = new Schema<IProductVariant>(
     },
     variant_options: {
       type: [productVariantOptSchema],
+    },
+  },
+  {
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
     },
   }
 );

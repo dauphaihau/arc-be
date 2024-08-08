@@ -1,30 +1,34 @@
 import { StatusCodes } from 'http-status-codes';
 import mongoose, { ClientSession, ProjectionType } from 'mongoose';
+import { categoryService } from '@/services/category.service';
 import { log } from '@/config';
 import { PRODUCT_VARIANT_TYPES } from '@/config/enums/product';
 import {
-  CreateProductBody,
-  UpdateProductBody,
   IProductImage,
   IProductModel,
   IProductVariant,
-  IProduct,
-  IProductInventory, IProductVariantOpt, CreateProductVariantBody
+  IProductDoc,
+  IProductInventory, IProductVariantOpt
 } from '@/interfaces/models/product';
-import { Product, ProductInventory } from '@/models';
+import {
+  CreateProductBody,
+  UpdateProductBody,
+  CreateProductVariantBody
+} from '@/interfaces/request/product';
+import { Product, ProductInventory, CategoryAttribute } from '@/models';
 import { ProductVariant } from '@/models/product-variant.model';
 import { awsS3Service } from '@/services/aws-s3.service';
-import { inventoryService } from '@/services/product-inventory.service';
+import { productInventoryService } from '@/services/product-inventory.service';
 import { ApiError } from '@/utils';
 
-const getProductById = async (id: IProduct['id']) => {
+const getProductById = async (id: IProductDoc['id']) => {
   return Product.findById(id);
 };
 
 const getDetailProductByShop = async (
-  id: IProduct['id'],
-  shop: IProduct['shop'],
-  projection: ProjectionType<IProduct> = {}
+  id: IProductDoc['id'],
+  shop: IProductDoc['shop'],
+  projection: ProjectionType<IProductDoc> = {}
 ) => {
   return Product.findOne({
     _id: new mongoose.Types.ObjectId(id),
@@ -37,11 +41,11 @@ const getProductVariantById = async (id: IProductVariant['id']) => {
 };
 
 const generateProductVariantNone = async (
-  product: IProduct,
+  product: IProductDoc,
   body: Pick<IProductInventory, 'price' | 'stock' | 'sku'>,
   session: ClientSession
 ) => {
-  return inventoryService.insertInventory(
+  return productInventoryService.insertInventory(
     {
       shop: product.shop,
       product: product.id,
@@ -51,17 +55,17 @@ const generateProductVariantNone = async (
 };
 
 const generateSingleVariantProducts = async (
-  product: IProduct,
+  product: IProductDoc,
   variants: CreateProductBody['new_variants'],
   session: ClientSession
 ) => {
-  const productVariantIds: IProduct['variants'] = [];
+  const productVariantIds: IProductDoc['variants'] = [];
   if (!variants) throw new ApiError(StatusCodes.BAD_REQUEST);
 
   await Promise.all(
     variants.map(async (variant) => {
       if (!variant.price || !variant.variant_name) throw new ApiError(StatusCodes.BAD_REQUEST);
-      const inventoryCreated = await inventoryService.insertInventory({
+      const inventoryCreated = await productInventoryService.insertInventory({
         shop: product.shop,
         product: product.id,
         variant: variant.variant_name,
@@ -82,11 +86,11 @@ const generateSingleVariantProducts = async (
 };
 
 const generateCombineVariantProducts = async (
-  product: IProduct,
+  product: IProductDoc,
   variants: CreateProductBody['new_variants'],
   session: ClientSession
 ) => {
-  const productVariantIds: IProduct['variants'] = [];
+  const productVariantIds: IProductDoc['variants'] = [];
   if (!variants || !variants[0]?.variant_options) throw new ApiError(StatusCodes.BAD_REQUEST);
 
   const variantsCache = new Map<IProductVariant['variant_name'], IProductVariantOpt['variant']>();
@@ -120,7 +124,7 @@ const generateCombineVariantProducts = async (
 
       await Promise.all(
         variant.variant_options.map(async (subVariant) => {
-          const inventoryCreated = await inventoryService.insertInventory(
+          const inventoryCreated = await productInventoryService.insertInventory(
             {
               shop: product.shop,
               product: product.id,
@@ -157,11 +161,11 @@ const generateCombineVariantProducts = async (
 };
 
 const updateCombineVariantProducts = async (
-  product: IProduct,
+  product: IProductDoc,
   variants: CreateProductBody['new_variants'],
   session: ClientSession
 ) => {
-  const productVariantIds: IProduct['variants'] = [];
+  const productVariantIds: IProductDoc['variants'] = [];
   if (!variants || !variants[0]?.variant_options) throw new ApiError(StatusCodes.BAD_REQUEST);
 
   const variantsNewCache = new Map<IProductVariant['variant_name'], IProductVariantOpt['variant']>();
@@ -192,7 +196,7 @@ const updateCombineVariantProducts = async (
 
       await Promise.all(
         variant.variant_options.map(async (subVariant) => {
-          const inventoryCreated = await inventoryService.insertInventory(
+          const inventoryCreated = await productInventoryService.insertInventory(
             {
               shop: product.shop,
               product: product.id,
@@ -251,7 +255,7 @@ const updateCombineVariantProducts = async (
  *      update: require id, relative_url + props
  */
 const updateProduct = async (
-  productId: IProduct['id'],
+  productId: IProductDoc['id'],
   updateBody: UpdateProductBody,
   session: ClientSession
 ) => {
@@ -588,6 +592,21 @@ const updateProduct = async (
 };
 
 const createProduct = async (body: CreateProductBody, session: ClientSession) => {
+  const category = await categoryService.getById(body.category);
+  if (!category) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'category_id not found');
+  }
+  if (body?.attributes && body.attributes.length > 0) {
+    const categoryAttributeIds = body.attributes.map(item => item.attribute);
+    const count = await CategoryAttribute.countDocuments({
+      _id: { $in: categoryAttributeIds },
+      category: category.id,
+    });
+    log.debug(`count category attribute: ${count}`);
+    if (count !== body.attributes.length) {
+      throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'attributes is invalid');
+    }
+  }
   const product = await Product.create([body], { session });
   return product[0];
 };
@@ -600,11 +619,11 @@ const createProductVariant = async (
   return productVariant[0];
 };
 
-const queryProducts: IProductModel['paginate'] = async (filter, options) => {
+const getList: IProductModel['paginate'] = async (filter, options) => {
   return Product.paginate(filter, options);
 };
 
-const deleteProductById = async (productId: IProduct['id'], session: ClientSession) => {
+const deleteProductById = async (productId: IProductDoc['id'], session: ClientSession) => {
   const product = await getProductById(productId);
   if (!product) throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
   return product.remove({ session });
@@ -614,7 +633,7 @@ export const productService = {
   getDetailProductByShop,
   createProduct,
   getProductById,
-  queryProducts,
+  getList,
   deleteProductById,
   updateProduct,
   getProductVariantById,

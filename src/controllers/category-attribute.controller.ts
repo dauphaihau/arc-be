@@ -1,19 +1,19 @@
 import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { RequestParamsBody } from '@/interfaces/common/request';
+import { RequestParamsAndBody } from '@/interfaces/express';
 import {
   CreateCategoryAttributeBody,
   GetAttributesByCategoryParams,
   CreateCategoryAttributeParams
 } from '@/interfaces/models/category-attribute';
-import { Attribute } from '@/models';
+import { CategoryAttribute } from '@/models';
 import { catchAsync } from '@/utils';
 
 const createAttribute = catchAsync(async (
-  req: RequestParamsBody<CreateCategoryAttributeParams, CreateCategoryAttributeBody>,
+  req: RequestParamsAndBody<CreateCategoryAttributeParams, CreateCategoryAttributeBody>,
   res
 ) => {
-  const attribute = await Attribute.create({
+  const attribute = await CategoryAttribute.create({
     category: req.params.id,
     ...req.body,
   });
@@ -24,7 +24,7 @@ const getAttributesByCategory = catchAsync(async (
   req: Request<GetAttributesByCategoryParams>,
   res
 ) => {
-  const attributes = await Attribute.find({
+  const attributes = await CategoryAttribute.find({
     category: req.params.id,
   });
   res.status(StatusCodes.OK).send({ attributes });

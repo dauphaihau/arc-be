@@ -13,3 +13,5 @@ export interface IShopModel extends Model<IShop, unknown> {
 }
 
 export type CreateShopBody = Pick<IShop, 'user' | 'shop_name'>;
+
+export type GetListShopQueries = Pick<IBaseQueryOptions, 'sortBy' | 'limit' | 'page'> & Pick<IShop, 'shop_name'>;

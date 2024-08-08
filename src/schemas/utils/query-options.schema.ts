@@ -1,7 +1,7 @@
 import { Document } from 'mongoose';
 import { z } from 'zod';
 
-export const baseQueryOptionsSchema = z.object({
+export const baseQueryGetListSchema = z.object({
   limit: z.preprocess(
     Number,
     z.union([z.number(), z.string()])
@@ -10,7 +10,6 @@ export const baseQueryOptionsSchema = z.object({
     Number,
     z.union([z.number(), z.string()])
   ),
-  // sortBy: z.enum(['desc', 'asc']),
   sortBy: z.string(),
   populate: z.string(),
   select: z.string(),
@@ -23,11 +22,11 @@ export const queryResultSchema = z
     totalResults: z.number(),
   })
   .merge(
-    baseQueryOptionsSchema.pick({ page: true, limit: true })
+    baseQueryGetListSchema.pick({ page: true, limit: true })
   );
 
-export const mixBaseQueryOptionsSchema = (schema: z.AnyZodObject) => {
-  return baseQueryOptionsSchema
+export const mixBaseQueryGetListSchema = (schema: z.AnyZodObject) => {
+  return baseQueryGetListSchema
     .merge(schema)
     .strict()
     .partial();

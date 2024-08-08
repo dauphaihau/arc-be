@@ -33,7 +33,7 @@
     "strictNullChecks": true,
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "noUnusedParameters": true,
     "noImplicitThis": true,
     "noImplicitAny": true,

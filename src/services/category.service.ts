@@ -11,9 +11,9 @@ const getSubCategoriesByCategory = async (id: ICategory['id']) => {
   const category = await getById(id);
   if (!category) throw new ApiError(StatusCodes.NOT_FOUND, 'Category not found');
 
-  let categoryIds = [category.id];
+  let categoryIds: ICategory['id'][] = [category.id];
 
-  let parentIds: ICategory['parent'][] | null = null;
+  let parentIds: ICategory['id'][] | null = null;
   const getSubCategory = async () => {
     const subCategories = await Category.find({
       parent: {

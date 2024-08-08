@@ -24,9 +24,13 @@ export enum PAYMENT_TYPES {
 export const ORDER_CONFIG = {
   MAX_CHAR_NOTE: 10000,
   MAX_ORDER_TOTAL: 999999.99, // USD
+  MAX_PROMO_COUPONS: 2,
 };
 
-export const SHIPPING_FEE_PERCENT = 5 / 100; // suppose 5% is standard
+// applies on total_price each shop cart
+export const PERCENT_SHIPPING_FEE_STANDARD = 5 / 100; // suppose 5% is standard
+
+export const DAYS_SHIPPING_INTERNATIONAL = 10; // suppose 10 day
 
 export const paymentTypes = Object.values(PAYMENT_TYPES);
 export const orderStatuses = Object.values(ORDER_STATUSES);

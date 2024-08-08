@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   MARKETPLACE_REGIONS, MARKETPLACE_LANGUAGES, MARKETPLACE_CURRENCIES
 } from '@/config/enums/marketplace';
-import { objectIdSchema } from '@/schemas/sub/objectId.schema';
+import { objectIdSchema } from '@/schemas/utils/objectId.schema';
 import {
   USER_REGEX_PASSWORD,
   USER_REGEX_NAME,

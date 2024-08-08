@@ -1,13 +1,15 @@
 import { StatusCodes } from 'http-status-codes';
 import {
-  IUserAddress,
   UpdateUserAddressBody,
-  CreateUserAddressPayload, IUserAddressModel
+  CreateUserAddressPayload, IUserAddressModel, IUserAddress
 } from '@/interfaces/models/user-address';
 import { UserAddress } from '@/models';
 import { ApiError } from '@/utils';
 
-const getById = async (id: IUserAddress['id']) => {
+const getById = async (id?: IUserAddress['id']) => {
+  if (!id) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'user_address_id is undefined');
+  }
   return UserAddress.findById(id);
 };
 

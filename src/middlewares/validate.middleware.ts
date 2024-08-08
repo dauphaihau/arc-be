@@ -6,8 +6,8 @@ import { ApiError } from '@/utils';
 export const validate = (
   schema: z.AnyZodObject | z.ZodOptional<z.AnyZodObject>
 ): RequestHandler => {
-  return async (req, _res, next) => {
-    const result = await schema.safeParse({
+  return (req, _res, next) => {
+    const result = schema.safeParse({
       body: req.body,
       query: req.query,
       params: req.params,

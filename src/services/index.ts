@@ -5,7 +5,7 @@ export { emailService } from './email.service';
 export { shopService } from './shop.service';
 export { shopMemberService } from './shop-member.service';
 export { productService } from './product.service';
-export { inventoryService } from './product-inventory.service';
+export { productInventoryService } from './product-inventory.service';
 export { awsS3Service } from './aws-s3.service';
 export { couponService } from './coupon.service';
 export { cartService } from './cart.service';

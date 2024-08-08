@@ -2,11 +2,11 @@ import { z } from 'zod';
 import { FilterQuery, Schema } from 'mongoose';
 import { Override } from '@/interfaces/utils';
 import {
-  baseQueryOptionsSchema,
+  baseQueryGetListSchema,
   queryResultSchema
-} from '@/schemas/sub/queryOptions.schema';
+} from '@/schemas/utils/query-options.schema';
 
-export type IBaseQueryOptions = z.infer<typeof baseQueryOptionsSchema>;
+export type IBaseQueryOptions = z.infer<typeof baseQueryGetListSchema>;
 export type IQueryResultTest = z.infer<typeof queryResultSchema>;
 export type IQueryResult<T> = Override<IQueryResultTest, {
   results: T[]

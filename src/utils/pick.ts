@@ -1,18 +1,20 @@
 /**
  * Create an object composed of the picked object properties
- * @example { pick name key }
- * pick({ id: 1, name: 'A', role: 'admin' }, ['name']) // prints { name: 'A' }
- * 
+ * @example
+ * const obj = {
+ *   id: 1,
+ *   name: 'A',
+ * }
+ * pick(obj, ['name']) // output: { name: 'A' }
+ *
+ * pick(obj, ['name', 'idd']) // output: { name: 'A' }
  */
-type NewObject = {
-  [index: string]: unknown;
-};
 
-export const pick = <T>(objectToPick: T, keys: string[]): NewObject => {
-  return keys.reduce((newObj: NewObject, key) => {
-    if (objectToPick && Object.prototype.hasOwnProperty.call(objectToPick, key)) {
-      newObj[key] = objectToPick[key as keyof object];
+export function pick<T, K extends keyof T>(obj: T, keys: K[]) {
+  return keys.reduce((acc, val) => {
+    if (Object.prototype.hasOwnProperty.call(obj, val)) {
+      acc[val] = obj[val];
     }
-    return newObj;
-  }, {});
-};
+    return acc;
+  }, {} as Pick<T, K>);
+}

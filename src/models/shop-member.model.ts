@@ -1,6 +1,6 @@
 import { Schema, model, SchemaTypes } from 'mongoose';
 import { toJSON, paginate } from './plugins';
-import { memberRoles } from '@/config/enums/member';
+import { memberRoles } from '@/config/enums/shop';
 import { IShopMember, IShopMemberModel } from '@/interfaces/models/shop-member';
 
 // define Schema
@@ -23,7 +23,10 @@ const memberSchema = new Schema<IShopMember, IShopMemberModel>(
     },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 

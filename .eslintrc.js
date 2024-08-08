@@ -20,6 +20,11 @@ module.exports = {
     'no-console': 'error',
     'func-names': 'off',
     'no-return-await': 'error',
+    'no-unused-vars': 'off',
+    '@typescript-eslint/no-unused-vars': ['warn', {
+      varsIgnorePattern: '^_',
+      argsIgnorePattern: '^_',
+    }],
 
     // plugin: stylistic
     '@stylistic/semi': ['error', 'always',

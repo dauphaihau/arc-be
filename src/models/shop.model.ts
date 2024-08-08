@@ -19,7 +19,10 @@ const shopSchema = new Schema<IShop, IShopModel>(
     },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 

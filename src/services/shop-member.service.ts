@@ -1,7 +1,7 @@
 import { StatusCodes } from 'http-status-codes';
 import { ClientSession } from 'mongoose';
 import { IShop } from '@/interfaces/models/shop';
-import { IUser } from '@/interfaces/models/user';
+import { IUserDoc, IUser } from '@/interfaces/models/user';
 import {
   AddShopMemberBody,
   IShopMemberModel,
@@ -15,7 +15,7 @@ const addMember = async (payload: AddShopMemberBody, session?: ClientSession) =>
   return member[0];
 };
 
-const findMemberShop = async (shopId: IShop['id'], userId: IUser['id']) => {
+const findMemberShop = async (shopId: IShop['id'], userId: IUserDoc['id']) => {
   return ShopMember.findOne({
     shop_id: shopId,
     user_id: userId,
@@ -26,7 +26,7 @@ const getListMember: IShopMemberModel['paginate'] = async (filter, options) => {
   return ShopMember.paginate(filter, options);
 };
 
-const deleteMember = async (shopId: IShop['id'], userId: IUser['id']) => {
+const deleteMember = async (shopId: IShop['id'], userId: IUserDoc['id']) => {
   const memberExist = await findMemberShop(shopId, userId);
   if (!memberExist) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Member is not exist');

@@ -1,7 +1,7 @@
-import { IUser } from '@/interfaces/models/user';
+import { IUserDoc } from '@/interfaces/models/user';
 
 declare module 'express-serve-static-core' {
   interface Request {
-    user: IUser;
+    user: IUserDoc;
   }
 }

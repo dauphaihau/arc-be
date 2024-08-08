@@ -1,26 +1,24 @@
 import { z } from 'zod';
-import { productSchema } from '@/schemas';
-import { mixBaseQueryOptionsSchema } from '@/schemas/sub/queryOptions.schema';
+import { productSchema, marketGetProductsSortBySchema } from '@/schemas';
+import { mixBaseQueryGetListSchema } from '@/schemas/utils/query-options.schema';
 
 export const productValidation = {
   getProducts: z.object({
-    query: mixBaseQueryOptionsSchema(
-      productSchema.merge(z.object({ title: z.string() }))
-    ),
-  }),
-  getProductsByCategory: z.object({
-    query: mixBaseQueryOptionsSchema(
+    query: mixBaseQueryGetListSchema(
       productSchema.pick({ category: true, shop: true })
         .merge(
           z.object({
             title: z.string(),
             s: z.string(),
             is_digital: z.union([z.literal('true'), z.literal('false')]),
+            order: marketGetProductsSortBySchema,
           })
         )
     ),
   }),
   getDetailProduct: z.object({
-    params: productSchema.pick({ id: true }),
+    params: z.object({
+      product_id: productSchema.shape.id,
+    }).strict(),
   }),
 };

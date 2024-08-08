@@ -1,34 +1,37 @@
 import { z } from 'zod';
 import {
+  createProductBodySchema,
+  updateProductSchema
+} from '@/schemas/request/shop-product';
+import {
   shopSchema,
-  productSchema,
-  createProductBodySchema, updateProductSchema
+  productSchema
 } from '@/schemas';
-import { mixBaseQueryOptionsSchema } from '@/schemas/sub/queryOptions.schema';
+import { mixBaseQueryGetListSchema } from '@/schemas/utils/query-options.schema';
 
 export const shopValidation = {
   getShops: z.object({
-    query: mixBaseQueryOptionsSchema(
+    query: mixBaseQueryGetListSchema(
       shopSchema
         .pick({ shop_name: true })
         .strict()
     ),
   }),
-  create: z.object({
+  createShop: z.object({
     body: shopSchema
       .pick({ shop_name: true })
       .strict(),
   }),
 
   // Product
-  createProductByShop: z.object({
-    params: productSchema.pick({ shop: true }),
+  createProduct: z.object({
+    params: z.object({ shop_id: productSchema.shape.shop }).strict(),
     body: createProductBodySchema.omit({ shop: true }),
   }),
 
-  getProductsByShop: z.object({
-    params: productSchema.pick({ shop: true }),
-    query: mixBaseQueryOptionsSchema(
+  getProducts: z.object({
+    params: z.object({ shop_id: productSchema.shape.shop }).strict(),
+    query: mixBaseQueryGetListSchema(
       productSchema.pick({
         title: true,
         price: true,
@@ -36,16 +39,23 @@ export const shopValidation = {
       })
     ),
   }),
-  getDetailProductByShop: z.object({
-    params: productSchema.pick({ shop: true, id: true }),
+  getDetailProduct: z.object({
+    params: z.object({
+      shop_id: productSchema.shape.shop,
+      product_id: productSchema.shape.id,
+    }).strict(),
   }),
-  deleteProductByShop: z.object({
-    params: productSchema
-      .pick({ shop: true, id: true })
-      .strict(),
+  deleteProduct: z.object({
+    params: z.object({
+      shop_id: productSchema.shape.shop,
+      product_id: productSchema.shape.id,
+    }).strict(),
   }),
-  updateProductByShop: z.object({
-    params: productSchema.pick({ shop: true, id: true }),
+  updateProduct: z.object({
+    params: z.object({
+      shop_id: productSchema.shape.shop,
+      product_id: productSchema.shape.id,
+    }).strict(),
     body: updateProductSchema,
   }),
 };

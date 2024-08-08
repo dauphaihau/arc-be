@@ -1,447 +1,604 @@
-import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { RequestQuery, RequestParamsBody } from '@/interfaces/common/request';
+import mongoose, { PipelineStage } from 'mongoose';
 import { ProductShipping } from '@/models/product-shipping.model';
+import { IShop } from '@/interfaces/models/shop';
+import {
+  GetProductsQueryParams,
+  ResponseMarketGetProducts,
+  ResponseMarketGetDetailProduct, CouponAggregate, ProductCustomFields
+} from '@/interfaces/request/product';
+import {
+  RequestQueryParams,
+  RequestParams,
+  ResponseCustom
+} from '@/interfaces/express';
 import { COUPON_TYPES, COUPON_APPLIES_TO } from '@/config/enums/coupon';
 import {
-  PRODUCT_VARIANT_TYPES,
-  PRODUCT_SORT_BY
+  PRODUCT_VARIANT_TYPES, PRODUCT_SORT_BY
 } from '@/config/enums/product';
+import { IProductDoc } from '@/interfaces/models/product';
 import {
-  CreateProductBody,
-  CreateProductParams,
-  GetProductParams,
-  DeleteProductParams,
-  UpdateProductParams,
-  UpdateProductBody,
-  GetProductQueries,
-  GetProductByShopParams,
-  GetDetailProductByShopParams, IProduct, IProductVariant
-} from '@/interfaces/models/product';
-import { ProductInventory, Coupon, Product } from '@/models';
+  ProductInventory, Product, Shop, Coupon
+} from '@/models';
 import { ProductVariant } from '@/models/product-variant.model';
 import {
-  productService,
-  awsS3Service,
   categoryService
 } from '@/services';
 import {
-  catchAsync, pick, transactionWrapper, ApiError
+  catchAsync, ApiError, roundNumAndFixed, pick
 } from '@/utils';
-
-const createProductByShop = catchAsync(async (
-  req: RequestParamsBody<CreateProductParams, CreateProductBody>,
-  res
-) => {
-  const shopId = req.params.shop as IProduct['shop'];
-
-  await transactionWrapper(async (session) => {
-    const {
-      new_variants, shipping, stock, price, sku, ...resBody
-    } = req.body;
-
-    const product = await productService.createProduct({
-      ...resBody,
-      shop: shopId,
-    }, session);
-
-    const productShipping = await ProductShipping.create({
-      product: product.id,
-      shop: shopId,
-      ...shipping,
-    });
-
-    if (!resBody.variant_type) throw new ApiError(StatusCodes.BAD_REQUEST);
-
-    if (resBody.variant_type === PRODUCT_VARIANT_TYPES.NONE) {
-
-      if (!price) throw new ApiError(StatusCodes.BAD_REQUEST);
-      const inventoryCreated = await productService.generateProductVariantNone(product, {
-        stock: stock || 0,
-        price,
-        sku,
-      }, session);
-      const productUpdated = await Product.findOneAndUpdate(
-        { _id: product.id },
-        {
-          inventory: inventoryCreated.id,
-          shipping: productShipping.id,
-        }, { new: true, session });
-      res.status(StatusCodes.CREATED).send({ product: productUpdated });
-    }
-    else {
-
-      // case single & combine variant
-      if (!new_variants) throw new ApiError(StatusCodes.BAD_REQUEST);
-      let productVariantIds: IProductVariant['id'][] = [];
-
-      if (resBody.variant_type === PRODUCT_VARIANT_TYPES.SINGLE) {
-        productVariantIds = await productService.generateSingleVariantProducts(
-          product, new_variants, session
-        );
-      }
-      if (resBody.variant_type === PRODUCT_VARIANT_TYPES.COMBINE) {
-        productVariantIds = await productService.generateCombineVariantProducts(
-          product, new_variants, session
-        );
-      }
-      const productUpdated = await Product.findOneAndUpdate(
-        { _id: product.id },
-        {
-          variants: productVariantIds,
-          shipping: productShipping.id,
-        }, { new: true, session });
-      res.status(StatusCodes.CREATED).send({ product: productUpdated });
-    }
-  });
-});
-
-const getProductsByShop = catchAsync(async (
-  req: Request<GetProductByShopParams>,
-  res
-) => {
-  const filter = pick(
-    {
-      ...req.query,
-      shop: req.params.shop,
-    },
-    ['shop', 'price', 'name', 'category']
-  );
-  const defaultPopulate = 'shop,inventory,variants/inventory+variant_options.inventory+variant_options.variant';
-  const options = pick(req.query, ['sortBy', 'limit', 'page', 'populate', 'select']);
-  options['populate'] = defaultPopulate;
-
-  const result = await productService.queryProducts(filter, options);
-
-  result.results = result.results.map((prod) => {
-    prod.summary_inventory = {
-      lowest_price: 0,
-      highest_price: 0,
-      stock: 0,
-    };
-
-    prod.variants && prod.variants.forEach((vari, idx) => {
-      if (prod.variant_type === PRODUCT_VARIANT_TYPES.SINGLE && vari?.inventory?.price) {
-
-        prod.summary_inventory.stock += vari.inventory.stock;
-
-        if (idx === 0 || (vari.inventory.price < prod.summary_inventory.lowest_price)) {
-          prod.summary_inventory.lowest_price = vari.inventory.price;
-        }
-        if (idx === 0 || (vari.inventory.price > prod.summary_inventory.highest_price)) {
-          prod.summary_inventory.highest_price = vari.inventory.price;
-        }
-      }
-
-      if (prod.variant_type === PRODUCT_VARIANT_TYPES.COMBINE) {
-        vari.variant_options.forEach((varOpt) => {
-          prod.summary_inventory.stock += varOpt.inventory?.stock;
-          if (idx === 0 || (varOpt.inventory.price < prod.summary_inventory.lowest_price)) {
-            prod.summary_inventory.lowest_price = varOpt.inventory.price;
-          }
-          if (idx === 0 || (varOpt.inventory.price > prod.summary_inventory.highest_price)) {
-            prod.summary_inventory.highest_price = varOpt.inventory.price;
-          }
-        });
-      }
-    });
-
-    return prod;
-  });
-
-  res.send(result);
-});
-
-const getDetailProductByShop = catchAsync(async (
-  req: Request<GetDetailProductByShopParams>,
-  res
-) => {
-  const { id, shop } = req.params;
-  if (!id || !shop) throw new ApiError(StatusCodes.BAD_REQUEST);
-
-  const product = await productService.getDetailProductByShop(id, shop, {
-    shop: 0,
-    views: 0,
-    rating_average: 0,
-  });
-  if (!product) throw new ApiError(StatusCodes.NOT_FOUND, 'product not found');
-
-  await product.populate('category', 'name');
-
-  switch (product.variant_type) {
-    case PRODUCT_VARIANT_TYPES.NONE:
-      await product.populate('inventory', 'price stock sku');
-      break;
-    case PRODUCT_VARIANT_TYPES.SINGLE:
-    case PRODUCT_VARIANT_TYPES.COMBINE:
-      await product.populate({
-        path: 'variants',
-        populate: [
-          { path: 'inventory' },
-          {
-            path: 'variant_options.inventory',
-            select: { price: 1, stock: 1, sku: 1 },
-          },
-          { path: 'variant_options.variant', select: 'variant_name' },
-        ],
-      });
-      break;
-  }
-
-  res.status(StatusCodes.OK).send({ product });
-});
-
-const deleteProductByShop = catchAsync(async (
-  req: Request<DeleteProductParams>,
-  res
-) => {
-  const product = req.params.id as string;
-
-  await transactionWrapper(async (session) => {
-    const result = await productService.deleteProductById(product, session);
-
-    const images = result.images.map(img => img.relative_url);
-    await awsS3Service.deleteMultiObject(images);
-
-    await ProductVariant.deleteMany({ product }, { session });
-    await ProductInventory.deleteMany({ product }, { session });
-
-    res.status(StatusCodes.NO_CONTENT).send();
-  });
-});
-
-const updateProductByShop = catchAsync(async (
-  req: RequestParamsBody<UpdateProductParams, UpdateProductBody>,
-  res
-) => {
-  const productId = req.params.id as string;
-
-  await transactionWrapper(async (session) => {
-    const product = await productService.updateProduct(productId, req.body, session);
-
-    // update stock
-    // if (req.body?.stock) {
-    //   const updatedInv = await inventoryService.updateStock({
-    //     // shop: product.shop as IPopulatedShop,
-    //     shop: product.shop as string,
-    //     product: productId,
-    //     stock: req.body.stock,
-    //   }, session);
-    //   if (!updatedInv.modifiedCount) {
-    //     throw new ApiError(StatusCodes.BAD_REQUEST, 'Update stock failed');
-    //   }
-    // }
-    res.send({ product });
-  });
-});
+import { ICouponDoc } from '@/interfaces/models/coupon';
+import { ElementType } from '@/interfaces/utils';
 
 const getProducts = catchAsync(async (
-  req: RequestQuery<GetProductQueries>,
-  res
+  req: RequestQueryParams<GetProductsQueryParams>,
+  res: ResponseCustom<ResponseMarketGetProducts>
 ) => {
-  const filter = pick(req.query, ['shop', 'price', 'title', 'category', 'is_digial']);
-  const options = pick(req.query, ['sortBy', 'limit', 'page', 'populate', 'select']);
+  const { limit, page } = req.query;
 
-  if (req.query?.category) {
+  const limitDefault = 10;
+  const pageDefault = 1;
+  const limitNum = limit && parseInt(limit) > 0 ? parseInt(limit) : limitDefault;
+  const pageNum = page && parseInt(page) > 0 ? parseInt(page) : pageDefault;
+
+  //region filter
+  let filter: mongoose.FilterQuery<IProductDoc> = {};
+
+  if (req.query.category) {
     const categoryIds = await categoryService.getSubCategoriesByCategory(req.query.category);
-    filter['category'] = {
-      $in: categoryIds,
+    filter.category = {
+      $in: categoryIds.map(c => new mongoose.Types.ObjectId(c)),
     };
   }
 
-  if (req.query?.sortBy === PRODUCT_SORT_BY.DESC) {
-    options['sortBy'] = 'createdAt';
-  }
-
-  if (req.query?.is_digital) {
-    filter['is_digital'] = req.query.is_digital === 'true';
-  }
-
-  if (req.query?.title) {
-    filter['title'] = new RegExp(req.query.title, 'i');
-  }
-
-  const result = await productService.queryProducts(filter, options);
-  res.send(result);
-});
-
-const getProductsByCategory = catchAsync(async (
-  req: RequestQuery<GetProductQueries>,
-  res
-) => {
-  const defaultPopulate = 'shop,inventory,variants/inventory+variant_options.inventory';
-  const defaultSelect = 'shop,title,variant_type,variants,images';
-
-  const filter = pick(req.query, ['shop', 'price', 'title', 'category', 'is_digial']);
-  const options = pick(req.query, ['sortBy', 'limit', 'page', 'populate', 'select']);
-
-  options['populate'] = defaultPopulate;
-  options['select'] = defaultSelect;
-
-  if (req.query?.category) {
-    const categoryIds = await categoryService.getSubCategoriesByCategory(req.query.category);
-    filter['category'] = {
-      $in: categoryIds,
+  if (req.query?.s) {
+    filter = {
+      ...filter,
+      $or: [
+        { title: { $regex: req.query.s, $options: 'i' } },
+        { description: { $regex: req.query.s, $options: 'i' } },
+      ],
     };
   }
 
-  if (req.query?.sortBy === PRODUCT_SORT_BY.DESC) {
-    options['sortBy'] = 'createdAt';
+  if (req.query?.title) {
+    filter.title = { $regex: req.query.title, $options: 'i' };
   }
 
   if (req.query?.is_digital) {
-    filter['is_digital'] = req.query.is_digital === 'true';
+    filter.is_digital = req.query.is_digital === 'true';
   }
+  //endregion
 
-  if (req.query?.title) {
-    filter['title'] = new RegExp(req.query.title, 'i');
+  const totalProducts = await Product.countDocuments(filter);
+  const totalPages = Math.ceil(totalProducts / limitNum);
+
+  //region select
+  let $project = {
+    _id: 0, // shop_id
+    shop: {
+      id: '$data.shop._id',
+      shop_name: '$data.shop.shop_name',
+    },
+    id: '$data._id',
+    category: '$data.category',
+    title: '$data.title',
+    image_relative_url: '$data.image.relative_url',
+    variant_type: '$data.variant_type',
+    inventory: {
+      price: '$data.inventory.price',
+      stock: '$data.inventory.stock',
+      sku: '$data.inventory.sku',
+    },
+    created_at: '$data.created_at',
+  };
+  type KeyProject = keyof typeof $project;
+  if (req.query.select) {
+    const select = req.query.select.split(',');
+    if (select.some(key => !$project[key as KeyProject])) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'select is invalid');
+    }
+    const exclude: KeyProject[] = ['_id', 'id'];
+    $project = pick($project, exclude.concat(select as KeyProject[]));
   }
+  //endregion
 
-  const result = await productService.queryProducts(filter, options);
-
-  let mapResult = [];
-  mapResult = await Promise.all(
-    result.results.map(async (prod) => {
-      const productCustomFields = {
-        id: '',
-        shop_name: '',
-        title: '',
-        image_relative_url: '',
-        summary_inventory: {
-          lowest_price: 0,
-          highest_price: 0,
-          sale_price: 0,
-          discount_types: [] as COUPON_TYPES[],
-          percent_off: 0,
+  //region product aggregate
+  const productAggregate: PipelineStage[] = [
+    { $match: filter },
+    {
+      $lookup: {
+        from: Shop.collection.name,
+        localField: 'shop',
+        foreignField: '_id',
+        as: 'shop',
+      },
+    },
+    {
+      $lookup: {
+        from: ProductInventory.collection.name,
+        localField: 'inventory',
+        foreignField: '_id',
+        as: 'inventory',
+      },
+    },
+    {
+      $lookup: {
+        from: ProductVariant.collection.name,
+        let: { variants: '$variants' },
+        as: 'variants',
+        pipeline: [
+          { $match: { $expr: { $in: ['$_id', '$$variants'] } } },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: ProductInventory.collection.name,
+        localField: 'variants.inventory',
+        foreignField: '_id',
+        as: 'inv_variant_single',
+        pipeline: [
+          { $sort: { price: 1 } },
+          { $limit: 1 },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: ProductInventory.collection.name,
+        localField: 'variants.variant_options.inventory',
+        foreignField: '_id',
+        as: 'inv_variant_combine',
+        pipeline: [
+          { $sort: { price: 1 } },
+          { $limit: 1 },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        inventory: {
+          $switch: {
+            branches: [
+              {
+                case: { $eq: ['$variant_type', PRODUCT_VARIANT_TYPES.SINGLE] },
+                then: { $arrayElemAt: ['$inv_variant_single', 0] },
+              },
+              {
+                case: { $eq: ['$variant_type', PRODUCT_VARIANT_TYPES.COMBINE] },
+                then: { $arrayElemAt: ['$inv_variant_combine', 0] },
+              },
+              {
+                case: { $eq: ['$variant_type', PRODUCT_VARIANT_TYPES.NONE] },
+                then: { $arrayElemAt: ['$inventory', 0] },
+              },
+            ],
+            default: null, // No inventory found
+          },
         },
-      };
-      productCustomFields.shop_name = prod.shop?.shop_name;
-      productCustomFields.title = prod.title;
-      productCustomFields.id = prod.id as string;
-      productCustomFields.image_relative_url = prod.images[0].relative_url;
+        shop: { $arrayElemAt: ['$shop', 0] },
+        image: {
+          $arrayElemAt: ['$images', 0],
+        },
+      },
+    },
+    {
+      $sort: {
+        'inventory.price': 1,
+      },
+    },
+    {
+      $group: {
+        _id: '$shop._id',
+        data: { $first: '$$ROOT' },
+      },
+    },
+    { $project },
+    { $skip: (pageNum - 1) * limitNum },
+    { $limit: limitNum },
+  ];
 
-      prod.variants && prod.variants.forEach((variant, indexVariant) => {
-        if (prod.variant_type === PRODUCT_VARIANT_TYPES.SINGLE && variant?.inventory?.price) {
-          // productCustomFields.summary_inventory.stock += variant.inventory.stock;
-          if (indexVariant === 0 ||
-            (variant.inventory.price < productCustomFields.summary_inventory.lowest_price)) {
-            productCustomFields.summary_inventory.lowest_price = variant.inventory.price;
-          }
-          if (indexVariant === 0 ||
-            (variant.inventory.price > productCustomFields.summary_inventory.highest_price)) {
-            productCustomFields.summary_inventory.highest_price = variant.inventory.price;
-          }
-        }
+  const sortBy: mongoose.PipelineStage.Sort['$sort'] = {};
+  if (req.query?.order) {
+    switch (req.query.order) {
+      case 'newest':
+        sortBy['created_at'] = -1;
+        break;
+      case 'price_asc':
+        sortBy['inventory.price'] = 1;
+        break;
+      case 'price_desc':
+        sortBy['inventory.price'] = -1;
+        break;
+    }
+    productAggregate.push({ $sort: sortBy });
+  }
 
-        if (prod.variant_type === PRODUCT_VARIANT_TYPES.COMBINE) {
-          variant.variant_options.forEach((varOpt, indexVarOpt) => {
-            // productCustomFields.summary_inventory.stock += varOpt.inventory.stock;
-            if (indexVarOpt === 0 ||
-              (varOpt.inventory.price < productCustomFields.summary_inventory.lowest_price)) {
-              productCustomFields.summary_inventory.lowest_price = varOpt.inventory.price;
-            }
-            if (indexVarOpt === 0 ||
-              (varOpt.inventory.price > productCustomFields.summary_inventory.highest_price)) {
-              productCustomFields.summary_inventory.highest_price = varOpt.inventory.price;
-            }
-          });
-        }
-      });
+  const products = await Product.aggregate(productAggregate);
+  //endregion
 
-      if (prod.variant_type === PRODUCT_VARIANT_TYPES.NONE) {
-        productCustomFields.summary_inventory.lowest_price = prod.inventory?.price;
-        // prod.summary_inventory.stock = prod.inventory.stock;
-      }
+  if (!$project.shop) {
+    res.json({
+      results: products,
+      page: pageNum,
+      limit: limitNum,
+      totalPages,
+      totalResults: totalProducts,
+    });
+    return;
+  }
 
-      const coupons = await Coupon.find({
-        shop: prod.shop._id.toString(),
-        is_auto_sale: true,
-      });
-
-      if (coupons) {
-        coupons.forEach((coupon) => {
-          if (coupon) {
-
-            let isCouponSpecifyValid: boolean | undefined = false;
-            if (coupon.applies_to === COUPON_APPLIES_TO.SPECIFIC) {
-              isCouponSpecifyValid = coupon.applies_product_ids &&
-                coupon.applies_product_ids.includes(prod.id);
-            }
-
-            if (coupon.applies_to === COUPON_APPLIES_TO.ALL || isCouponSpecifyValid) {
-              const { lowest_price } = productCustomFields.summary_inventory;
-              if (coupon.type) {
-                productCustomFields.summary_inventory.discount_types.push(coupon.type);
-              }
-              if (coupon.type === COUPON_TYPES.FIXED_AMOUNT && coupon?.amount_off) {
-                productCustomFields.summary_inventory.sale_price = lowest_price - coupon.amount_off;
-                // productCustomFields.summary_inventory.percent_off = coupon.percent_off;
-              }
-              if (coupon.type === COUPON_TYPES.PERCENTAGE && coupon?.percent_off) {
-                productCustomFields.summary_inventory.sale_price = lowest_price - (
-                  lowest_price * (coupon.percent_off / 100)
-                );
-                productCustomFields.summary_inventory.percent_off = coupon.percent_off;
-              }
-            }
-          }
-        });
-      }
-
-      return productCustomFields;
-    })
+  //region apply run sale
+  const shopProductMap = new Map<IShop['id'], ElementType<ResponseMarketGetProducts['results']>>(
+    products.map(prod => [prod.shop.id.toString(), {
+      ...prod,
+      inventory: {
+        ...prod.inventory,
+        sale_price: 0,
+      },
+    }])
   );
 
-  if (
-    req.query?.sortBy &&
-    (req.query?.sortBy === PRODUCT_SORT_BY.PRICE_ASC ||
-      req.query?.sortBy === PRODUCT_SORT_BY.PRICE_DESC)
-  ) {
-    mapResult = mapResult.sort((a, b) => {
-      if (req.query?.sortBy === PRODUCT_SORT_BY.PRICE_DESC) {
-        return b.summary_inventory.lowest_price - a.summary_inventory.lowest_price;
+  const shopIds = Array.from(shopProductMap.keys());
+
+  const shopCoupons = await Coupon.aggregate<CouponAggregate>([
+    {
+      $match: {
+        shop: {
+          $in: shopIds.map(c => new mongoose.Types.ObjectId(c)),
+        },
+        is_auto_sale: true,
+        is_active: true,
+        $or: [
+          { type: COUPON_TYPES.PERCENTAGE },
+          { type: COUPON_TYPES.FREE_SHIP },
+        ],
+        start_date: {
+          $lt: new Date(),
+        },
+        end_date: {
+          $gt: new Date(),
+        },
+      },
+    },
+    {
+      $group: {
+        _id: '$shop',
+        coupons: { $push: '$$ROOT' },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        coupons: {
+          type: 1,
+          percent_off: 1,
+          applies_product_ids: 1,
+          applies_to: 1,
+          start_date: 1,
+          end_date: 1,
+        },
+      },
+    },
+  ]);
+
+  for (const shopCouponsElement of shopCoupons) {
+    const shopId = shopCouponsElement._id.toString();
+    const shopProduct = shopProductMap.get(shopId);
+    if (!shopProduct) {
+      throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY);
+    }
+
+    let maxPercentOff = 0;
+
+    let percentCoupon: ProductCustomFields['percent_coupon'] | undefined;
+    let freeShipCoupon: ProductCustomFields['free_ship_coupon'] | undefined;
+
+    for (const coupon of shopCouponsElement.coupons) {
+      if (coupon.type === COUPON_TYPES.PERCENTAGE) {
+        const conditionApplySpecific = coupon.applies_to === COUPON_APPLIES_TO.SPECIFIC &&
+          coupon.applies_product_ids && coupon.applies_product_ids.includes(shopProduct.id.toString());
+
+        if (conditionApplySpecific || coupon.applies_to === COUPON_APPLIES_TO.ALL) {
+          if (coupon.percent_off > maxPercentOff) {
+            maxPercentOff = coupon.percent_off;
+            percentCoupon = coupon;
+          }
+        }
       }
-      return a.summary_inventory.lowest_price - b.summary_inventory.lowest_price;
-    });
+      else if (coupon.type === COUPON_TYPES.FREE_SHIP && !freeShipCoupon) {
+        const conditionApplySpecific = coupon.applies_to === COUPON_APPLIES_TO.SPECIFIC &&
+          coupon.applies_product_ids && coupon.applies_product_ids.includes(shopProduct.id.toString());
+
+        if (conditionApplySpecific || coupon.applies_to === COUPON_APPLIES_TO.ALL) {
+          freeShipCoupon = pick(coupon, ['type', 'start_date', 'end_date']);
+          shopProduct.free_ship_coupon = freeShipCoupon;
+        }
+      }
+    }
+
+    if (percentCoupon && percentCoupon.percent_off) {
+      const originPrice = shopProduct.inventory.price;
+      shopProduct.inventory.sale_price = roundNumAndFixed(
+        originPrice - (originPrice * (percentCoupon.percent_off / 100))
+      );
+      percentCoupon = pick(percentCoupon, ['type', 'percent_off', 'start_date', 'end_date']);
+      shopProduct.percent_coupon = percentCoupon;
+    }
+
+  }
+  //endregion
+
+  let shopProducts = Array.from(shopProductMap.values());
+
+  // sort after apply sale
+  if (req.query?.order) {
+    if (req.query.order === PRODUCT_SORT_BY.PRICE_ASC) {
+      shopProducts = shopProducts.sort((a, b) => {
+        return a.inventory.price - b.inventory.price;
+      });
+    }
+    if (req.query.order === PRODUCT_SORT_BY.PRICE_DESC) {
+      shopProducts = shopProducts.sort((a, b) => {
+        return b.inventory.price - a.inventory.price;
+      });
+    }
   }
 
-  res.send({
-    ...result,
-    results: mapResult,
+  res.json({
+    results: shopProducts,
+    page: pageNum,
+    limit: limitNum,
+    totalPages,
+    totalResults: totalProducts,
   });
 });
 
 const getDetailProduct = catchAsync(async (
-  req: Request<GetProductParams>,
-  res
+  req: RequestParams<{ product_id: string }>,
+  res: ResponseCustom<ResponseMarketGetDetailProduct>
 ) => {
-  const product = await productService.getProductById(req.params.id);
-  if (!product) {
-    throw new ApiError(StatusCodes.NOT_FOUND);
+  const productId = req.params.product_id;
+  if (!productId) throw new ApiError(StatusCodes.BAD_REQUEST);
+
+  const productAggregate = await Product.aggregate<ResponseMarketGetDetailProduct['product']>([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(productId),
+      },
+    },
+    {
+      $lookup: {
+        from: Shop.collection.name,
+        localField: 'shop',
+        foreignField: '_id',
+        as: 'shop',
+      },
+    },
+    {
+      $lookup: {
+        from: ProductShipping.collection.name,
+        localField: 'shipping',
+        foreignField: '_id',
+        as: 'shipping',
+        pipeline: [
+          {
+            $project: {
+              _id: 0, id: '$_id', country: 1, process: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: ProductVariant.collection.name,
+        let: { variants: '$variants' },
+        as: 'variants',
+        pipeline: [
+          { $match: { $expr: { $in: ['$_id', '$$variants'] } } },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: ProductInventory.collection.name,
+        localField: 'inventory',
+        foreignField: '_id',
+        as: 'inventory',
+        pipeline: [
+          {
+            $project: {
+              _id: 0, id: '$_id', variant: 1, price: 1, stock: 1, sku: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: ProductInventory.collection.name,
+        localField: 'variants.inventory',
+        foreignField: '_id',
+        as: 'inv_variant_single',
+        pipeline: [
+          {
+            $project: {
+              _id: 0, id: '$_id', variant: 1, price: 1, stock: 1, sku: 1,
+            },
+          },
+          { $sort: { price: 1 } },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: ProductInventory.collection.name,
+        localField: 'variants.variant_options.inventory',
+        foreignField: '_id',
+        as: 'inv_variant_combine',
+        pipeline: [
+          {
+            $project: {
+              _id: 0, id: '$_id', variant: 1, price: 1, stock: 1, sku: 1,
+            },
+          },
+          { $sort: { price: 1 } },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        inventories: {
+          $switch: {
+            branches: [
+              {
+                case: { $eq: ['$variant_type', PRODUCT_VARIANT_TYPES.SINGLE] },
+                then: '$inv_variant_single',
+              },
+              {
+                case: { $eq: ['$variant_type', PRODUCT_VARIANT_TYPES.COMBINE] },
+                then: '$inv_variant_combine',
+              },
+              {
+                case: { $eq: ['$variant_type', PRODUCT_VARIANT_TYPES.NONE] },
+                then: '$inventory',
+              },
+            ],
+            default: null, // No inventory found
+          },
+        },
+        shop: { $arrayElemAt: ['$shop', 0] },
+        shipping: { $arrayElemAt: ['$shipping', 0] },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        id: '$_id',
+        shop: {
+          id: '$shop._id',
+          shop_name: 1,
+        },
+        shipping: 1,
+        variant_group_name: 1,
+        variant_sub_group_name: 1,
+        variant_type: 1,
+        category: 1,
+        inventories: 1,
+        title: 1,
+        description: 1,
+        images: {
+          relative_url: 1,
+          rank: 1,
+        },
+      },
+    },
+    { $limit: 1 },
+  ]);
+
+  if (!productAggregate[0]) throw new ApiError(StatusCodes.NOT_FOUND);
+  const product = productAggregate[0];
+
+  const response: ResponseMarketGetDetailProduct = {
+    product,
+  };
+
+  //region apply sale
+  const couponAggregate = await Coupon.aggregate<{
+    _id: ICouponDoc['type'],
+    coupons: ICouponDoc[]
+  }>([
+    {
+      $match: {
+        shop: new mongoose.Types.ObjectId(product.shop.id),
+        is_auto_sale: true,
+        is_active: true,
+        $or: [
+          { type: COUPON_TYPES.PERCENTAGE },
+          { type: COUPON_TYPES.FREE_SHIP },
+        ],
+        start_date: {
+          $lt: new Date(),
+        },
+        end_date: {
+          $gt: new Date(),
+        },
+      },
+    },
+    {
+      $group: {
+        _id: '$type',
+        coupons: { $push: '$$ROOT' },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        coupons: {
+          type: 1,
+          applies_to: 1,
+          applies_product_ids: 1,
+          percent_off: 1,
+          start_date: 1,
+          end_date: 1,
+        },
+      },
+    },
+  ]);
+
+  for (const couponAggregateEle of couponAggregate) {
+    const typeCoupon = couponAggregateEle._id;
+
+    if (typeCoupon === COUPON_TYPES.PERCENTAGE) {
+      let maxPercentOff = 0;
+
+      for (const percenCoupon of couponAggregateEle.coupons) {
+        const productIds = percenCoupon.applies_product_ids.map(String);
+
+        const conditionApplySpecific =
+          percenCoupon.applies_to === COUPON_APPLIES_TO.SPECIFIC && productIds.includes(productId);
+
+        if (percenCoupon.applies_to === COUPON_APPLIES_TO.ALL || conditionApplySpecific) {
+          if (percenCoupon.percent_off > maxPercentOff) {
+            maxPercentOff = percenCoupon.percent_off;
+            response.percent_coupon = percenCoupon;
+          }
+        }
+      }
+
+    }
+    else if (typeCoupon === COUPON_TYPES.FREE_SHIP && !response.free_ship_coupon) {
+      const freeShipCoupon = couponAggregateEle.coupons[0];
+      const productIds = freeShipCoupon.applies_product_ids.map(String);
+
+      const conditionApplySpecific =
+        freeShipCoupon.applies_to === COUPON_APPLIES_TO.SPECIFIC && productIds.includes(productId);
+
+      if (freeShipCoupon.applies_to === COUPON_APPLIES_TO.ALL || conditionApplySpecific) {
+        response.free_ship_coupon = freeShipCoupon;
+      }
+    }
   }
-  await product.populate('shop', {
-    shop_name: 1,
-  });
-  await product.populate({
-    path: 'variants',
-    populate: [
-      { path: 'inventory' },
-      { path: 'variant_options.inventory' },
-      { path: 'variant_options.variant', select: 'variant_name' },
-    ],
-  });
-  await product.populate('inventory');
-  await product.populate('shipping');
-  res.status(StatusCodes.OK).send({ product });
+  if (response.percent_coupon) {
+    response.percent_coupon = pick(response.percent_coupon, ['percent_off', 'start_date', 'end_date']);
+    for (const inv of response.product.inventories) {
+      const originPrice = inv.price;
+      inv.sale_price = roundNumAndFixed(
+        originPrice - (originPrice * (response.percent_coupon.percent_off / 100))
+      );
+    }
+  }
+  if (response.free_ship_coupon) {
+    response.free_ship_coupon = pick(response.free_ship_coupon, ['start_date', 'end_date']);
+  }
+  //endregion
+
+  res.json(response);
 });
 
 export const productController = {
-  createProductByShop,
-  getProductsByShop,
-  getDetailProductByShop,
-  updateProductByShop,
-  deleteProductByShop,
   getProducts,
-  getProductsByCategory,
   getDetailProduct,
 };

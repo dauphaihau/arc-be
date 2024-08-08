@@ -4,17 +4,18 @@ import {
   COUPON_MIN_ORDER_TYPES,
   COUPON_APPLIES_TO
 } from '@/config/enums/coupon';
-import { couponSchema } from '@/schemas/coupon.schema';
-import { mixBaseQueryOptionsSchema } from '@/schemas/sub/queryOptions.schema';
+import {
+  couponSchema
+} from '@/schemas/coupon.schema';
+import { mixBaseQueryGetListSchema } from '@/schemas/utils/query-options.schema';
+import { createCouponBodySchema, updateCouponBodySchema } from '@/schemas/request/coupon';
 
-export const couponValidation = {
+export const shopCouponValidation = {
   createCoupon: z.object({
-    params: couponSchema.pick({ shop: true }),
-    body: couponSchema
+    params: z.object({ shop_id: couponSchema.shape.shop }).strict(),
+    body: createCouponBodySchema
       .omit({
-        id: true,
         shop: true,
-        users_used: true,
       })
       .strict()
       .superRefine((val, ctx) => {
@@ -111,8 +112,8 @@ export const couponValidation = {
       }),
   }),
   getCoupons: z.object({
-    params: couponSchema.pick({ shop: true }),
-    query: mixBaseQueryOptionsSchema(
+    params: z.object({ shop_id: couponSchema.shape.shop }).strict(),
+    query: mixBaseQueryGetListSchema(
       couponSchema.pick({
         code: true,
       }).merge(z.object({
@@ -120,27 +121,27 @@ export const couponValidation = {
       }))
     ),
   }),
-  getCoupon: z.object({
-    params: couponSchema.pick({ shop: true, id: true }),
+  getDetailCoupon: z.object({
+    params: z.object({
+      coupon_id: couponSchema.shape.id,
+      shop_id: couponSchema.shape.shop,
+    }).strict(),
   }),
   deleteCoupon: z.object({
-    params: couponSchema
-      .pick({ shop: true, id: true })
-      .strict(),
+    params: z.object({
+      coupon_id: couponSchema.shape.id,
+      shop_id: couponSchema.shape.shop,
+    }).strict(),
   }),
   updateCoupon: z.object({
-    params: couponSchema.pick({ shop: true, id: true }),
-    body: couponSchema
-      .omit({
-        id: true,
-        shop: true,
-        code: true,
-        users_used: true,
-        max_uses_per_user: true,
-        applies_to: true,
-        min_order_type: true,
-      })
-      .partial()
+    params: z.object({
+      coupon_id: couponSchema.shape.id,
+      shop_id: couponSchema.shape.shop,
+    }).strict(),
+    body: updateCouponBodySchema.omit({
+      applies_to: true,
+      min_order_type: true,
+    })
       .strict()
       .superRefine((val, ctx) => {
 

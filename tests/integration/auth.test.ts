@@ -5,14 +5,14 @@ import request from 'supertest';
 import app from '../../src/app';
 import { setupTestDB } from '../utils/setupTestDB';
 import { MARKETPLACE_CONFIG } from '@/config/enums/marketplace';
-import { IUser } from '@/interfaces/models/user';
+import { IUserDoc } from '@/interfaces/models/user';
 import { User } from '@/models';
 
 setupTestDB();
 
 describe('Auth routes', () => {
   describe('POST /v1/auth/register', () => {
-    let newUser: Partial<IUser>;
+    let newUser: Partial<IUserDoc>;
     beforeEach(() => {
       newUser = {
         name: faker.person.fullName(),
@@ -41,7 +41,7 @@ describe('Auth routes', () => {
 
       const dbUser = await User.findById(res.body.user.id);
       expect(dbUser).toBeDefined();
-      expect(dbUser.password).not.toBe(newUser.password);
+      expect(dbUser?.password).not.toBe(newUser.password);
       expect(dbUser).toMatchObject({
         name: newUser.name,
         email: newUser.email,

@@ -1,15 +1,15 @@
 import { z } from 'zod';
 import { Document } from 'mongoose';
+import { RequestBaseQueryParamsGetList } from '@/interfaces/request/other';
 import { categorySchema } from '@/schemas';
-import { BaseQueryParamsGetList } from '@/interfaces/common/request';
 
 export type ICategory = z.infer<typeof categorySchema> & Document;
 
 export type CreateCategoryBody =
-  Pick<ICategory, 'name'>
-  & Partial<Pick<ICategory, 'parent'>>;
+  Pick<ICategory, 'name'> &
+  Partial<Pick<ICategory, 'parent' | 'relative_url_image' | 'rank'>>;
 
-export type GetCategoryQueries = Pick<ICategory, 'parent' | 'name'> & BaseQueryParamsGetList;
+export type GetCategoryQueryParams = Pick<ICategory, 'parent' | 'name'> & RequestBaseQueryParamsGetList;
 
 export type ICategorySearch = {
   id: ICategory['id']

@@ -1,9 +1,9 @@
 import { StatusCodes } from 'http-status-codes';
-import { RequestQuery, RequestBody } from '@/interfaces/common/request';
+import { RequestQueryParams, RequestBody } from '@/interfaces/express';
 import { log } from '@/config';
 import { Category } from '@/models/category.model';
 import {
-  GetCategoryQueries,
+  GetCategoryQueryParams,
   CreateCategoryBody,
   ICategorySearch,
   ICategory
@@ -19,7 +19,7 @@ const createRootOrSubCategory = catchAsync(async (
 });
 
 const getList = catchAsync(async (
-  req: RequestQuery<GetCategoryQueries>,
+  req: RequestQueryParams<GetCategoryQueryParams>,
   res
 ) => {
 
@@ -41,7 +41,7 @@ const getList = catchAsync(async (
 });
 
 const getSearchCategories = catchAsync(async (
-  req: RequestQuery<GetCategoryQueries>,
+  req: RequestQueryParams<GetCategoryQueryParams>,
   res
 ) => {
 

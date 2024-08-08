@@ -21,11 +21,11 @@ router
     validate(userValidation.updateUser),
     auth(),
     userController.updateUser
+  )
+  .get(
+    auth(),
+    userController.getCurrentUser
   );
-
-router
-  .route('/me')
-  .get(auth(), userController.getCurrentUser);
 
 // Address
 router
@@ -70,15 +70,11 @@ router
   .patch(
     validate(cartValidation.updateProduct),
     auth(),
-    cartController.updateProduct
+    cartController.updateCart
   )
   .get(
     auth(),
     cartController.getCart
-  )
-  .put(
-    auth(),
-    cartController.getCartWithCoupons
   )
   .delete(
     validate(cartValidation.deleteProduct),
@@ -90,9 +86,9 @@ router
 router
   .route('/orders')
   .delete(
-    validate(orderValidation.getSummaryOrder),
+    validate(orderValidation.getOrderByCheckoutSession),
     auth(),
-    orderController.getSummaryOrder
+    orderController.getOrderByCheckoutSession
   )
   .post(
     validate(orderValidation.createOrderFromCart),
@@ -105,16 +101,5 @@ router
     orderController.createOrderForBuyNow
   )
   .get(auth(), orderController.getOrderShopList);
-router
-  .route('/orders/:id')
-  .get(auth(), orderController.getOrder);
-
-router
-  .route('/order/session')
-  .get(
-    validate(orderValidation.getOrderByCheckoutSession),
-    auth(),
-    orderController.getOrderByCheckoutSession
-  );
 
 export default router;

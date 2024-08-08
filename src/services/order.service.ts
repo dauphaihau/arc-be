@@ -1,47 +1,409 @@
 import { StatusCodes } from 'http-status-codes';
-import { ClientSession } from 'mongoose';
-import { OrderShop } from '@/models/order-shop.model';
+import mongoose from 'mongoose';
+import moment from 'moment';
+import type { ClientSession } from 'mongoose';
+import { omit } from '@/utils/omitFieldsObject';
+import { IProductShipping } from '@/interfaces/models/product';
+import { Payment } from '@/models/payment.model';
+import { ICouponDoc } from '@/interfaces/models/coupon';
+import { IUser } from '@/interfaces/models/user';
 import { log, env } from '@/config';
 import {
-  COUPONS_MAX_USE_PER_ORDER,
-  COUPON_MIN_ORDER_TYPES,
-  COUPON_TYPES
-} from '@/config/enums/coupon';
-import { SHIPPING_FEE_PERCENT, ORDER_CONFIG } from '@/config/enums/order';
+  DAYS_SHIPPING_INTERNATIONAL, ORDER_CONFIG, ORDER_SHIPPING_STATUSES, ORDER_STATUSES
+} from '@/config/enums/order';
 import {
-  IAdditionInfoOrderShop,
-  ICartPopulated,
-  IItemCartPopulated
-} from '@/interfaces/models/cart';
-import {
-  IOrder,
-  IUpdateOrderBody,
-  CreateOrderForBuyNowBody,
-  IOrderModel, CreateOrderFromCartBody, IOrderShopModel, IOrderShop
+  IOrderDoc
 } from '@/interfaces/models/order';
-import { Order } from '@/models';
-import { userAddressService } from '@/services/user-address.service';
-import { cartService } from '@/services/cart.service';
+import {
+  Order, Product, Shop, Coupon, UserAddress, ProductInventory
+} from '@/models';
 import { couponService } from '@/services/coupon.service';
-import { inventoryService } from '@/services/product-inventory.service';
+import { productInventoryService } from '@/services/product-inventory.service';
 import { redisService } from '@/services/redis.service';
-import { ApiError, roundNumAndFixed } from '@/utils';
-import { ICoupon } from '@/interfaces/models/coupon';
+import { ApiError } from '@/utils';
+import {
+  IUpdateOrderBody
+} from '@/interfaces/request/order';
+import { ProductShipping } from '@/models/product-shipping.model';
+import {
+  CreateOrderShopsPayload,
+  CreateRootOrderBody,
+  GetOrderShopAggregate, CreateOrderShopBody
+} from '@/interfaces/services/order';
 
-const getOrderById = async (id: IOrder['id']) => {
+const getOrderById = async (id?: IOrderDoc['id']) => {
+  if (!id) throw new ApiError(StatusCodes.BAD_REQUEST);
   return Order.findById(id);
 };
 
-const queryOrders: IOrderModel['paginate'] = async (filter, options) => {
-  return Order.paginate(filter, options);
+const createRootOrder = async (body: CreateRootOrderBody, session: ClientSession) => {
+  if (body.total > ORDER_CONFIG.MAX_ORDER_TOTAL) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      `The total amount due must be no more than ${ORDER_CONFIG.MAX_ORDER_TOTAL}`
+    );
+  }
+
+  const newOrderCreated = await Order.create([{
+    ...body,
+    status: ORDER_STATUSES.PENDING,
+  }], { session });
+  return newOrderCreated[0];
 };
 
-const queryOrderShopList: IOrderShopModel['paginate'] = async (filter, options) => {
-  return OrderShop.paginate(filter, options);
+const createOrderShops = async (payload: CreateOrderShopsPayload, session: ClientSession) => {
+  const { shop_carts, root_order } = payload;
+  const user_id = root_order.user;
+  const user_address_id = root_order.user_address;
+
+  const orderShops: CreateOrderShopBody[] = [];
+
+  for (const shop_cart of shop_carts) {
+
+    let couponIdsToReserve: ICouponDoc['id'][] = [];
+
+    //region reserve inventory
+    for (const productCart of shop_cart.products) {
+      const key = `lock_inventory_${productCart.inventory.id}`;
+
+      log.info('Asking for lock');
+      const lock = await redisService.retrieveLock(key);
+      log.info('Lock acquired');
+
+      const isReservation = await productInventoryService.reserveQuantity(
+        {
+          inventory_id: productCart.inventory.id,
+          order_id: root_order.id,
+          quantity: productCart.quantity,
+        },
+        session
+      );
+      if (!isReservation.modifiedCount) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Some products have been updated, please come back to check');
+      }
+
+      if (productCart.percent_coupon) {
+        couponIdsToReserve.push(productCart.percent_coupon.id);
+      }
+
+      if (productCart.freeship_coupon) {
+        couponIdsToReserve.push(productCart.freeship_coupon.id);
+      }
+
+      await lock.release();
+      log.info('Lock has been released, and is available for others to use');
+    }
+    //endregion
+
+    //region reserve coupons
+    couponIdsToReserve = [...couponIdsToReserve, ...shop_cart.coupons || []];
+
+    if (couponIdsToReserve.length > 0) {
+      for (const coupon_id of couponIdsToReserve) {
+        const key = `lock_coupon_${coupon_id}`;
+        const lock = await redisService.retrieveLock(key);
+        const isReservationCp = await couponService.reserveQuantity(
+          {
+            coupon_id,
+            order_id: root_order.id,
+            user_id,
+          },
+          session
+        );
+        if (!isReservationCp.modifiedCount) {
+          log.error(`reserve coupon ${coupon_id} failed`);
+          throw new ApiError(StatusCodes.BAD_REQUEST, 'Some coupons have been updated, please come back to check');
+        }
+        await lock.release();
+      }
+    }
+    //endregion
+
+    const orderShopBody = {
+      parent: root_order.id,
+      user: user_id,
+      shop: shop_cart.shop.id,
+      user_address: user_address_id,
+      shipping_status: ORDER_SHIPPING_STATUSES.PRE_TRANSIT,
+      products: shop_cart.products.map((productCart) => ({
+        product: productCart.product.id,
+        inventory: productCart.inventory.id,
+        title: productCart.product.title,
+        price: productCart.inventory.price,
+        sale_price: productCart.inventory.sale_price || 0,
+        percent_coupon: productCart.percent_coupon?.id || null,
+        freeship_coupon: productCart.freeship_coupon?.id || null,
+        quantity: productCart.quantity,
+        image_url: `${env.aws_s3.host_bucket}/${productCart.product.image.relative_url}`,
+      })),
+      subtotal: shop_cart.subtotal_price,
+      total_discount: shop_cart.total_discount,
+      total_shipping_fee: shop_cart.total_shipping_fee,
+      total: shop_cart.total_price,
+      promo_coupons: shop_cart.coupons && shop_cart.coupons.length > 0 ? shop_cart.coupons : [],
+      note: shop_cart.note,
+    };
+    orderShops.push(orderShopBody);
+  }
+  return Order.insertMany(orderShops, { session });
+};
+
+async function calcShopShipping(orderShops: GetOrderShopAggregate[]) {
+
+  const parseTimeShipping = (time: string) => {
+    const typeTime = time.substring(0, time.length - 1);
+    time = typeTime;
+    const [from, to] = time.split('-');
+    return {
+      from: Number(from),
+      to: Number(to),
+      typeTime,
+      max: Number(to) || Number(from),
+    };
+  };
+
+  const newOrderShops = [];
+  for (const orderShop of orderShops) {
+    const productShippingMap = new Map<IProductShipping['country'], number>();
+
+    orderShop.product_shipping_docs.forEach(psd => {
+      let deliveryTime = DAYS_SHIPPING_INTERNATIONAL;
+      const { max: processTime } = parseTimeShipping(psd.process_time);
+
+      const found = psd.standard_shipping.find(ss => ss.country === orderShop.user_address.country);
+      if (found) {
+        const { max: maxDeliveryTime } = parseTimeShipping(found.delivery_time);
+        deliveryTime = maxDeliveryTime;
+      }
+      const productShipping = productShippingMap.get(psd.country);
+      productShippingMap.set(psd.country, Math.max(productShipping || 0, processTime + deliveryTime));
+    });
+
+    const days_estimated_delivery = Math.max(...productShippingMap.values());
+    const estimated_delivery = moment(orderShop.created_at).add(days_estimated_delivery, 'd').toDate();
+
+    newOrderShops.push({
+      ...omit(orderShop, ['product_shipping_docs', 'shipping_status', 'user_address']),
+      shipping: {
+        shipping_status: orderShop.shipping_status,
+        updated_at: orderShop.updated_at,
+        to_country: orderShop.user_address.country,
+        from_countries: Array.from(productShippingMap.keys()),
+        estimated_delivery,
+      },
+    });
+  }
+  log.debug('new-order-shops %o', newOrderShops);
+
+  return newOrderShops;
+}
+
+const getOrderShopList = async (userId: IUser['id']) => {
+  const limit = 10;
+  const orderShopAgg = await Order.aggregate<GetOrderShopAggregate>([
+    {
+      $match: {
+        user: new mongoose.Types.ObjectId(userId),
+        parent: { $ne: null },
+      },
+    },
+    {
+      $unwind: '$products',
+    },
+    {
+      $lookup: {
+        from: Coupon.collection.name,
+        localField: 'products.percent_coupon',
+        foreignField: '_id',
+        as: 'percent_coupon_docs',
+        pipeline: [
+          {
+            $project: { _id: 0, percent_off: 1 },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: Product.collection.name,
+        localField: 'products.product',
+        foreignField: '_id',
+        as: 'product_docs',
+        pipeline: [
+          {
+            $project: {
+              _id: 0, id: '$_id', variant_type: 1, variant_group_name: 1, variant_sub_group_name: 1, shipping: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: ProductInventory.collection.name,
+        localField: 'products.inventory',
+        foreignField: '_id',
+        as: 'inventory_docs',
+        pipeline: [
+          {
+            $project: {
+              _id: 0, variant: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $set: {
+        'products.percent_coupon': { $arrayElemAt: ['$percent_coupon_docs', 0] },
+        'products.product': { $arrayElemAt: ['$product_docs', 0] },
+        'products.inventory': { $arrayElemAt: ['$inventory_docs', 0] },
+      },
+    },
+    {
+      $group: {
+        _id: '$_id',
+        products: { $push: '$products' },
+        data: {
+          $first: '$$ROOT',
+        },
+      },
+    },
+    { $replaceRoot: { newRoot: { $mergeObjects: ['$data', { products: '$products' }] } } },
+
+    {
+      $lookup: {
+        from: Shop.collection.name,
+        localField: 'shop',
+        foreignField: '_id',
+        as: 'shop_docs',
+        pipeline: [
+          {
+            $project: { _id: 0, id: '$_id', shop_name: 1 },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: UserAddress.collection.name,
+        localField: 'user_address',
+        foreignField: '_id',
+        as: 'user_address_docs',
+        pipeline: [
+          {
+            $project: {
+              _id: 0, id: '$_id', country: 1, zip: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: Coupon.collection.name,
+        let: { promo_coupons: '$promo_coupons' },
+        pipeline: [
+          { $match: { $expr: { $in: ['$_id', '$$promo_coupons'] } } },
+          {
+            $project: { _id: 0, id: '$_id', code: 1 },
+          },
+        ],
+        as: 'promo_coupons',
+      },
+    },
+    {
+      $lookup: {
+        from: Coupon.collection.name,
+        localField: 'products.percent_coupon',
+        foreignField: '_id',
+        as: 'percent_coupon_docs',
+      },
+    },
+    {
+      $lookup: {
+        from: Payment.collection.name,
+        localField: 'payment',
+        foreignField: '_id',
+        pipeline: [
+          {
+            $project: {
+              _id: 0, type: 1, card_funding: 1, card_last4: 1, card_brand: 1,
+            },
+          },
+        ],
+        as: 'payment_docs',
+      },
+    },
+    {
+      $lookup: {
+        from: ProductShipping.collection.name,
+        localField: 'products.product.shipping',
+        foreignField: '_id',
+        pipeline: [
+          {
+            $project: {
+              _id: 0,
+              id: '$_id',
+              country: 1,
+              zip: 1,
+              process_time: 1,
+              standard_shipping: 1,
+            },
+          },
+        ],
+        as: 'product_shipping_docs',
+      },
+    },
+    {
+      $addFields: {
+        user_address: {
+          $arrayElemAt: ['$user_address_docs', 0],
+        },
+        shop: {
+          $arrayElemAt: ['$shop_docs', 0],
+        },
+        payment: {
+          $arrayElemAt: ['$payment_docs', 0],
+        },
+      },
+    },
+    {
+      $sort: {
+        created_at: -1,
+      },
+    },
+    {
+      $limit: limit,
+    },
+    {
+      $project: {
+        _id: 0,
+        id: '$_id',
+        shop: 1,
+        user_address: 1,
+        payment: 1,
+        products: 1,
+        promo_coupons: 1,
+        note: 1,
+        shipping: 1,
+        shipping_status: 1,
+        subtotal: 1,
+        total_discount: 1,
+        product_shipping_docs: 1,
+        total_shipping_fee: 1,
+        total: 1,
+        created_at: 1,
+        updated_at: 1,
+      },
+    },
+  ]);
+  log.debug('order-shop-agg %o', orderShopAgg);
+  return orderShopAgg;
 };
 
 const updateOrderById = async (
-  id: IOrder['id'],
+  id: IOrderDoc['id'],
   updateBody: IUpdateOrderBody,
   session: ClientSession
 ) => {
@@ -55,428 +417,11 @@ const updateOrderById = async (
   return order;
 };
 
-/*
- * Summary order
- *
- * 1. map fields stand by for pay via card ( stripe )
- *
- * 2. calculate price each product
- *
- * 3. validate coupons & calculate discount total
- */
-async function getSummaryOrder(
-  cart: ICartPopulated,
-  additionInfoItems?: IAdditionInfoOrderShop[]
-) {
-  const { items, user } = cart;
-  const summaryOrder = {
-    subTotalPrice: 0,
-    subTotalAppliedDiscountPrice: 0,
-    shippingFee: 0,
-    totalDiscount: 0,
-    totalPrice: 0,
-    totalProducts: 0,
-  };
-
-  const itemShops: { [key: string]: Pick<IAdditionInfoOrderShop, 'note' | 'coupon_codes'> } = {};
-  if (additionInfoItems && additionInfoItems.length > 0) {
-    additionInfoItems.forEach((ele) => {
-      itemShops[ele.shop as string] = {
-        note: ele?.note ?? '',
-        coupon_codes: ele?.coupon_codes ?? [],
-      };
-    });
-  }
-
-  const itemsSelected = [];
-  const itemNotSelected = [];
-
-  for (const item of items) {
-    const { shop, products = [] } = item;
-    if (!shop?._id) {
-      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR);
-    }
-    const shopId = shop._id;
-    const { coupon_codes, note } = itemShops[shopId.toString()] || [];
-    const productsSelected: IItemCartPopulated['products'] = [];
-    const productsNotSelect: IItemCartPopulated['products'] = [];
-
-    products.forEach((prod) => {
-      return prod.is_select_order ? productsSelected.push(prod) : productsNotSelect.push(prod);
-    });
-
-    if (productsNotSelect.length > 0) {
-      itemNotSelected.push({
-        shop: shopId,
-        products: productsNotSelect,
-      });
-    }
-
-    const productsMappedFields = productsSelected.map(ele => {
-      const product = ele.inventory.product ;
-
-      return {
-        product: ele?.inventory.product,
-        inventory: ele?.inventory?.id,
-        quantity: ele.quantity,
-        price: ele?.inventory?.price,
-        title: product?.title,
-        image_url: `${env.aws_s3.host_bucket}/${product?.images[0]?.relative_url}`,
-        // image_url: env.aws_s3.host_bucket + '/' + product?.images[0]?.relative_url,
-      };
-    });
-
-    summaryOrder.totalProducts += productsMappedFields.length;
-
-    let count_shop_products = 0;
-    const subTotalPrice = productsMappedFields.reduce((acc, next) => {
-      count_shop_products += next.quantity;
-      return acc + (next.price * next.quantity);
-    }, 0);
-    summaryOrder.subTotalPrice += roundNumAndFixed(subTotalPrice);
-    summaryOrder.shippingFee += roundNumAndFixed(subTotalPrice * SHIPPING_FEE_PERCENT);
-
-    // validate per coupon
-    let totalDiscount = 0;
-    if (coupon_codes && coupon_codes.length > 0) {
-
-      if (coupon_codes.length > COUPONS_MAX_USE_PER_ORDER) {
-        throw new ApiError(
-          StatusCodes.UNPROCESSABLE_ENTITY,
-          `Only ${COUPONS_MAX_USE_PER_ORDER} coupons use at same time`
-        );
-      }
-
-      const coupon_types = [];
-      for (const coupon_code of coupon_codes) {
-        const coupon = await couponService.getCouponByCode({
-          shop: shopId as ICoupon['id'],
-          code: coupon_code,
-        });
-        if (!coupon) {
-          throw new ApiError(StatusCodes.NOT_FOUND, 'Coupon not exist');
-        }
-        coupon_types.push(coupon.type);
-
-        if (!coupon.is_active) {
-          throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'Coupon not active');
-        }
-        if (coupon.uses_count >= coupon.max_uses) {
-          throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, `Coupon ${coupon_code} reach max count use`);
-        }
-
-        if (
-          coupon.min_order_type === COUPON_MIN_ORDER_TYPES.ORDER_TOTAL &&
-          subTotalPrice < (coupon.min_order_value as number)
-        ) {
-          throw new ApiError(
-            StatusCodes.UNPROCESSABLE_ENTITY,
-            `Shop ${shop?.shop_name} require order total must be large than
-             ${coupon.min_order_value}`
-          );
-        }
-        if (
-          coupon.min_order_type === COUPON_MIN_ORDER_TYPES.NUMBER_OF_PRODUCTS &&
-          productsMappedFields.length < (coupon.min_products as number) &&
-          count_shop_products < (coupon.min_products as number)
-        ) {
-          throw new ApiError(
-            StatusCodes.UNPROCESSABLE_ENTITY,
-            `Coupon ${coupon_code} require order must 
-            be at least ${coupon.min_products} products`
-          );
-        }
-
-        let count_user_used_cp = 0;
-        coupon.users_used?.forEach((user_used_coupon_id) => {
-          if (user_used_coupon_id === user) {
-            count_user_used_cp += 1;
-          }
-        });
-        if (count_user_used_cp >= coupon.max_uses_per_user) {
-          throw new ApiError(
-            StatusCodes.BAD_REQUEST,
-            `User has reach limit use coupon ${coupon_code}`
-          );
-        }
-
-        // let totalDiscount = 0;
-        switch (coupon.type) {
-          case COUPON_TYPES.FIXED_AMOUNT:
-            totalDiscount = coupon.amount_off as number;
-            break;
-          case COUPON_TYPES.PERCENTAGE:
-            totalDiscount = subTotalPrice * (coupon.percent_off as number / 100);
-            break;
-          case COUPON_TYPES.FREE_SHIP:
-            summaryOrder.shippingFee -= roundNumAndFixed(subTotalPrice * SHIPPING_FEE_PERCENT);
-            // summaryOrder.shippingFee -= subTotalPrice * SHIPPING_FEE_PERCENT;
-            break;
-        }
-        summaryOrder.totalDiscount += roundNumAndFixed(totalDiscount);
-      }
-
-      if (
-        coupon_codes.length === COUPONS_MAX_USE_PER_ORDER &&
-        !coupon_types.includes(COUPON_TYPES.FREE_SHIP)
-      ) {
-        throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'The only coupon that can be used with another coupon is Free Shipping');
-      }
-    }
-
-    summaryOrder.subTotalAppliedDiscountPrice = roundNumAndFixed(
-      summaryOrder.subTotalPrice - summaryOrder.totalDiscount
-    );
-    summaryOrder.totalPrice = roundNumAndFixed(
-      summaryOrder.subTotalPrice - summaryOrder.totalDiscount
-    );
-
-    itemsSelected.push({
-      shop: shopId,
-      products: productsMappedFields,
-      subtotal: roundNumAndFixed(subTotalPrice),
-      total_discount: roundNumAndFixed(totalDiscount),
-      total: roundNumAndFixed(subTotalPrice - totalDiscount),
-      coupon_codes,
-      note,
-    });
-  }
-
-  summaryOrder.totalPrice += roundNumAndFixed(summaryOrder.shippingFee);
-
-  return {
-    summaryOrder,
-    itemsSelected,
-    itemNotSelected,
-  };
-}
-
-/*
- * Create order from cart
- *
- * 1. init order from "summary order"
- *
- *    validate address
- *
- *    create order
- *
- * 2. reservation quantity product into inventory ( until user paid then clear reserves)
- *    acquire lock from redis to reserve
- *
- * 3. minus stock
- *
- * 4. update coupon if apply coupon
- *
- * 5. minus quantity product or remove item in cart
- *
- */
-async function createOrderFromCart(
-  body: CreateOrderFromCartBody,
-  session: ClientSession
-) {
-  const {
-    user,
-    address,
-    payment_type,
-    additionInfoItems,
-  } = body;
-
-  const cart = await cartService.getCartByUserId(user);
-  if (!cart) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'Cart not found');
-  }
-  const cartPopulated = await cartService.populateCart(cart);
-
-  const {
-    summaryOrder,
-    itemsSelected,
-    itemNotSelected,
-  } = await getSummaryOrder(cartPopulated, additionInfoItems);
-
-  if (summaryOrder.totalPrice > ORDER_CONFIG.MAX_ORDER_TOTAL) {
-    throw new ApiError(StatusCodes.BAD_REQUEST,
-      `The total amount due must be no more than ${ORDER_CONFIG.MAX_ORDER_TOTAL}`);
-  }
-
-  const userAddress = await userAddressService.getById(address);
-  if (!userAddress || userAddress.user.toString() !== user) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'Address not found');
-  }
-
-  const newOrderCreated = await Order.create([{
-    user,
-    address,
-    payment_type,
-    // lines: itemsSelected,
-    subtotal: summaryOrder.subTotalPrice,
-    shipping_fee: summaryOrder.shippingFee,
-    total_discount: summaryOrder.totalDiscount,
-    total: summaryOrder.totalPrice,
-  }], { session });
-  const newOrder = newOrderCreated[0];
-
-  const orderShops: IOrderShop[] = [];
-  for (const item of itemsSelected) {
-    const { products = [], shop, coupon_codes = [] } = item;
-    for (const product of products) {
-      const key = `lock_v2024_${product.inventory}`;
-
-      log.info('Asking for lock');
-      const lock = await redisService.retrieveLock(key);
-      log.info('Lock acquired');
-
-      const isReservation = await inventoryService.reservationProduct(
-        {
-          inventoryId: product.inventory,
-          order: newOrder.id,
-          quantity: product.quantity,
-        },
-        session
-      );
-      if (!isReservation.modifiedCount) {
-        throw new ApiError(StatusCodes.BAD_REQUEST, 'Some products have been updated, please come back to check');
-      }
-
-      // minus stock
-      await inventoryService.minusStock(product.inventory, product.quantity, session);
-      log.info(`inventory ${product.inventory} is modified`);
-
-      await lock.release();
-      log.info('Lock has been released, and is available for others to use');
-    }
-
-    if (coupon_codes && coupon_codes.length > 0) {
-      await couponService.updateCouponsShopAfterUsed({
-        shop, user, codes: coupon_codes,
-      }, session);
-    }
-
-    const orderShopCreated = await OrderShop.create([{ ...item, order: newOrder.id }], { session });
-    const newOrderShop = orderShopCreated[0];
-    orderShops.push(newOrderShop);
-  }
-
-  await cart.updateOne({ items: itemNotSelected }, session);
-
-  return {
-    newOrder,
-    orderShops,
-    userAddress,
-  };
-}
-
-async function createOrderForBuyNow(
-  payload: CreateOrderForBuyNowBody,
-  session: ClientSession
-) {
-  const {
-    user,
-    address,
-    payment_type,
-    coupon_codes,
-    note,
-    inventory,
-    quantity,
-  } = payload;
-
-  const inventoryInDB = await inventoryService.getInventoryById(inventory);
-  if (!inventoryInDB) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'Product not found');
-  }
-
-  await inventoryInDB.populate('product');
-  const items = [{
-    shop: inventoryInDB.shop,
-    products: [{
-      product: inventoryInDB.product,
-      inventory: inventoryInDB,
-      is_select_order: true,
-      quantity,
-    }],
-  }];
-
-  const additionInfoItems = [{
-    shop: inventoryInDB.shop,
-    coupon_codes,
-    note,
-  }];
-
-  const {
-    summaryOrder,
-    itemsSelected,
-    // @ts-expect-error:next-line
-  } = await getSummaryOrder({ user, items }, additionInfoItems);
-
-  const userAddress = await userAddressService.getById(address);
-  if (!userAddress || userAddress.user.toString() !== user) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'Address not found');
-  }
-
-  const newOrderCreated = await Order.create([{
-    user,
-    address,
-    payment_type,
-    subtotal: summaryOrder.subTotalPrice,
-    shipping_fee: summaryOrder.shippingFee,
-    total_discount: summaryOrder.totalDiscount,
-    total: summaryOrder.totalPrice,
-  }], { session });
-  const newOrder = newOrderCreated[0];
-
-  const orderShops: IOrderShop[] = [];
-  for (const item of itemsSelected) {
-    const { products = [], shop, coupon_codes = [] } = item;
-    for (const product of products) {
-      const key = `lock_${new Date().getFullYear()}_${product.inventory}`;
-
-      log.info('Asking for lock');
-      const lock = await redisService.retrieveLock(key);
-      log.info('Lock acquired');
-
-      const isReservation = await inventoryService.reservationProduct(
-        {
-          inventoryId: product.inventory,
-          order: newOrder.id,
-          quantity: product.quantity,
-        },
-        session
-      );
-      if (!isReservation.modifiedCount) {
-        throw new ApiError(StatusCodes.BAD_REQUEST, 'Some products have been updated, please come back to check');
-      }
-
-      // minus stock
-      await inventoryService.minusStock(product.inventory, product.quantity, session);
-      log.info(`inventory ${product.inventory} is modified`);
-
-      await lock.release();
-      log.info('Lock has been released, and is available for others to use');
-    }
-
-    if (coupon_codes && coupon_codes.length > 0) {
-      await couponService.updateCouponsShopAfterUsed({
-        shop, user, codes: coupon_codes,
-      }, session);
-    }
-
-    const orderShopCreated = await OrderShop.create([{ ...item, order: newOrder.id }], { session });
-    const newOrderShop = orderShopCreated[0];
-    orderShops.push(newOrderShop);
-  }
-
-  return {
-    newOrder,
-    orderShops,
-    userAddress,
-  };
-}
-
 export const orderService = {
-  queryOrders,
-  queryOrderShopList,
+  getOrderShopList,
   getOrderById,
-  getSummaryOrder,
-  createOrderFromCart,
   updateOrderById,
-  createOrderForBuyNow,
+  calcShopShipping,
+  createRootOrder,
+  createOrderShops,
 };

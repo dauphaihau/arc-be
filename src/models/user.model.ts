@@ -1,7 +1,7 @@
 import { model, Schema, SchemaTypes } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import validator from 'validator';
-import type { IUser, IUserMethods, IUserModel } from '@/interfaces/models/user';
+import type { IUserDoc, IUserMethods, IUserModel } from '@/interfaces/models/user';
 import {
   MARKETPLACE_CONFIG,
   MARKETPLACE_LANGUAGES, MARKETPLACE_REGIONS, MARKETPLACE_CURRENCIES
@@ -9,17 +9,16 @@ import {
 import { toJSON } from '@/models/plugins';
 import {
   USER_REGEX_NAME,
-  USER_CONFIG,
-  USER_REGEX_PASSWORD
+  USER_CONFIG
 } from '@/config/enums/user';
 
 // define Schema.
-const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
+const userSchema = new Schema<IUserDoc, IUserModel, IUserMethods>(
   {
     name: {
       type: String,
-      min: USER_CONFIG.MIN_CHAR_NAME,
-      max: USER_CONFIG.MAX_CHAR_NAME,
+      minlength: USER_CONFIG.MIN_CHAR_NAME,
+      maxlength: USER_CONFIG.MAX_CHAR_NAME,
       trim: true,
       validate(value: string) {
         if (!value.match(USER_REGEX_NAME)) {
@@ -30,8 +29,8 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
     },
     email: {
       type: String,
-      min: USER_CONFIG.MIN_CHAR_EMAIL,
-      max: USER_CONFIG.MAX_CHAR_EMAIL,
+      minlength: USER_CONFIG.MIN_CHAR_EMAIL,
+      maxlength: USER_CONFIG.MAX_CHAR_EMAIL,
       required: true,
       unique: true,
       trim: true,
@@ -46,13 +45,13 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
       type: String,
       required: true,
       trim: true,
-      min: USER_CONFIG.MIN_CHAR_PASSWORD,
-      max: USER_CONFIG.MAX_CHAR_PASSWORD,
-      validate(value: string) {
-        if (!value.match(USER_REGEX_PASSWORD)) {
-          throw new Error('password must contain at least 1 lower letter, 1 uppercase letter, 1 number and 1 special character');
-        }
-      },
+      minlength: USER_CONFIG.MIN_CHAR_PASSWORD,
+      maxlength: USER_CONFIG.MAX_CHAR_PASSWORD,
+      // validate(value: string) {
+      //   if (!value.match(USER_REGEX_PASSWORD)) {
+      //     throw new Error('password must contain at least 1 lower letter, 1 uppercase letter, 1 number and 1 special character');
+      //   }
+      // },
       private: true, // used by the toJSON plugin
     },
     is_email_verified: {
@@ -82,7 +81,10 @@ const userSchema = new Schema<IUser, IUserModel, IUserMethods>(
     },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 
@@ -102,12 +104,22 @@ userSchema.statics = {
 
 // Methods
 userSchema.methods = {
-  isPasswordMatch: async function (this: IUser, password) {
+  isPasswordMatch: async function (this: IUserDoc, password) {
     return bcrypt.compare(password, this.password);
   },
 };
 
 // Middlewares
+// userSchema.pre(['save', 'findOneAndUpdate'], async function (next) {
+userSchema.pre('findOneAndUpdate', async function (next) {
+  // @ts-expect-error: Type null is not assignable to type IUser
+  const data: IUserDoc = this.getUpdate();
+  if (data?.password) {
+    data.password = await bcrypt.hash(data.password, 8);
+  }
+  next();
+});
+
 userSchema.pre('save', async function (next) {
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 8);
@@ -115,4 +127,4 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-export const User: IUserModel = model<IUser, IUserModel>('User', userSchema);
+export const User: IUserModel = model<IUserDoc, IUserModel>('User', userSchema);

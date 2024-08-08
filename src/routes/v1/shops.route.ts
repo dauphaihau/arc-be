@@ -1,9 +1,10 @@
 import express from 'express';
-import { shopValidation, shopMemberValidation, couponValidation } from '@/validations';
+import { shopValidation, shopMemberValidation, shopCouponValidation } from '@/validations';
 import {
-  productController, shopController, memberController, couponController
+  shopController, memberController, couponController
 } from '@/controllers';
 import { auth, validate } from '@/middlewares';
+import { shopProductController } from '@/controllers/shop-product.controller';
 
 const router = express.Router();
 
@@ -15,9 +16,9 @@ router
     shopController.getListShops
   )
   .post(
-    validate(shopValidation.create),
+    validate(shopValidation.createShop),
     auth(),
-    shopController.create
+    shopController.createShop
   )
   .delete(
     auth('deleteShop'),
@@ -51,56 +52,62 @@ router
 
 // Product
 router
-  .route('/:shop/products')
+  .route('/:shop_id/products')
   .post(
-    validate(shopValidation.createProductByShop),
+    validate(shopValidation.createProduct),
     auth('createProduct'),
-    productController.createProductByShop
+    shopProductController.createProduct
   )
-  .get(validate(shopValidation.getProductsByShop), productController.getProductsByShop);
+  .get(
+    validate(shopValidation.getProducts),
+    shopProductController.getProducts
+  );
 
 router
-  .route('/:shop/products/:id')
+  .route('/:shop_id/products/:product_id')
   .get(
     auth('detailProduct'),
-    validate(shopValidation.getDetailProductByShop),
-    productController.getDetailProductByShop
+    validate(shopValidation.getDetailProduct),
+    shopProductController.getDetailProduct
   )
   .patch(
-    validate(shopValidation.updateProductByShop),
+    validate(shopValidation.updateProduct),
     auth('updateProduct'),
-    productController.updateProductByShop
+    shopProductController.updateProduct
   )
   .delete(
-    validate(shopValidation.deleteProductByShop),
+    validate(shopValidation.deleteProduct),
     auth('deleteProduct'),
-    productController.deleteProductByShop
+    shopProductController.deleteProduct
   );
 
 // Coupon
 router
-  .route('/:shop/coupons')
+  .route('/:shop_id/coupons')
   .post(
-    validate(couponValidation.createCoupon),
+    validate(shopCouponValidation.createCoupon),
     auth('createCoupon'),
     couponController.createCoupon
   )
-  .get(validate(couponValidation.getCoupons), couponController.getCouponsByShop);
+  .get(
+    validate(shopCouponValidation.getCoupons),
+    couponController.getCouponsByShop
+  );
 
 router
-  .route('/:shop/coupons/:id')
+  .route('/:shop_id/coupons/:coupon_id')
   .get(
-    validate(couponValidation.getCoupon),
-    couponController.getCoupon
+    validate(shopCouponValidation.getDetailCoupon),
+    couponController.getDetailCoupon
   )
   .patch(
-    validate(couponValidation.updateCoupon),
-    auth('updateProduct'),
+    validate(shopCouponValidation.updateCoupon),
+    auth('updateCoupon'),
     couponController.updateCoupon
   )
   .delete(
-    validate(couponValidation.deleteCoupon),
-    auth('deleteProduct'),
+    validate(shopCouponValidation.deleteCoupon),
+    auth('deleteCoupon'),
     couponController.deleteCoupon
   );
 

@@ -1,105 +1,117 @@
 import { StatusCodes } from 'http-status-codes';
-import { RequestBody, RequestQuery } from '@/interfaces/common/request';
-import { cartService, orderService } from '@/services';
-import { catchAsync } from '@/utils';
 import {
-  DeleteProductCartQueries,
-  UpdateProductCartBody
-} from '@/interfaces/models/cart';
+  UpdateProductCartBody,
+  AddProductCartBody
+} from '@/interfaces/request/cart';
+import { RequestBody, RequestQueryParams } from '@/interfaces/express';
+import { IProductCart } from '@/interfaces/models/cart';
+import { cartService } from '@/services';
+import { catchAsync } from '@/utils';
 
-const getCart = catchAsync(async (req, res) => {
-  const { type } = req.query;
-  if (type && type === 'header') {
-    const result = await cartService.getProductsRecentlyAdded(req.user.id);
-    res.status(StatusCodes.OK).send({ cart: result });
-    return;
-  }
-
-  const cart = await cartService.getCartByUserId(req.user.id);
-  if (!cart) {
+const getCart = catchAsync(async (
+  req: RequestQueryParams<{ cart_id: string }>,
+  res
+) => {
+  const cart = await cartService.getCart({
+    cart_id: req.query.cart_id,
+    user_id: req.user.id,
+  });
+  if (cart === null) {
     res.status(StatusCodes.OK).send({ cart });
     return;
   }
-  cart.items = cart.items.sort((a, b) => {
-    return new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf();
-  });
-  const totalProducts = cart.items.reduce((init, item) => {
-    init += item.products.length;
-    return init;
-  }, 0);
-
-  const cartPopulated = await cartService.populateCart(cart);
-  const { summaryOrder } = await orderService.getSummaryOrder(cartPopulated);
-
+  const summary_order = await cartService.getSummaryOrder(cart);
   res.status(StatusCodes.OK).send({
-    cart, summaryOrder, totalProducts,
+    cart,
+    summary_order,
   });
 });
 
-const getCartWithCoupons = catchAsync(async (req, res) => {
-  const cart = await cartService.getCartByUserId(req.user.id);
-  if (!cart) {
-    res.status(StatusCodes.OK).send({ cart });
+const addProduct = catchAsync(async (
+  req: RequestBody<AddProductCartBody>,
+  res
+) => {
+  if (req.body.is_temp) {
+    const tempCartCreated = await cartService.createTempUserCart(req.user.id, req.body);
+    const tempCart = await cartService.getCart({ cart_id: tempCartCreated.id });
+    if (tempCart === null) {
+      res.status(StatusCodes.UNPROCESSABLE_ENTITY).send();
+      return;
+    }
+    const summary_order = await cartService.getSummaryOrder(tempCart);
+    res.status(StatusCodes.OK).send({
+      cart: tempCart,
+      summary_order,
+    });
     return;
   }
-  let totalProducts = 0;
-  cart.items.forEach(item => {
-    totalProducts += item.products.length;
-  });
 
-  const cartPopulated = await cartService.populateCart(cart);
-  const { summaryOrder } = await orderService.getSummaryOrder(cartPopulated, req.body);
+  await cartService.addProduct(req.user.id, req.body);
+  const cart = await cartService.getCart({ user_id: req.user.id });
+  const summary_order = await cartService.getSummaryOrder(cart);
 
-  res.status(StatusCodes.OK).send({ cart, summaryOrder, totalProducts });
+  res.status(StatusCodes.OK).send({ cart, summary_order });
 });
 
-const addProduct = catchAsync(async (req, res) => {
-  const cart = await cartService.addProduct(req.user.id, req.body);
-  if (!cart) {
-    res.status(StatusCodes.OK).send({ cart });
-    return;
-  }
-  const cartPopulated = await cartService.populateCart(cart);
-  const { summaryOrder } = await orderService.getSummaryOrder(cartPopulated);
-
-  res.status(StatusCodes.OK).send({ summaryOrder });
-});
-
-const updateProduct = catchAsync(async (
+const updateCart = catchAsync(async (
   req: RequestBody<UpdateProductCartBody>,
   res
 ) => {
-  const { additionInfoItems, ...resBody } = req.body;
-  const cart = await cartService.updateProduct(req.user.id, resBody);
-  if (!cart) {
-    res.status(StatusCodes.OK).send({ cart });
+  const {
+    quantity, inventory_id, cart_id,
+  } = req.body;
+
+  if (cart_id) {
+    if (typeof quantity === 'number') {
+      await cartService.updateProductTempCart(cart_id, quantity);
+    }
+    const tempCart = await cartService.getCart({ cart_id });
+    const shopCart = tempCart?.shop_carts[0];
+
+    const tempAdditionInfoShopCarts = [];
+    if (req.body.addition_info_temp_cart && shopCart) {
+      tempAdditionInfoShopCarts.push({
+        shop_id: shopCart.shop.id,
+        coupon_codes: req.body.addition_info_temp_cart.promo_codes,
+        note: req.body.addition_info_temp_cart.note,
+      });
+    }
+    const summary_order = await cartService.getSummaryOrder(tempCart, tempAdditionInfoShopCarts);
+    res.status(StatusCodes.OK).send({ summary_order });
     return;
   }
-  const cartPopulated = await cartService.populateCart(cart);
-  const { summaryOrder } = await orderService.getSummaryOrder(cartPopulated, additionInfoItems);
+  else if (
+    inventory_id && (Object.hasOwn(req.body, 'quantity') || Object.hasOwn(req.body, 'is_select_order'))
+  ) {
+    await cartService.updateProduct(req.user.id, req.body);
+  }
+  const cart = await cartService.getCart({ user_id: req.user.id });
+  const summary_order = await cartService.getSummaryOrder(cart, req.body.addition_info_shop_carts);
 
-  res.status(StatusCodes.OK).send({ summaryOrder });
+  res.status(StatusCodes.OK).send({
+    cart,
+    summary_order,
+  });
 });
 
 const deleteProduct = catchAsync(async (
-  req: RequestQuery<DeleteProductCartQueries>,
+  req: RequestQueryParams<{ inventory_id: IProductCart['inventory'] }>,
   res
 ) => {
-  const cart = await cartService.deleteProduct(req.user.id, req.query.inventory);
+  await cartService.deleteProduct(req.user.id, req.query.inventory_id);
+  const cart = await cartService.getCart({ user_id: req.user.id });
   if (!cart) {
     res.status(StatusCodes.OK).send({ cart });
     return;
   }
+  const summary_order = await cartService.getSummaryOrder(cart);
 
-  const cartPopulated = await cartService.populateCart(cart);
-  const { summaryOrder } = await orderService.getSummaryOrder(cartPopulated);
-  res.status(StatusCodes.OK).send({ summaryOrder });
+  res.status(StatusCodes.OK).send({ cart, summary_order });
 });
 
 export const cartController = {
   addProduct,
   getCart,
   deleteProduct,
-  updateProduct,
-  getCartWithCoupons,
+  updateCart,
 };
