@@ -1,7 +1,6 @@
 import { log } from '@/config';
 import { ICouponDoc } from '@/interfaces/models/coupon';
-import { CreateCouponBody } from '@/interfaces/request/coupon';
-import { IShop } from '@/interfaces/models/shop';
+import { IShopDoc } from '@/interfaces/models/shop';
 import { faker } from '@faker-js/faker';
 import moment from 'moment';
 import {
@@ -13,6 +12,7 @@ import {
 import { PRODUCT_CONFIG } from '@/config/enums/product';
 import { Coupon, Product } from '@/models';
 import mongoose from 'mongoose';
+import { CreateCouponBody } from '@/interfaces/services/coupon';
 
 const limitApplyCoupon = 3;
 
@@ -23,7 +23,7 @@ const SUFFIX_CODES = {
 };
 
 const initBaseCoupon = async (
-  shop: IShop,
+  shop: IShopDoc,
   type: COUPON_TYPES,
   code: ICouponDoc['code'],
   min_order_type = COUPON_MIN_ORDER_TYPES.NONE,
@@ -93,7 +93,7 @@ const initBaseCoupon = async (
   return Coupon.create(body);
 };
 
-export async function generateCoupons(shops: IShop[]) {
+export async function generateCoupons(shops: IShopDoc[]) {
   const coupons: Promise<ICouponDoc>[] = [];
 
   shops.forEach((shop) => {

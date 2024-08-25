@@ -133,7 +133,7 @@ const createOrderForBuyNow = catchAsync(async (
 
     const shopCart = tempCart.shop_carts[0];
     const summary_order = await cartService.getSummaryOrder(tempCart, [{
-      shop_id: shopCart.shop.id,
+      shop_id: shopCart.shop.id.toString(),
       promo_codes: req.body.promo_codes,
       note: req.body.note,
     }]);
@@ -164,12 +164,25 @@ const createOrderForBuyNow = catchAsync(async (
       return;
     }
     else if (req.body.payment_type === PAYMENT_TYPES.CASH) {
+      const payment = await paymentService.createPayment({
+        user: user_id,
+        order: root_order.id,
+        currency: req.body.currency || MARKETPLACE_CONFIG.BASE_CURRENCY,
+        type: PAYMENT_TYPES.CASH,
+      }, session);
+      await root_order.update({
+        payment: payment.id,
+      });
       const orderShop = order_shops[0];
+      await orderShop.update({
+        payment: payment.id,
+      });
       await orderShop.populate('shop', 'shop_name');
       res.status(StatusCodes.OK).send({
-        order_shop: pick(orderShop.toJSON(), ['id', 'shop']),
+        order_shops: [pick(orderShop.toJSON(), ['id', 'shop'])],
       });
     }
+
     res.status(StatusCodes.UNPROCESSABLE_ENTITY).send();
   });
 });
@@ -179,7 +192,6 @@ const getOrderByCheckoutSession = catchAsync(async (
   res
 ) => {
   const checkoutSession = await stripeService.getCheckoutSession(req.query.session_id);
-  log.debug('checkout-session %o', checkoutSession);
   const metadata = checkoutSession.metadata as CustomMetaData;
   if (!metadata) {
     log.error('checkoutSession metadata be null');

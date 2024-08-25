@@ -68,11 +68,12 @@ router
     cartController.addProduct
   )
   .patch(
-    validate(cartValidation.updateProduct),
+    validate(cartValidation.updateCart),
     auth(),
     cartController.updateCart
   )
   .get(
+    validate(cartValidation.getCart),
     auth(),
     cartController.getCart
   )

@@ -3,11 +3,12 @@ import { FilterQuery, Schema } from 'mongoose';
 import { Override } from '@/interfaces/utils';
 import {
   baseQueryGetListSchema,
-  queryResultSchema
-} from '@/schemas/utils/query-options.schema';
+  baseResponseGetListSchema
+} from '@/schemas/utils/paginate.schema';
 
 export type IBaseQueryOptions = z.infer<typeof baseQueryGetListSchema>;
-export type IQueryResultTest = z.infer<typeof queryResultSchema>;
+export type IQueryResultTest = z.infer<typeof baseResponseGetListSchema>;
+
 export type IQueryResult<T> = Override<IQueryResultTest, {
   results: T[]
 }>;
@@ -101,14 +102,14 @@ export const paginate = (schema: Schema) => {
     // docsPromise = docsPromise.exec();
 
     return Promise.all([countPromise, docsPromise]).then((values) => {
-      const [totalResults, results] = values;
-      const totalPages = Math.ceil(totalResults / limit);
+      const [total_results, results] = values;
+      const total_pages = Math.ceil(total_results / limit);
       const result = {
         results,
         page,
         limit,
-        totalPages,
-        totalResults,
+        total_pages,
+        total_results,
       };
       // eslint-disable-next-line promise/no-return-wrap
       return Promise.resolve(result);

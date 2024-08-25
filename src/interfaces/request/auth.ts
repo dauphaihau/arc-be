@@ -1,13 +1,20 @@
-import { IUserDoc } from '../models/user';
-import { IShop } from '@/interfaces/models/shop';
+import { CustomZodInfer } from '@/interfaces/utils';
+import { RequestBody, RequestQueryParams } from '@/interfaces/express';
+import { authValidation } from '@/validations';
+import { IShopDoc } from '@/interfaces/models/shop';
 import { IToken } from '@/interfaces/models/token';
 
-export type LoginBody = Pick<IUserDoc, 'email' | 'password'>;
+type Register = CustomZodInfer<typeof authValidation.register>;
+export type RequestRegister = RequestBody<Register['body']>;
+
+type Login = CustomZodInfer<typeof authValidation.login>;
+export type RequestLogin = RequestBody<Login['body']>;
 
 export type VerifyCbParams = {
-  shop_id: IShop['id']
+  shop_id: IShopDoc['id']
 };
 
-export type VerifyTokenQueryParams = Pick<IToken, 'token' | 'type'>;
+type VerifyToken = CustomZodInfer<typeof authValidation.verifyToken>;
+export type RequestVerifyToken = RequestQueryParams<VerifyToken['query']>;
 
 export type VerifyEmailQueryParams = Pick<IToken, 'token'>;

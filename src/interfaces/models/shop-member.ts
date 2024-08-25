@@ -1,6 +1,6 @@
 import { Model, FilterQuery, Document } from 'mongoose';
 import { z } from 'zod';
-import { IShop } from '@/interfaces/models/shop';
+import { IShopDoc } from '@/interfaces/models/shop';
 import { IUser } from '@/interfaces/models/user';
 import { shopMemberSchema } from '@/schemas';
 import { IBaseQueryOptions } from '@/models/plugins/paginate.plugin';
@@ -15,12 +15,12 @@ export type AddShopMemberParams = Partial<Pick<IShopMember, 'shop'>>;
 export type AddShopMemberBody = Pick<IShopMember, 'shop' | 'user' | 'role'>;
 
 export type DeleteShopMemberParams = {
-  shop_id: IShop['id']
+  shop_id: IShopDoc['id']
   user_id: IUser['id']
 };
 
 export type UpdateShopMemberParams = {
-  shop_id: IShop['id']
+  shop_id: IShopDoc['id']
   user_id: IUser['id']
 };
 

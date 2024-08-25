@@ -1,15 +1,20 @@
-import { z } from 'zod';
-import { IProductCart } from '@/interfaces/models/cart';
+import { CustomZodInfer } from '@/interfaces/utils';
 import {
-  addProductCartBodySchema,
-  updateCartBodySchema
-} from '@/schemas/request/cart';
-import { additionInfoShopCartSchema } from '@/schemas/request/cart';
+  RequestQueryParams, RequestBody
+} from '@/interfaces/express';
+import { cartValidation } from '@/validations';
+import { IProductCart } from '@/interfaces/models/cart';
 
-export type AddProductCartBody = z.infer<typeof addProductCartBodySchema>;
+type GetCart = CustomZodInfer<typeof cartValidation.getCart>;
+export type RequestGetCart = RequestQueryParams<GetCart['query']>;
 
-export type AdditionInfoShopCart = z.infer<typeof additionInfoShopCartSchema>;
+type AddProductCart = CustomZodInfer<typeof cartValidation.addProduct>;
+export type RequestAddProductCart = RequestBody<AddProductCart['body']>;
 
-export type UpdateProductCartBody = z.infer<typeof updateCartBodySchema>;
+type UpdateCart = CustomZodInfer<typeof cartValidation.updateCart>;
+export type RequestUpdateCart = RequestBody<UpdateCart['body']>;
+
+type DeleteProductCart = CustomZodInfer<typeof cartValidation.deleteProduct>;
+export type RequestDeleteProductCart = RequestQueryParams<DeleteProductCart['query']>;
 
 export type ProductCartToAdd = Pick<IProductCart, 'product' | 'inventory' | 'quantity'>;

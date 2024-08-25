@@ -11,3 +11,6 @@ export const objectIdSchema = z.union(
     }),
   ]
 );
+
+// use this if the data is coming from an HTTP request,
+export const objectIdHttpSchema = z.string().regex(/^[0-9a-f]{24}$/);

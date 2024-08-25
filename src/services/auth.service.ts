@@ -5,12 +5,12 @@ import { transactionWrapper } from '@/utils';
 import { Token } from '@/models';
 import { ApiError } from '@/utils/ApiError';
 import { TOKEN_TYPES } from '@/config/enums/token';
-import { LoginBody } from '@/interfaces/request/auth';
+import { RequestLogin } from '@/interfaces/request/auth';
 
 /**
  * Login with username ( email ) and password
  */
-const login = async ({ email, password }: LoginBody) => {
+const login = async ({ email, password }: RequestLogin['body']) => {
   const user = await userService.getByEmail(email);
   if (!user || !(await user.isPasswordMatch(password))) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');

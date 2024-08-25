@@ -1,18 +1,24 @@
+import {
+  IBasePayment,
+  IPaymentCard,
+  IPaymentCash
+} from '@/interfaces/models/payment';
 import { ICouponDoc } from '@/interfaces/models/coupon';
 import { IOrder, IOrderDoc } from '@/interfaces/models/order';
-import { IPayment } from '@/interfaces/models/payment';
 import { IProductShipping } from '@/interfaces/models/product';
-import { IShop } from '@/interfaces/models/shop';
-import { IUser } from '@/interfaces/models/user';
-import { IUserAddress, IUserAddressDoc } from '@/interfaces/models/user-address';
-import { SummaryOrder, GetCartAggregate } from '@/interfaces/services/cart';
+import { IShopDoc } from '@/interfaces/models/shop';
+import { IUserAddressDoc } from '@/interfaces/models/user-address';
+import { GetCartAggregate } from '@/interfaces/services/cart';
+
+//region get order shops
+type GetOrderShopAggregate_Payment = Pick<IBasePayment, 'type'> & (
+  Pick<IPaymentCard, 'type' | 'card_brand' | 'card_last4' | 'card_funding' > | IPaymentCash
+);
 
 export type GetOrderShopAggregate = {
-  shop: Pick<IShop, 'id' | 'shop_name'>
+  shop: Pick<IShopDoc, 'id' | 'shop_name'>
   user_address: Pick<IUserAddressDoc, 'id' | 'country' | 'zip'>
-  // payment: Pick<IPayment, 'card_brand' | 'card_last4'>
-  // payment: Pick<IPayment, 'type'>
-  payment: IPayment
+  payment: GetOrderShopAggregate_Payment
   product_shipping_docs: Pick<IProductShipping, 'country' | 'zip' | 'process_time' | 'standard_shipping'>[]
   promo_codes: Pick<ICouponDoc, 'id' | 'code'>[]
 } & Pick<IOrder,
@@ -25,23 +31,9 @@ export type GetOrderShopAggregate = {
 'created_at' |
 'updated_at'
 >;
+//endregion
 
-export type CreateOrderFromCartPayload = {
-  user_id: IUser['id']
-  summary_order: SummaryOrder
-  user_address_id: IUserAddress['id']
-  shop_carts: GetCartAggregate['shop_carts']
-};
-
-export type CreateRootOrderBody = Pick<IOrder,
-'user' |
-'user_address' |
-'subtotal' |
-'total' |
-'total_shipping_fee' |
-'total_discount'
->;
-
+//region create order shops
 export type CreateOrderShopsPayload = {
   root_order: IOrderDoc
   shop_carts: GetCartAggregate['shop_carts']
@@ -56,6 +48,16 @@ export type CreateOrderShopBody = Pick<IOrder,
 'shipping_status' |
 'note' |
 'promo_coupons' |
+'subtotal' |
+'total' |
+'total_shipping_fee' |
+'total_discount'
+>;
+//endregion
+
+export type CreateRootOrderBody = Pick<IOrder,
+'user' |
+'user_address' |
 'subtotal' |
 'total' |
 'total_shipping_fee' |

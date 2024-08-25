@@ -1,7 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 import { log } from '@/config';
-import { RequestBody, RequestQueryParams } from '@/interfaces/express';
-import { CreateShopBody, GetListShopQueries } from '@/interfaces/models/shop';
+import { RequestCreateShop } from '@/interfaces/models/shop';
 import { shopService, shopMemberService, userService } from '@/services';
 import { SHOP_MEMBER_ROLES } from '@/config/enums/shop';
 import {
@@ -11,10 +10,7 @@ import {
   Shop, ShopMember, Product, Coupon, ProductInventory
 } from '@/models';
 
-const createShop = catchAsync(async (
-  req: RequestBody<CreateShopBody>,
-  res
-) => {
+const createShop = catchAsync(async (req: RequestCreateShop, res) => {
   await transactionWrapper(async (session) => {
     const userId = req.user.id;
 
@@ -87,18 +83,18 @@ const deleteShop = catchAsync(async (req, res) => {
   });
 });
 
-const getListShops = catchAsync(async (
-  req: RequestQueryParams<GetListShopQueries>,
-  res
-) => {
-  const filter = pick(req.query, ['shop_name']);
-  const options = pick(req.query, ['sortBy', 'limit', 'page']);
-  const result = await Shop.paginate(filter, options);
-  res.send(result);
-});
+// const getListShops = catchAsync(async (
+//   req,
+//   res
+// ) => {
+//   const filter = pick(req.query, ['shop_name']);
+//   const options = pick(req.query, ['sortBy', 'limit', 'page']);
+//   const result = await Shop.paginate(filter, options);
+//   res.send(result);
+// });
 
 export const shopController = {
   createShop,
-  getListShops,
+  // getListShops,
   deleteShop,
 };

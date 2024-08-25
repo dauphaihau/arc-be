@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import httpStatus, { StatusCodes } from 'http-status-codes';
-import { IUserDoc } from '@/interfaces/models/user';
+import { IUser } from '@/interfaces/models/user';
 import { TokensResponse } from '@/interfaces/models/token';
 import { RequestBody, RequestQueryParams } from '@/interfaces/express';
 import { transactionWrapper, catchAsync, ApiError } from '@/utils';
@@ -8,9 +8,7 @@ import {
   emailService, authService, userService, tokenService
 } from '@/services';
 import {
-  LoginBody,
-  VerifyTokenQueryParams,
-  VerifyEmailQueryParams
+  VerifyEmailQueryParams, RequestRegister, RequestLogin, RequestVerifyToken
 } from '@/interfaces/request/auth';
 import { TOKEN_TYPES } from '@/config/enums/token';
 
@@ -27,7 +25,7 @@ const setCookieTokens = (res: Response, tokens: TokensResponse) => {
   });
 };
 
-const register = catchAsync(async (req, res) => {
+const register = catchAsync(async (req: RequestRegister, res) => {
   await transactionWrapper(async (session) => {
     const user = await userService.create(req.body, session);
     const tokens = await tokenService.generateAuthTokens(user, session);
@@ -36,7 +34,7 @@ const register = catchAsync(async (req, res) => {
   });
 });
 
-const login = catchAsync(async (req: RequestBody<LoginBody>, res) => {
+const login = catchAsync(async (req: RequestLogin, res) => {
   const user = await authService.login(req.body);
   await user.populate('shop', 'shop_name _id');
   const tokens = await tokenService.generateAuthTokens(user);
@@ -58,7 +56,7 @@ const refreshTokens = catchAsync(async (req, res) => {
 });
 
 const forgotPassword = catchAsync(async (
-  req: RequestBody<{ email: IUserDoc['email'] }>,
+  req: RequestBody<{ email: IUser['email'] }>,
   res
 ) => {
   const resetPasswordToken = await tokenService.generateResetPasswordToken(req.body.email);
@@ -85,19 +83,13 @@ const resetPassword = catchAsync(async (
   });
 });
 
-const sendVerificationEmail = catchAsync(async (req, res) => {
-  const verifyEmailToken = await tokenService.generateVerifyEmailToken(req.user);
-  await emailService.sendVerificationEmail(req.user.email, verifyEmailToken);
-  res.status(StatusCodes.NO_CONTENT).send();
-});
+// const sendVerificationEmail = catchAsync(async (req, res) => {
+//   const verifyEmailToken = await tokenService.generateVerifyEmailToken(req.user);
+//   await emailService.sendVerificationEmail(req.user.email, verifyEmailToken);
+//   res.status(StatusCodes.NO_CONTENT).send();
+// });
 
-const verifyToken = catchAsync(async (
-  req: RequestQueryParams<VerifyTokenQueryParams>,
-  res
-) => {
-  if (!req.query.token || !req.query.type) {
-    throw new ApiError(httpStatus.BAD_REQUEST);
-  }
+const verifyToken = catchAsync(async (req: RequestVerifyToken, res) => {
   await tokenService.verifyToken(req.query.token, req.query.type);
   res.status(StatusCodes.OK).send();
 });
@@ -120,7 +112,7 @@ export const authController = {
   refreshTokens,
   forgotPassword,
   resetPassword,
-  sendVerificationEmail,
+  // sendVerificationEmail,
   verifyEmail,
   verifyToken,
 };

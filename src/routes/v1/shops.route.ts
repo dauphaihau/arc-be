@@ -1,7 +1,7 @@
 import express from 'express';
 import { shopValidation, shopMemberValidation, shopCouponValidation } from '@/validations';
 import {
-  shopController, memberController, couponController
+  shopController, memberController, shopCouponController
 } from '@/controllers';
 import { auth, validate } from '@/middlewares';
 import { shopProductController } from '@/controllers/shop-product.controller';
@@ -11,10 +11,10 @@ const router = express.Router();
 // Shop
 router
   .route('/')
-  .get(
-    validate(shopValidation.getShops),
-    shopController.getListShops
-  )
+  // .get(
+  //   validate(shopValidation.getShops),
+  //   shopController.getListShops
+  // )
   .post(
     validate(shopValidation.createShop),
     auth(),
@@ -59,22 +59,21 @@ router
     shopProductController.createProduct
   )
   .get(
-    validate(shopValidation.getProducts),
     shopProductController.getProducts
   );
 
 router
   .route('/:shop_id/products/:product_id')
-  .get(
-    auth('detailProduct'),
-    validate(shopValidation.getDetailProduct),
-    shopProductController.getDetailProduct
-  )
-  .patch(
-    validate(shopValidation.updateProduct),
-    auth('updateProduct'),
-    shopProductController.updateProduct
-  )
+  // .get(
+  //   auth('detailProduct'),
+  //   validate(shopValidation.getDetailProduct),
+  //   shopProductController.getDetailProduct
+  // )
+  // .patch(
+  // validate(shopValidation.updateProduct),
+  // auth('updateProduct'),
+  // shopProductController.updateProduct
+  // )
   .delete(
     validate(shopValidation.deleteProduct),
     auth('deleteProduct'),
@@ -85,30 +84,30 @@ router
 router
   .route('/:shop_id/coupons')
   .post(
-    validate(shopCouponValidation.createCoupon),
+    // validate(shopCouponValidation.createCoupon),
     auth('createCoupon'),
-    couponController.createCoupon
+    shopCouponController.createCoupon
   )
   .get(
     validate(shopCouponValidation.getCoupons),
-    couponController.getCouponsByShop
+    shopCouponController.getCouponsByShop
   );
 
 router
   .route('/:shop_id/coupons/:coupon_id')
-  .get(
-    validate(shopCouponValidation.getDetailCoupon),
-    couponController.getDetailCoupon
-  )
-  .patch(
-    validate(shopCouponValidation.updateCoupon),
-    auth('updateCoupon'),
-    couponController.updateCoupon
-  )
+  // .get(
+  //   validate(shopCouponValidation.getDetailCoupon),
+  //   shopCouponController.getDetailCoupon
+  // )
+  // .patch(
+  //   validate(shopCouponValidation.updateCoupon),
+  //   auth('updateCoupon'),
+  //   shopCouponController.updateCoupon
+  // )
   .delete(
     validate(shopCouponValidation.deleteCoupon),
     auth('deleteCoupon'),
-    couponController.deleteCoupon
+    shopCouponController.deleteCoupon
   );
 
 export default router;

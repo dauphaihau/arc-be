@@ -8,7 +8,7 @@ const router = express.Router();
 router
   .route('/')
   .get(
-    validate(productValidation.getProducts),
+    // validate(productValidation.getProducts),
     productController.getProducts
   );
 

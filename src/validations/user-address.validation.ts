@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { mixBaseQueryGetListSchema } from '@/schemas/utils/query-options.schema';
+import { mixBaseQueryGetListSchema } from '@/schemas/utils/paginate.schema';
 import { userAddressSchema } from '@/schemas';
 
 export const userAddressValidation = {

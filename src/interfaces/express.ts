@@ -2,7 +2,7 @@ import { Request } from 'express';
 import { ParamsDictionary, Send } from 'express-serve-static-core';
 
 export interface RequestParams<T> extends Omit<Request, 'params'> {
-  params: Partial<T> & ParamsDictionary
+  params: T & ParamsDictionary
 }
 
 export interface RequestBody<T> extends Omit<Request, 'body'> {
@@ -10,16 +10,16 @@ export interface RequestBody<T> extends Omit<Request, 'body'> {
 }
 
 export interface RequestQueryParams<T> extends Omit<Request, 'query'> {
-  query: Partial<T>
+  query: T
 }
 
 export interface RequestParamsAndBody<P, B> extends Omit<Request, 'params' | 'body'> {
-  params: Partial<P> & ParamsDictionary
+  params: P & ParamsDictionary
   body: B;
 }
 
 export interface RequestParamsAndQueryParams<P, Q> extends Omit<Request, 'params' | 'query'> {
-  params: Partial<P> & ParamsDictionary;
+  params: P & ParamsDictionary;
   query: Partial<Q>;
 }
 

@@ -11,8 +11,8 @@ import { objectIdSchema } from '@/schemas/utils/objectId.schema';
 export const orderProductSchema = z.object({
   product: productSchema.shape.id,
   inventory: productInventorySchema.shape.id,
-  percent_coupon: couponSchema.shape.id,
-  freeship_coupon: couponSchema.shape.id,
+  percent_coupon: couponSchema.shape.id.or(z.literal(null)),
+  freeship_coupon: couponSchema.shape.id.or(z.literal(null)),
   price: productInventorySchema.shape.price,
   sale_price: productInventorySchema.shape.price,
   quantity: z.number(),

@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { Model, Document } from 'mongoose';
+import { z } from 'zod';
 import { userSchema } from '@/schemas';
 
 export interface IUserMethods {
@@ -15,7 +15,5 @@ interface IUserStatics {
 }
 
 export interface IUserModel extends Model<IUserDoc, unknown, IUserMethods>, IUserStatics {}
-
-export type CreateUserBody = Pick<IUserDoc, 'email' | 'password'>;
 
 export type UpdateUserBody = Partial<IUserDoc>;

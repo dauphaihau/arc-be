@@ -1,15 +1,18 @@
 import { z } from 'zod';
-import { IBaseQueryOptions } from '@/models/plugins/paginate.plugin';
-import { ICoupon } from '@/interfaces/models/coupon';
 import {
-  createCouponBodySchema,
-  updateCouponBodySchema
-} from '@/schemas/request/coupon';
+  RequestParams,
+  RequestParamsAndBody
+} from '../express';
+import { shopCouponValidation } from '@/validations';
 
-export type CreateCouponBody = z.infer<typeof createCouponBodySchema>;
+type GetDetailCoupon = z.infer<typeof shopCouponValidation.getDetailCoupon>;
+export type RequestGetDetailCoupon = RequestParams<GetDetailCoupon['params']>;
 
-export type UpdateCouponBody = z.infer<typeof updateCouponBodySchema>;
+type CreateCoupon = z.infer<typeof shopCouponValidation.createCoupon>;
+export type RequestCreateCoupon = RequestParamsAndBody<CreateCoupon['params'], CreateCoupon['body']>;
 
-export type GetCouponByCode = Pick<ICoupon, 'shop' | 'code'>;
+type DeleteCoupon = z.infer<typeof shopCouponValidation.deleteCoupon>;
+export type RequestDeleteCoupon = RequestParams<DeleteCoupon['params']>;
 
-export type GetCouponsQueries = IBaseQueryOptions & Pick<ICoupon, 'is_auto_sale' | 'code'>;
+type UpdateCoupon = z.infer<typeof shopCouponValidation.updateCoupon>;
+export type RequestUpdateCoupon = RequestParamsAndBody<UpdateCoupon['params'], UpdateCoupon['body']>;

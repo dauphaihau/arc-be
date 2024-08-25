@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import {
+  baseQueryGetListSchema
+} from '@/schemas/utils/common-query-params.schema';
+import { booleanStringSchema } from '@/schemas/utils/boolean-string.schema';
+import {
   COUPON_TYPES,
   COUPON_MIN_ORDER_TYPES,
   COUPON_APPLIES_TO
@@ -7,19 +11,18 @@ import {
 import {
   couponSchema
 } from '@/schemas/coupon.schema';
-import { mixBaseQueryGetListSchema } from '@/schemas/utils/query-options.schema';
 import { createCouponBodySchema, updateCouponBodySchema } from '@/schemas/request/coupon';
+import { objectIdHttpSchema } from '@/schemas/utils/objectId.schema';
 
 export const shopCouponValidation = {
   createCoupon: z.object({
-    params: z.object({ shop_id: couponSchema.shape.shop }).strict(),
+    params: z.object({ shop_id: objectIdHttpSchema }).strict(),
     body: createCouponBodySchema
       .omit({
         shop: true,
       })
       .strict()
       .superRefine((val, ctx) => {
-
         switch (val.applies_to) {
           case COUPON_APPLIES_TO.ALL:
             if (val?.applies_product_ids) {
@@ -112,31 +115,33 @@ export const shopCouponValidation = {
       }),
   }),
   getCoupons: z.object({
-    params: z.object({ shop_id: couponSchema.shape.shop }).strict(),
-    query: mixBaseQueryGetListSchema(
-      couponSchema.pick({
-        code: true,
-      }).merge(z.object({
-        is_auto_sale: z.string(),
-      }))
-    ),
+    params: z.object({ shop_id: objectIdHttpSchema }).strict(),
+    query: z
+      .object({
+        code: couponSchema.shape.code,
+        is_auto_sale: booleanStringSchema,
+      })
+      .merge(baseQueryGetListSchema)
+      .partial()
+      .strict()
+    ,
   }),
   getDetailCoupon: z.object({
     params: z.object({
-      coupon_id: couponSchema.shape.id,
-      shop_id: couponSchema.shape.shop,
+      coupon_id: objectIdHttpSchema,
+      shop_id: objectIdHttpSchema,
     }).strict(),
   }),
   deleteCoupon: z.object({
     params: z.object({
-      coupon_id: couponSchema.shape.id,
-      shop_id: couponSchema.shape.shop,
+      coupon_id: objectIdHttpSchema,
+      shop_id: objectIdHttpSchema,
     }).strict(),
   }),
   updateCoupon: z.object({
     params: z.object({
-      coupon_id: couponSchema.shape.id,
-      shop_id: couponSchema.shape.shop,
+      coupon_id: objectIdHttpSchema,
+      shop_id: objectIdHttpSchema,
     }).strict(),
     body: updateCouponBodySchema.omit({
       applies_to: true,

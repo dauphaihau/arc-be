@@ -50,6 +50,10 @@ export enum PRODUCT_SHIPPING_CHARGE {
   FREE_SHIPPING = 'free_shipping'
 }
 
+export enum PRODUCT_SHIPPING_OTHER_COUNTRIES_OPTIONS {
+  EVERYWHERE = 'Everywhere'
+}
+
 export const PRODUCT_REGEX_SLUG = /^[a-z0-9]+(?:(?:-|_)+[a-z0-9]+)*$/;
 
 export const PRODUCT_REGEX_NOT_URL = /^(?!http.*$).*/;

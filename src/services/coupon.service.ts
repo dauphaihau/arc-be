@@ -1,9 +1,14 @@
 import { StatusCodes } from 'http-status-codes';
 import mongoose, { ClientSession } from 'mongoose';
+import { BaseResponseGetList } from '@/interfaces/request/common-query-params';
+import { log } from '@/config';
 import { IOrderDoc } from '@/interfaces/models/order';
 import { IUserDoc } from '@/interfaces/models/user';
-import { GetSaleCouponByShopIdsAggregate } from '@/interfaces/services/coupon';
-import { IShop } from '@/interfaces/models/shop';
+import {
+  GetSaleCouponByShopIdsAggregate,
+  GetListCouponsPayload, CreateCouponBody, UpdateCouponBody
+} from '@/interfaces/services/coupon';
+import { IShopDoc } from '@/interfaces/models/shop';
 import {
   COUPON_TYPES,
   COUPON_MIN_ORDER_TYPES,
@@ -11,20 +16,18 @@ import {
 } from '@/config/enums/coupon';
 import {
   ICoupon,
-  ICouponDoc,
-  ICouponModel
+  ICouponDoc
 } from '@/interfaces/models/coupon';
 import { Product } from '@/models';
 import { Coupon } from '@/models/coupon.model';
 import { productService } from '@/services/product.service';
-import { ApiError } from '@/utils';
-import { CreateCouponBody, GetCouponByCode, UpdateCouponBody } from '@/interfaces/request/coupon';
+import { ApiError, pick } from '@/utils';
 
 const getById = async (id: ICoupon['id']) => {
   return Coupon.findById(id);
 };
 
-const getCouponByCode = async (filter: GetCouponByCode) => {
+const getCouponByCode = async (filter: Pick<ICoupon, 'shop' | 'code'>) => {
   return Coupon.findOne(filter);
 };
 
@@ -40,6 +43,7 @@ const create = async (createBody: CreateCouponBody) => {
     min_products,
     applies_product_ids = [],
     max_uses,
+    is_auto_sale = false,
     max_uses_per_user,
     start_date,
     end_date,
@@ -75,6 +79,7 @@ const create = async (createBody: CreateCouponBody) => {
     max_uses,
     max_uses_per_user,
     is_active,
+    is_auto_sale,
     applies_to,
     applies_product_ids,
     start_date: new Date(start_date),
@@ -82,8 +87,64 @@ const create = async (createBody: CreateCouponBody) => {
   });
 };
 
-const getList: ICouponModel['paginate'] = async (filter, options) => {
-  return Coupon.paginate(filter, options);
+const getList = async (payload?: GetListCouponsPayload) => {
+  const matchCoupons: mongoose.PipelineStage.Match = {
+    $match: {},
+  };
+
+  const limitDefault = 10;
+  const pageDefault = 1;
+  const limit = payload?.limit ? payload.limit : limitDefault;
+  const page = payload?.page ? payload.page : pageDefault;
+
+  if (payload) {
+    matchCoupons.$match = pick(payload, ['code', 'is_auto_sale']);
+
+    if (payload.shop_id) {
+      matchCoupons.$match = {
+        ...matchCoupons.$match,
+        shop: new mongoose.Types.ObjectId(payload.shop_id),
+      };
+    }
+  }
+  const couponAggregate = await Coupon.aggregate<BaseResponseGetList<ICouponDoc>>([
+    matchCoupons,
+    {
+      $facet: {
+        results: [
+          { $sort: { created_at: -1 } },
+          { $skip: (page - 1) * limit },
+          { $limit: limit },
+          {
+            $addFields: {
+              id: '$_id',
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              __v: 0,
+            },
+          },
+        ],
+        metadata: [
+          { $count: 'total_results' },
+        ],
+      },
+    },
+    { $unwind: '$metadata' },
+    {
+      $project: {
+        results: 1,
+        page: { $literal: page },
+        limit: { $literal: limit },
+        total_results: '$metadata.total_results',
+        total_pages: { $ceil: { $divide: ['$metadata.total_results', limit] } },
+      },
+    },
+  ]);
+  log.debug('coupon-aggregate %o', couponAggregate);
+  return couponAggregate[0];
 };
 
 const deleteCouponById = async (id: ICouponDoc['id']) => {
@@ -136,7 +197,7 @@ const updateCoupon = async (
   return coupon;
 };
 
-const getSaleCouponByShopIds = async (shopIds: IShop['id'][]) => {
+const getSaleCouponByShopIds = async (shopIds: IShopDoc['id'][]) => {
   const shopCoupons = await Coupon.aggregate<GetSaleCouponByShopIdsAggregate>([
     {
       $match: {
@@ -223,7 +284,6 @@ const reserveQuantity = async (
 
 const clearCouponsReversedByOrder = async (
   order: IOrderDoc,
-  // orderShops: IOrderShopDoc[],
   orderShops: IOrderDoc[],
   session: ClientSession
 ) => {

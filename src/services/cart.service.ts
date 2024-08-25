@@ -15,16 +15,15 @@ import {
   ICart
 } from '@/interfaces/models/cart';
 import { IProduct } from '@/interfaces/models/product';
-import { IShop } from '@/interfaces/models/shop';
+import { IShopDoc } from '@/interfaces/models/shop';
 import {
-  UpdateProductCartBody,
-  AddProductCartBody,
   ProductCartToAdd,
-  AdditionInfoShopCart
+  RequestAddProductCart,
+  RequestUpdateCart
 } from '@/interfaces/request/cart';
 import {
   GetCartAggregate,
-  ShopCart, GetCartFilter, SummaryOrder
+  ShopCart, GetCartFilter, SummaryOrder, AdditionInfoShopCart
 } from '@/interfaces/services/cart';
 import { GetSaleCouponByShopIdsAggregate } from '@/interfaces/services/coupon';
 import { ElementType } from '@/interfaces/utils';
@@ -109,7 +108,7 @@ async function deleteProduct(
 
 async function updateProduct(
   userId: ICartDoc['user'],
-  productUpdate: UpdateProductCartBody
+  productUpdate: RequestUpdateCart['body']
 ) {
   const productUpdatePickEd = pick(productUpdate, ['quantity', 'inventory_id', 'is_select_order']);
   const { quantity, inventory_id } = productUpdatePickEd;
@@ -209,7 +208,7 @@ async function updateProductTempCart(
  */
 async function addProduct(
   userId: ICartDoc['user'],
-  body: AddProductCartBody
+  body: RequestAddProductCart['body']
 ) {
   const inventoryInDB = await productInventoryService.getById(body.inventory_id);
 
@@ -313,7 +312,7 @@ async function clearProductCartSelected(
 
 async function createTempUserCart(
   userId: ICartDoc['user'],
-  body: AddProductCartBody
+  body: RequestAddProductCart['body']
 ) {
   const { inventory_id, quantity } = body;
   const inventoryInDB = await productInventoryService.getById(inventory_id);
@@ -356,7 +355,7 @@ const getCart = async (
     $match: {},
   };
 
-  if (filter?.product_cart_selected) {
+  if (filter.product_cart_selected) {
     matchShopCarts.$match['product_cart_selected'] = filter.product_cart_selected;
   }
 
@@ -616,14 +615,13 @@ async function applySaleCoupons(
   summary_order: SummaryOrder
 ) {
   const shops = await couponService.getSaleCouponByShopIds(cart.summary_cart.shop_ids);
-  log.debug('shops %o', shops);
   if (shops.length === 0) return;
 
-  const shopsMap = new Map<IShop['id'], GetSaleCouponByShopIdsAggregate['coupons']>(
+  const shopsMap = new Map<IShopDoc['id'], GetSaleCouponByShopIdsAggregate['coupons']>(
     shops.map(shop => [shop._id.toString(), shop.coupons])
   );
 
-  const subtotalPriceShopCartsMap = new Map<IShop['id'], ShopCart['subtotal_price']>(
+  const subtotalPriceShopCartsMap = new Map<IShopDoc['id'], ShopCart['subtotal_price']>(
     cart.shop_carts.map(sc => [sc.shop.id, sc.subtotal_price])
   );
 
@@ -758,7 +756,7 @@ async function applyAdditionsInfoShopCart(
 ) {
   if (!additionInfoShopCarts || additionInfoShopCarts.length === 0) return;
 
-  const shopCartsMap = new Map<IShop['id'], ShopCart>(
+  const shopCartsMap = new Map<IShopDoc['id'], ShopCart>(
     cart.shop_carts.map((sc) => [sc.shop.id, sc])
   );
 

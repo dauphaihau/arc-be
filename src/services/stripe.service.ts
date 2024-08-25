@@ -61,8 +61,6 @@ async function createCheckoutSessionUrl(
     rateCurrency = exchangeRate.rates[currency];
   }
 
-  // log.debug('order-shops %o', order_shops);
-
   if (order_shops && order_shops.length > 0) {
     order_shops.forEach((order) => {
       return order.products.forEach(product => {
@@ -85,7 +83,6 @@ async function createCheckoutSessionUrl(
       });
     });
   }
-  log.debug('getCheckoutSessionUrl line-items %o', line_items);
 
   const metadata: CustomMetaData = {
     user_id: user_id.toString(),
@@ -120,7 +117,6 @@ async function createCheckoutSessionUrl(
 
   // region fill user address
   await root_order.populate<{ user_address: IUserAddressDoc }>('user_address').then(doc => {
-    log.debug('doc-user-address %o', doc.user_address);
     if (doc.user_address) {
       params.payment_intent_data = {
         shipping: {
@@ -170,7 +166,6 @@ async function createCheckoutSessionUrl(
 }
 
 async function onEventStripe(event: Stripe.Event) {
-  log.debug('event-type %o', event.type);
   switch (event.type) {
     case 'charge.succeeded':
       break;
@@ -199,7 +194,6 @@ async function onEventStripe(event: Stripe.Event) {
           log.error('payment_method.cart is undefined');
           throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY);
         }
-        log.debug('payment-method %o', paymentMethod);
 
         const paymentCreated = await Payment.create([{
           user: metadata.user_id,

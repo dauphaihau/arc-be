@@ -34,15 +34,15 @@ async function reset(collectionNames: string[] = []) {
 async function seedDB() {
   await mongoose.connect(env.mongoose.url);
 
-  // await reset();
-  // // await reset(['orders', 'carts', 'payments']);
-  //
-  // await generateCategories();
-  // const users = await generateUsers();
-  // const shops = await generateShops(users);
-  // await generateProducts(shops);
-  // await generateCoupons(shops);
-  //
+  await reset();
+  // await reset(['orders', 'carts', 'payments']);
+
+  await generateCategories();
+  const users = await generateUsers();
+  const shops = await generateShops(users);
+  await generateProducts(shops);
+  await generateCoupons(shops);
+
   await generateMe();
 
   console.log('seed done');

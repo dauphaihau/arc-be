@@ -1,17 +1,14 @@
 import { StatusCodes } from 'http-status-codes';
 import {
-  UpdateProductCartBody,
-  AddProductCartBody
+  RequestGetCart,
+  RequestAddProductCart,
+  RequestUpdateCart,
+  RequestDeleteProductCart
 } from '@/interfaces/request/cart';
-import { RequestBody, RequestQueryParams } from '@/interfaces/express';
-import { IProductCart } from '@/interfaces/models/cart';
 import { cartService } from '@/services';
-import { catchAsync } from '@/utils';
+import { catchAsync } from '@/utils/catchAsync';
 
-const getCart = catchAsync(async (
-  req: RequestQueryParams<{ cart_id: string }>,
-  res
-) => {
+const getCart = catchAsync(async (req: RequestGetCart, res) => {
   const cart = await cartService.getCart({
     cart_id: req.query.cart_id,
     user_id: req.user.id,
@@ -27,10 +24,7 @@ const getCart = catchAsync(async (
   });
 });
 
-const addProduct = catchAsync(async (
-  req: RequestBody<AddProductCartBody>,
-  res
-) => {
+const addProduct = catchAsync(async (req: RequestAddProductCart, res) => {
   if (req.body.is_temp) {
     const tempCartCreated = await cartService.createTempUserCart(req.user.id, req.body);
     const tempCart = await cartService.getCart({ cart_id: tempCartCreated.id });
@@ -53,10 +47,7 @@ const addProduct = catchAsync(async (
   res.status(StatusCodes.OK).send({ cart, summary_order });
 });
 
-const updateCart = catchAsync(async (
-  req: RequestBody<UpdateProductCartBody>,
-  res
-) => {
+const updateCart = catchAsync(async (req: RequestUpdateCart, res) => {
   const {
     quantity, inventory_id, cart_id,
   } = req.body;
@@ -71,7 +62,7 @@ const updateCart = catchAsync(async (
     const tempAdditionInfoShopCarts = [];
     if (req.body.addition_info_temp_cart && shopCart) {
       tempAdditionInfoShopCarts.push({
-        shop_id: shopCart.shop.id,
+        shop_id: shopCart.shop.id.toString(),
         coupon_codes: req.body.addition_info_temp_cart.promo_codes,
         note: req.body.addition_info_temp_cart.note,
       });
@@ -94,10 +85,7 @@ const updateCart = catchAsync(async (
   });
 });
 
-const deleteProduct = catchAsync(async (
-  req: RequestQueryParams<{ inventory_id: IProductCart['inventory'] }>,
-  res
-) => {
+const deleteProduct = catchAsync(async (req: RequestDeleteProductCart, res) => {
   await cartService.deleteProduct(req.user.id, req.query.inventory_id);
   const cart = await cartService.getCart({ user_id: req.user.id });
   if (!cart) {

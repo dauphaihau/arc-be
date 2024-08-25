@@ -53,11 +53,10 @@ export const productAttributeSchema = z.object({
 export const productSchema = z.object({
   id: objectIdSchema,
   shop: objectIdSchema,
-  inventory: objectIdSchema,
+  inventory: objectIdSchema.or(z.literal(null)),
   shipping: objectIdSchema,
   category: objectIdSchema,
-  // attributes: z.array(productAttributeSchema),
-  attributes: z.array(productAttributeSchema).optional(),
+  attributes: z.array(productAttributeSchema).default([]),
   title: z
     .string()
     .min(PRODUCT_CONFIG.MIN_CHAR_TITLE)
@@ -103,18 +102,15 @@ export const productSchema = z.object({
   variant_group_name: z
     .string()
     .min(1)
-    .max(PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME)
-    .optional(),
+    .max(PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME),
   variant_sub_group_name: z
     .string()
     .min(1)
     .max(PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME)
-    .optional()
   ,
   variants: z
     .array(productVariantOptSchema.shape.id)
     .default([])
-    .optional()
   ,
 });
 
@@ -123,10 +119,3 @@ export const productStateUserCanModify = z.union([
   z.literal(PRODUCT_STATES.INACTIVE),
   z.literal(PRODUCT_STATES.DRAFT),
 ]).default(PRODUCT_STATES.ACTIVE);
-
-
-export const marketGetProductsSortBySchema = z.union([
-  z.literal('newest'),
-  z.literal('price_desc'),
-  z.literal('price_asc'),
-]);

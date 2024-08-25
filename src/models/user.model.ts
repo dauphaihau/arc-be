@@ -4,7 +4,7 @@ import validator from 'validator';
 import type { IUserDoc, IUserMethods, IUserModel } from '@/interfaces/models/user';
 import {
   MARKETPLACE_CONFIG,
-  MARKETPLACE_LANGUAGES, MARKETPLACE_REGIONS, MARKETPLACE_CURRENCIES
+  MARKETPLACE_CURRENCIES
 } from '@/config/enums/marketplace';
 import { toJSON } from '@/models/plugins';
 import {
@@ -65,12 +65,12 @@ const userSchema = new Schema<IUserDoc, IUserModel, IUserMethods>(
     market_preferences: {
       region: {
         type: String,
-        enum: Object.values(MARKETPLACE_REGIONS),
+        // enum: Object.values(MARKETPLACE_REGIONS),
         default: MARKETPLACE_CONFIG.BASE_REGION,
       },
       language: {
         type: String,
-        enum: Object.values(MARKETPLACE_LANGUAGES),
+        // enum: Object.values(MARKETPLACE_LANGUAGES),
         default: MARKETPLACE_CONFIG.BASE_LANGUAGE,
       },
       currency: {

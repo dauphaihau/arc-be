@@ -1,10 +1,5 @@
-import { Model, FilterQuery, Document } from 'mongoose';
+import { Model, Document } from 'mongoose';
 import { z } from 'zod';
-import { ResponseGetProducts } from '@/interfaces/request/product';
-import {
-  IBaseQueryOptions,
-  IQueryResult
-} from '@/models/plugins/paginate.plugin';
 import {
   productAttributeSchema,
   productSchema,
@@ -32,10 +27,6 @@ export type IProductStandardShipping = z.infer<typeof standardShippingSchema>;
 export type IProductInventoryReservation = z.infer<typeof productInventoryReservationSchema>;
 
 export interface IProductModel extends Model<IProductDoc, unknown> {
-  paginate: (
-    filter: FilterQuery<IProductDoc>,
-    options: IBaseQueryOptions
-  ) => Promise<IQueryResult<ResponseGetProducts>>;
 }
 
 export interface IProductShippingModel extends Model<IProductShippingModel, unknown> {}

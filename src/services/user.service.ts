@@ -1,11 +1,11 @@
 import { ClientSession } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
+import { IUser } from '@/interfaces/models/user';
 import { log } from '@/config';
 import {
   CreateUserBody,
-  UpdateUserBody,
-  IUserDoc
-} from '@/interfaces/models/user';
+  UpdateUserBody
+} from '@/interfaces/services/user';
 import { User } from '@/models';
 import { ApiError } from '@/utils/ApiError';
 
@@ -17,16 +17,16 @@ const create = async (userBody: CreateUserBody, session?: ClientSession) => {
   return user[0];
 };
 
-const getById = async (id: IUserDoc['id']) => {
+const getById = async (id: IUser['id']) => {
   return User.findById(id);
 };
 
-const getByEmail = async (email: IUserDoc['email']) => {
+const getByEmail = async (email: IUser['email']) => {
   return User.findOne({ email });
 };
 
 const updateById = async (
-  userId: IUserDoc['id'],
+  userId: IUser['id'],
   updateBody: UpdateUserBody,
   session: ClientSession
 ) => {
@@ -49,7 +49,7 @@ const updateById = async (
   return userUpdated;
 };
 
-const deleteById = async (id: IUserDoc['id']) => {
+const deleteById = async (id: IUser['id']) => {
   const user = await getById(id);
   if (!user) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');

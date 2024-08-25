@@ -1,13 +1,12 @@
 import { z } from 'zod';
+import { objectIdHttpSchema } from '@/schemas/utils/objectId.schema';
 import {
   createProductBodySchema,
-  updateProductSchema
+  updateProductBodySchema
 } from '@/schemas/request/shop-product';
-import {
-  shopSchema,
-  productSchema
-} from '@/schemas';
-import { mixBaseQueryGetListSchema } from '@/schemas/utils/query-options.schema';
+import { productSchema, shopSchema } from '@/schemas';
+import { mixBaseQueryGetListSchema } from '@/schemas/utils/paginate.schema';
+import { baseQueryGetListSchema } from '@/schemas/utils/common-query-params.schema';
 
 export const shopValidation = {
   getShops: z.object({
@@ -25,37 +24,34 @@ export const shopValidation = {
 
   // Product
   createProduct: z.object({
-    params: z.object({ shop_id: productSchema.shape.shop }).strict(),
-    body: createProductBodySchema.omit({ shop: true }),
+    params: z.object({ shop_id: objectIdHttpSchema }).strict(),
+    body: createProductBodySchema,
   }),
-
   getProducts: z.object({
-    params: z.object({ shop_id: productSchema.shape.shop }).strict(),
-    query: mixBaseQueryGetListSchema(
-      productSchema.pick({
-        title: true,
-        price: true,
-        category: true,
-      })
-    ),
+    params: z.object({ shop_id: objectIdHttpSchema }).strict(),
+    query: productSchema
+      .pick({ title: true })
+      .merge(baseQueryGetListSchema)
+      .partial()
+      .strict(),
   }),
   getDetailProduct: z.object({
     params: z.object({
-      shop_id: productSchema.shape.shop,
-      product_id: productSchema.shape.id,
+      shop_id: objectIdHttpSchema,
+      product_id: objectIdHttpSchema,
     }).strict(),
   }),
   deleteProduct: z.object({
     params: z.object({
-      shop_id: productSchema.shape.shop,
-      product_id: productSchema.shape.id,
+      shop_id: objectIdHttpSchema,
+      product_id: objectIdHttpSchema,
     }).strict(),
   }),
   updateProduct: z.object({
     params: z.object({
-      shop_id: productSchema.shape.shop,
-      product_id: productSchema.shape.id,
+      shop_id: objectIdHttpSchema,
+      product_id: objectIdHttpSchema,
     }).strict(),
-    body: updateProductSchema,
+    body: updateProductBodySchema,
   }),
 };

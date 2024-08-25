@@ -2,6 +2,9 @@ import { StatusCodes } from 'http-status-codes';
 import mongoose from 'mongoose';
 import moment from 'moment';
 import type { ClientSession } from 'mongoose';
+import {
+  PRODUCT_SHIPPING_OTHER_COUNTRIES_OPTIONS
+} from '@/config/enums/product';
 import { omit } from '@/utils/omitFieldsObject';
 import { IProductShipping } from '@/interfaces/models/product';
 import { Payment } from '@/models/payment.model';
@@ -149,11 +152,10 @@ const createOrderShops = async (payload: CreateOrderShopsPayload, session: Clien
 };
 
 async function calcShopShipping(orderShops: GetOrderShopAggregate[]) {
-
   const parseTimeShipping = (time: string) => {
-    const typeTime = time.substring(0, time.length - 1);
-    time = typeTime;
-    const [from, to] = time.split('-');
+    const typeTime = time.replace(/[^a-z]/gi, '');
+    const rangeTime = time.replace(typeTime, '');
+    const [from, to] = rangeTime.split('-');
     return {
       from: Number(from),
       to: Number(to),
@@ -166,17 +168,26 @@ async function calcShopShipping(orderShops: GetOrderShopAggregate[]) {
   for (const orderShop of orderShops) {
     const productShippingMap = new Map<IProductShipping['country'], number>();
 
+    log.debug('order-shop-product-shipping-docs %o', orderShop);
     orderShop.product_shipping_docs.forEach(psd => {
       let deliveryTime = DAYS_SHIPPING_INTERNATIONAL;
       const { max: processTime } = parseTimeShipping(psd.process_time);
 
-      const found = psd.standard_shipping.find(ss => ss.country === orderShop.user_address.country);
-      if (found) {
-        const { max: maxDeliveryTime } = parseTimeShipping(found.delivery_time);
-        deliveryTime = maxDeliveryTime;
+      for (const ss of psd.standard_shipping) {
+        if (
+          ss.country === orderShop.user_address.country ||
+          ss.country === PRODUCT_SHIPPING_OTHER_COUNTRIES_OPTIONS.EVERYWHERE
+        ) {
+          const { max: maxDeliveryTime } = parseTimeShipping(ss.delivery_time);
+          deliveryTime = maxDeliveryTime;
+          if (ss.country === orderShop.user_address.country) break;
+        }
       }
+
       const productShipping = productShippingMap.get(psd.country);
-      productShippingMap.set(psd.country, Math.max(productShipping || 0, processTime + deliveryTime));
+      productShippingMap.set(
+        psd.country, Math.max(productShipping || 0, processTime + deliveryTime)
+      );
     });
 
     const days_estimated_delivery = Math.max(...productShippingMap.values());
@@ -193,7 +204,6 @@ async function calcShopShipping(orderShops: GetOrderShopAggregate[]) {
       },
     });
   }
-  log.debug('new-order-shops %o', newOrderShops);
 
   return newOrderShops;
 }
@@ -398,7 +408,6 @@ const getOrderShopList = async (userId: IUser['id']) => {
       },
     },
   ]);
-  log.debug('order-shop-agg %o', orderShopAgg);
   return orderShopAgg;
 };
 

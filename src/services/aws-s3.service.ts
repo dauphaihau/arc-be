@@ -38,8 +38,8 @@ async function getPresignedUrl(folder: FolderObjectS3, userId: IUser['id']) {
     Bucket,
     Key: key,
   });
-  const presignedUrl = await getSignedUrl(awsS3Client, command, { expiresIn: 3600 });
-  return { key, presignedUrl };
+  const presigned_url = await getSignedUrl(awsS3Client, command, { expiresIn: 3600 });
+  return { key, presigned_url };
 }
 
 async function deleteObject(key: string) {

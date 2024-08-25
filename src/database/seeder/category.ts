@@ -1,12 +1,14 @@
 import { log } from '@/config';
 import { categoriesData } from '@/database/data-seed/category';
-import { ICategory, CreateCategoryBody } from '@/interfaces/models/category';
+import { ICategory } from '@/interfaces/models/category';
 import {
   CreateCategoryAttributeBody
 } from '@/interfaces/models/category-attribute';
+import { RequestCreateCategory } from '@/interfaces/request/category';
 import { Category, CategoryAttribute } from '@/models';
 
-interface CategoryRecursion extends CreateCategoryBody{
+type RequestCreateCategoryBody = RequestCreateCategory['body']
+interface CategoryRecursion extends RequestCreateCategoryBody{
   attributes?: CreateCategoryAttributeBody[]
   sub?: CategoryRecursion[]
 }

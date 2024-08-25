@@ -15,11 +15,11 @@ export const baseQueryGetListSchema = z.object({
   select: z.string(),
 }).partial();
 
-export const queryResultSchema = z
+export const baseResponseGetListSchema = z
   .object({
     results: z.array(z.instanceof(Document)),
-    totalPages: z.number(),
-    totalResults: z.number(),
+    total_pages: z.number(),
+    total_results: z.number(),
   })
   .merge(
     baseQueryGetListSchema.pick({ page: true, limit: true })

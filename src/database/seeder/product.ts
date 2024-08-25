@@ -2,13 +2,13 @@ import { env, log } from '@/config';
 import {
   PRODUCT_CONFIG,
   PRODUCT_VARIANT_TYPES,
-  PRODUCT_WHO_MADE,
+  PRODUCT_WHO_MADE, PRODUCT_STATES,
 } from '@/config/enums/product';
 import { getRandomInt, capitalizeSentence } from '@/database/util';
 import {
   IProductDoc,
 } from '@/interfaces/models/product';
-import { IShop } from '@/interfaces/models/shop';
+import { IShopDoc } from '@/interfaces/models/shop';
 import { Product, ProductInventory, Category, CategoryAttribute } from '@/models';
 import { ProductShipping } from '@/models/product-shipping.model';
 import { ProductVariant } from '@/models/product-variant.model';
@@ -65,7 +65,7 @@ const combine_variants = [
   },
 ];
 
-const initBaseProduct = async (shop: IShop, relative_urls: (string | undefined)[]) => {
+const initBaseProduct = async (shop: IShopDoc, relative_urls: (string | undefined)[]) => {
 
   const categoryName = arrCategoryName[getRandomInt(arrCategoryName.length)];
   const category = await Category.findOne({ name: categoryName });
@@ -100,7 +100,7 @@ const initBaseProduct = async (shop: IShop, relative_urls: (string | undefined)[
     title: capitalizeSentence(faker.word.words({ count: 2 })) + ' ' + categoryName,
     description: faker.word.words({ count: 250 }),
     who_made: productWhoMade[getRandomInt(productWhoMade.length)],
-    state: 'inactive',
+    state: PRODUCT_STATES.ACTIVE,
     category: category.id,
     attributes: attributesSelected,
     images,
@@ -245,7 +245,7 @@ const initProductCombineVariant = async (product: IProductDoc) => {
   });
 };
 
-export async function generateProducts(shops: IShop[]): Promise<IProductDoc[] | void> {
+export async function generateProducts(shops: IShopDoc[]): Promise<IProductDoc[] | void> {
 
   const products: IProductDoc[] = [];
 

@@ -3,8 +3,8 @@ import bcrypt from 'bcryptjs';
 import { faker } from '@faker-js/faker';
 import { User } from '@/models';
 
-// const userAmount = 50;
-const userAmount = 2;
+const userAmount = 50;
+// const userAmount = 2;
 const passwordCommon = 'Landmaro12.!';
 
 const users = async () => {

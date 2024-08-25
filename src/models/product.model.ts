@@ -55,7 +55,8 @@ const productAttributeSchema = new Schema<IProductAttribute>(
     selected: {
       type: String,
     },
-  }
+  },
+  { _id: false }
 );
 productAttributeSchema.plugin(toJSON);
 
@@ -106,6 +107,7 @@ const productSchema = new Schema<IProductDoc, IProductModel>(
     },
     attributes: {
       type: [productAttributeSchema],
+      default: [],
     },
     title: {
       type: String,
@@ -121,7 +123,6 @@ const productSchema = new Schema<IProductDoc, IProductModel>(
     },
     views: {
       type: Number,
-      required: true,
       default: 0,
     },
     slug: {

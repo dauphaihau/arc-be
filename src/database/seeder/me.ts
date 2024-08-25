@@ -1,15 +1,15 @@
 import { log } from '@/config';
-import { IShop } from '@/interfaces/models/shop';
+import { IShopDoc } from '@/interfaces/models/shop';
 import { IUserDoc } from '@/interfaces/models/user';
 import { ProductCartToAdd } from '@/interfaces/request/cart';
 import { Cart, Product, User, UserAddress } from '@/models';
 
 type ShopCart = {
-  shop: IShop['id'];
+  shop: IShopDoc['id'];
   products: ProductCartToAdd[];
 }
 
-async function createUserCart(user: IUserDoc, shops: IShop[]) {
+async function createUserCart(user: IUserDoc, shops: IShopDoc[]) {
   const shop_carts: ShopCart[] = [];
 
   await Promise.all(

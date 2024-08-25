@@ -1,80 +1,77 @@
 import { StatusCodes } from 'http-status-codes';
-import mongoose, { PipelineStage } from 'mongoose';
-import { ProductShipping } from '@/models/product-shipping.model';
-import { IShop } from '@/interfaces/models/shop';
+import mongoose, { FacetPipelineStage, PipelineStage } from 'mongoose';
+import { COUPON_TYPES, COUPON_APPLIES_TO } from '@/config/enums/coupon';
+import { PRODUCT_VARIANT_TYPES, PRODUCT_SORT_BY, PRODUCT_STATES } from '@/config/enums/product';
 import {
-  GetProductsQueryParams,
-  ResponseMarketGetProducts,
-  ResponseMarketGetDetailProduct, CouponAggregate, ProductCustomFields
-} from '@/interfaces/request/product';
-import {
-  RequestQueryParams,
-  RequestParams,
   ResponseCustom
 } from '@/interfaces/express';
-import { COUPON_TYPES, COUPON_APPLIES_TO } from '@/config/enums/coupon';
-import {
-  PRODUCT_VARIANT_TYPES, PRODUCT_SORT_BY
-} from '@/config/enums/product';
-import { IProductDoc } from '@/interfaces/models/product';
-import {
-  ProductInventory, Product, Shop, Coupon
-} from '@/models';
-import { ProductVariant } from '@/models/product-variant.model';
-import {
-  categoryService
-} from '@/services';
-import {
-  catchAsync, ApiError, roundNumAndFixed, pick
-} from '@/utils';
 import { ICouponDoc } from '@/interfaces/models/coupon';
-import { ElementType } from '@/interfaces/utils';
+import { IProductDoc } from '@/interfaces/models/product';
+import { IShopDoc } from '@/interfaces/models/shop';
+import {
+  GetProductsAggregate,
+  GetProductsAggregate_Product,
+  ResponseGetProducts,
+  ResponseGetDetailProduct,
+  ResponseGetDetailProduct_Product
+} from '@/interfaces/controllers/product';
+import { zParse } from '@/middlewares/zod-validate.middleware';
+import {
+  ProductInventory, Product, Shop, Coupon 
+} from '@/models';
+import { ProductShipping } from '@/models/product-shipping.model';
+import { ProductVariant } from '@/models/product-variant.model';
+import { categoryService, couponService } from '@/services';
+import {
+  catchAsync, ApiError, roundNumAndFixed, pick 
+} from '@/utils';
+import { productValidation } from '@/validations/product.validation';
+import { RequestGetDetailProduct } from '@/interfaces/request/product';
 
 const getProducts = catchAsync(async (
-  req: RequestQueryParams<GetProductsQueryParams>,
-  res: ResponseCustom<ResponseMarketGetProducts>
+  req,
+  res: ResponseCustom<ResponseGetProducts>
 ) => {
-  const { limit, page } = req.query;
+  const { query } = await zParse(productValidation.getProducts, req);
 
   const limitDefault = 10;
   const pageDefault = 1;
-  const limitNum = limit && parseInt(limit) > 0 ? parseInt(limit) : limitDefault;
-  const pageNum = page && parseInt(page) > 0 ? parseInt(page) : pageDefault;
+  const limit = query.limit ? query.limit : limitDefault;
+  const page = query.page ? query.page : pageDefault;
 
   //region filter
-  let filter: mongoose.FilterQuery<IProductDoc> = {};
+  let filter: mongoose.FilterQuery<IProductDoc> = {
+    state: PRODUCT_STATES.ACTIVE,
+  };
 
-  if (req.query.category) {
-    const categoryIds = await categoryService.getSubCategoriesByCategory(req.query.category);
+  if (query.category_id) {
+    const categoryIds = await categoryService.getSubCategoriesByCategory(query.category_id);
     filter.category = {
       $in: categoryIds.map(c => new mongoose.Types.ObjectId(c)),
     };
   }
-
-  if (req.query?.s) {
+  if (query?.s) {
     filter = {
       ...filter,
       $or: [
-        { title: { $regex: req.query.s, $options: 'i' } },
-        { description: { $regex: req.query.s, $options: 'i' } },
+        { title: { $regex: query.s, $options: 'i' } },
+        { description: { $regex: query.s, $options: 'i' } },
       ],
     };
   }
-
-  if (req.query?.title) {
-    filter.title = { $regex: req.query.title, $options: 'i' };
+  if (query?.title) {
+    filter.title = { $regex: query.title, $options: 'i' };
   }
-
-  if (req.query?.is_digital) {
-    filter.is_digital = req.query.is_digital === 'true';
+  if (query?.is_digital) {
+    filter.is_digital = query.is_digital;
+  }
+  if (query?.who_made) {
+    filter.who_made = query.who_made;
   }
   //endregion
 
-  const totalProducts = await Product.countDocuments(filter);
-  const totalPages = Math.ceil(totalProducts / limitNum);
-
-  //region select
-  let $project = {
+  //region select results fields
+  let $projectResults = {
     _id: 0, // shop_id
     shop: {
       id: '$data.shop._id',
@@ -92,26 +89,51 @@ const getProducts = catchAsync(async (
     },
     created_at: '$data.created_at',
   };
-  type KeyProject = keyof typeof $project;
-  if (req.query.select) {
-    const select = req.query.select.split(',');
-    if (select.some(key => !$project[key as KeyProject])) {
+  type KeyProject = keyof typeof $projectResults;
+  if (query.select) {
+    const selects = query.select.split(',');
+    if (selects.some(key => !$projectResults[key as KeyProject])) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'select is invalid');
     }
     const exclude: KeyProject[] = ['_id', 'id'];
-    $project = pick($project, exclude.concat(select as KeyProject[]));
+    $projectResults = pick($projectResults, exclude.concat(selects as KeyProject[]));
   }
   //endregion
 
+  let resultsFacetPipelineStage: FacetPipelineStage[] = [
+    { $project: $projectResults },
+  ];
+
+  const sortBy: mongoose.PipelineStage.Sort['$sort'] = {};
+  if (query?.order) {
+    switch (query.order) {
+      case 'newest':
+        sortBy['created_at'] = -1;
+        break;
+      case 'price_asc':
+        sortBy['inventory.price'] = 1;
+        break;
+      case 'price_desc':
+        sortBy['inventory.price'] = -1;
+        break;
+    }
+    resultsFacetPipelineStage.push({ $sort: sortBy });
+  }
+
+  resultsFacetPipelineStage = [...resultsFacetPipelineStage, ...[
+    { $skip: (page - 1) * limit },
+    { $limit: limit },
+  ]];
+
   //region product aggregate
-  const productAggregate: PipelineStage[] = [
+  const productPipelineStage: PipelineStage[] = [
     { $match: filter },
     {
       $lookup: {
         from: Shop.collection.name,
         localField: 'shop',
         foreignField: '_id',
-        as: 'shop',
+        as: 'shop_docs',
       },
     },
     {
@@ -119,7 +141,7 @@ const getProducts = catchAsync(async (
         from: ProductInventory.collection.name,
         localField: 'inventory',
         foreignField: '_id',
-        as: 'inventory',
+        as: 'inventory_docs',
       },
     },
     {
@@ -137,7 +159,7 @@ const getProducts = catchAsync(async (
         from: ProductInventory.collection.name,
         localField: 'variants.inventory',
         foreignField: '_id',
-        as: 'inv_variant_single',
+        as: 'inv_variant_single_docs',
         pipeline: [
           { $sort: { price: 1 } },
           { $limit: 1 },
@@ -149,7 +171,7 @@ const getProducts = catchAsync(async (
         from: ProductInventory.collection.name,
         localField: 'variants.variant_options.inventory',
         foreignField: '_id',
-        as: 'inv_variant_combine',
+        as: 'inv_variant_combine_docs',
         pipeline: [
           { $sort: { price: 1 } },
           { $limit: 1 },
@@ -163,21 +185,21 @@ const getProducts = catchAsync(async (
             branches: [
               {
                 case: { $eq: ['$variant_type', PRODUCT_VARIANT_TYPES.SINGLE] },
-                then: { $arrayElemAt: ['$inv_variant_single', 0] },
+                then: { $arrayElemAt: ['$inv_variant_single_docs', 0] },
               },
               {
                 case: { $eq: ['$variant_type', PRODUCT_VARIANT_TYPES.COMBINE] },
-                then: { $arrayElemAt: ['$inv_variant_combine', 0] },
+                then: { $arrayElemAt: ['$inv_variant_combine_docs', 0] },
               },
               {
                 case: { $eq: ['$variant_type', PRODUCT_VARIANT_TYPES.NONE] },
-                then: { $arrayElemAt: ['$inventory', 0] },
+                then: { $arrayElemAt: ['$inventory_docs', 0] },
               },
             ],
             default: null, // No inventory found
           },
         },
-        shop: { $arrayElemAt: ['$shop', 0] },
+        shop: { $arrayElemAt: ['$shop_docs', 0] },
         image: {
           $arrayElemAt: ['$images', 0],
         },
@@ -194,178 +216,135 @@ const getProducts = catchAsync(async (
         data: { $first: '$$ROOT' },
       },
     },
-    { $project },
-    { $skip: (pageNum - 1) * limitNum },
-    { $limit: limitNum },
-  ];
-
-  const sortBy: mongoose.PipelineStage.Sort['$sort'] = {};
-  if (req.query?.order) {
-    switch (req.query.order) {
-      case 'newest':
-        sortBy['created_at'] = -1;
-        break;
-      case 'price_asc':
-        sortBy['inventory.price'] = 1;
-        break;
-      case 'price_desc':
-        sortBy['inventory.price'] = -1;
-        break;
-    }
-    productAggregate.push({ $sort: sortBy });
-  }
-
-  const products = await Product.aggregate(productAggregate);
-  //endregion
-
-  if (!$project.shop) {
-    res.json({
-      results: products,
-      page: pageNum,
-      limit: limitNum,
-      totalPages,
-      totalResults: totalProducts,
-    });
-    return;
-  }
-
-  //region apply run sale
-  const shopProductMap = new Map<IShop['id'], ElementType<ResponseMarketGetProducts['results']>>(
-    products.map(prod => [prod.shop.id.toString(), {
-      ...prod,
-      inventory: {
-        ...prod.inventory,
-        sale_price: 0,
-      },
-    }])
-  );
-
-  const shopIds = Array.from(shopProductMap.keys());
-
-  const shopCoupons = await Coupon.aggregate<CouponAggregate>([
     {
-      $match: {
-        shop: {
-          $in: shopIds.map(c => new mongoose.Types.ObjectId(c)),
-        },
-        is_auto_sale: true,
-        is_active: true,
-        $or: [
-          { type: COUPON_TYPES.PERCENTAGE },
-          { type: COUPON_TYPES.FREE_SHIP },
+      $facet: {
+        results: resultsFacetPipelineStage,
+        summary: [
+          { $count: 'total_results' },
         ],
-        start_date: {
-          $lt: new Date(),
-        },
-        end_date: {
-          $gt: new Date(),
-        },
       },
     },
     {
-      $group: {
-        _id: '$shop',
-        coupons: { $push: '$$ROOT' },
+      $addFields: {
+        summary: { $arrayElemAt: ['$summary', 0] },
       },
     },
     {
       $project: {
-        _id: 1,
-        coupons: {
-          type: 1,
-          percent_off: 1,
-          applies_product_ids: 1,
-          applies_to: 1,
-          start_date: 1,
-          end_date: 1,
-        },
+        results: 1,
+        total_pages: { $ceil: { $divide: ['$summary.total_results', limit] } },
+        total_results: '$summary.total_results',
       },
     },
-  ]);
+  ];
 
-  for (const shopCouponsElement of shopCoupons) {
-    const shopId = shopCouponsElement._id.toString();
-    const shopProduct = shopProductMap.get(shopId);
-    if (!shopProduct) {
-      throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY);
-    }
+  const productAggregate = await Product.aggregate<GetProductsAggregate>(productPipelineStage);
 
-    let maxPercentOff = 0;
+  const productAggregateElement = productAggregate[0];
+  //endregion
 
-    let percentCoupon: ProductCustomFields['percent_coupon'] | undefined;
-    let freeShipCoupon: ProductCustomFields['free_ship_coupon'] | undefined;
+  let results = productAggregateElement.results;
 
-    for (const coupon of shopCouponsElement.coupons) {
-      if (coupon.type === COUPON_TYPES.PERCENTAGE) {
-        const conditionApplySpecific = coupon.applies_to === COUPON_APPLIES_TO.SPECIFIC &&
-          coupon.applies_product_ids && coupon.applies_product_ids.includes(shopProduct.id.toString());
+  //region apply run sale
+  if ($projectResults.shop) {
+    const shopProductMap = new Map<IShopDoc['id'], GetProductsAggregate_Product>(
+      productAggregateElement.results.map(prod => [prod.shop.id.toString(), {
+        ...prod,
+        inventory: {
+          ...prod.inventory,
+          sale_price: 0,
+        },
+      }])
+    );
 
-        if (conditionApplySpecific || coupon.applies_to === COUPON_APPLIES_TO.ALL) {
-          if (coupon.percent_off > maxPercentOff) {
-            maxPercentOff = coupon.percent_off;
-            percentCoupon = coupon;
+    const shopIds = Array.from(shopProductMap.keys());
+
+    const shopCoupons = await couponService.getSaleCouponByShopIds(shopIds);
+
+    for (const shopCouponsElement of shopCoupons) {
+      const shopId = shopCouponsElement._id.toString();
+      const shopProduct = shopProductMap.get(shopId);
+      if (!shopProduct) {
+        throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY);
+      }
+
+      let maxPercentOff = 0;
+
+      let percentCoupon: GetProductsAggregate_Product['percent_coupon'] | undefined;
+      let freeShipCoupon: GetProductsAggregate_Product['free_ship_coupon'] | undefined;
+
+      for (const coupon of shopCouponsElement.coupons) {
+        if (coupon.type === COUPON_TYPES.PERCENTAGE) {
+          const conditionApplySpecific = coupon.applies_to === COUPON_APPLIES_TO.SPECIFIC &&
+            coupon.applies_product_ids && coupon.applies_product_ids.includes(shopProduct.id.toString());
+
+          if (conditionApplySpecific || coupon.applies_to === COUPON_APPLIES_TO.ALL) {
+            if (coupon.percent_off > maxPercentOff) {
+              maxPercentOff = coupon.percent_off;
+              percentCoupon = coupon;
+            }
+          }
+        }
+        else if (coupon.type === COUPON_TYPES.FREE_SHIP && !freeShipCoupon) {
+          const conditionApplySpecific = coupon.applies_to === COUPON_APPLIES_TO.SPECIFIC &&
+            coupon.applies_product_ids && coupon.applies_product_ids.includes(shopProduct.id.toString());
+
+          if (conditionApplySpecific || coupon.applies_to === COUPON_APPLIES_TO.ALL) {
+            freeShipCoupon = pick(coupon, ['start_date', 'end_date']);
+            shopProduct.free_ship_coupon = freeShipCoupon;
           }
         }
       }
-      else if (coupon.type === COUPON_TYPES.FREE_SHIP && !freeShipCoupon) {
-        const conditionApplySpecific = coupon.applies_to === COUPON_APPLIES_TO.SPECIFIC &&
-          coupon.applies_product_ids && coupon.applies_product_ids.includes(shopProduct.id.toString());
 
-        if (conditionApplySpecific || coupon.applies_to === COUPON_APPLIES_TO.ALL) {
-          freeShipCoupon = pick(coupon, ['type', 'start_date', 'end_date']);
-          shopProduct.free_ship_coupon = freeShipCoupon;
-        }
+      if (percentCoupon && percentCoupon.percent_off) {
+        const originPrice = shopProduct.inventory.price;
+        shopProduct.inventory.sale_price = roundNumAndFixed(
+          originPrice - (originPrice * (percentCoupon.percent_off / 100))
+        );
+        percentCoupon = pick(percentCoupon, ['percent_off', 'start_date', 'end_date']);
+        shopProduct.percent_coupon = percentCoupon;
+      }
+
+    }
+
+    results = Array.from(shopProductMap.values());
+
+    // sort after apply sale
+    if (query?.order) {
+      if (query.order === PRODUCT_SORT_BY.PRICE_ASC) {
+        results = results.sort((a, b) => {
+          return a.inventory.price - b.inventory.price;
+        });
+      }
+      if (query.order === PRODUCT_SORT_BY.PRICE_DESC) {
+        results = results.sort((a, b) => {
+          return b.inventory.price - a.inventory.price;
+        });
       }
     }
-
-    if (percentCoupon && percentCoupon.percent_off) {
-      const originPrice = shopProduct.inventory.price;
-      shopProduct.inventory.sale_price = roundNumAndFixed(
-        originPrice - (originPrice * (percentCoupon.percent_off / 100))
-      );
-      percentCoupon = pick(percentCoupon, ['type', 'percent_off', 'start_date', 'end_date']);
-      shopProduct.percent_coupon = percentCoupon;
-    }
-
   }
   //endregion
 
-  let shopProducts = Array.from(shopProductMap.values());
-
-  // sort after apply sale
-  if (req.query?.order) {
-    if (req.query.order === PRODUCT_SORT_BY.PRICE_ASC) {
-      shopProducts = shopProducts.sort((a, b) => {
-        return a.inventory.price - b.inventory.price;
-      });
-    }
-    if (req.query.order === PRODUCT_SORT_BY.PRICE_DESC) {
-      shopProducts = shopProducts.sort((a, b) => {
-        return b.inventory.price - a.inventory.price;
-      });
-    }
-  }
-
   res.json({
-    results: shopProducts,
-    page: pageNum,
-    limit: limitNum,
-    totalPages,
-    totalResults: totalProducts,
+    results,
+    page,
+    limit,
+    total_pages: productAggregateElement.total_pages,
+    total_results: productAggregateElement.total_results,
   });
 });
 
 const getDetailProduct = catchAsync(async (
-  req: RequestParams<{ product_id: string }>,
-  res: ResponseCustom<ResponseMarketGetDetailProduct>
+  req: RequestGetDetailProduct,
+  res: ResponseCustom<ResponseGetDetailProduct>
 ) => {
   const productId = req.params.product_id;
-  if (!productId) throw new ApiError(StatusCodes.BAD_REQUEST);
 
-  const productAggregate = await Product.aggregate<ResponseMarketGetDetailProduct['product']>([
+  const productAggregate = await Product.aggregate<ResponseGetDetailProduct_Product>([
     {
       $match: {
         _id: new mongoose.Types.ObjectId(productId),
+        state: PRODUCT_STATES.ACTIVE,
       },
     },
     {
@@ -385,7 +364,7 @@ const getDetailProduct = catchAsync(async (
         pipeline: [
           {
             $project: {
-              _id: 0, id: '$_id', country: 1, process: 1,
+              _id: 0, id: '$_id', country: 1, process_time: 1,
             },
           },
         ],
@@ -501,7 +480,7 @@ const getDetailProduct = catchAsync(async (
   if (!productAggregate[0]) throw new ApiError(StatusCodes.NOT_FOUND);
   const product = productAggregate[0];
 
-  const response: ResponseMarketGetDetailProduct = {
+  const response: ResponseGetDetailProduct = {
     product,
   };
 
