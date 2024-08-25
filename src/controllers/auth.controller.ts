@@ -16,11 +16,13 @@ const setCookieTokens = (res: Response, tokens: TokensResponse) => {
   res.cookie(TOKEN_TYPES.ACCESS, tokens.access.token, {
     expires: tokens.access.expires,
     httpOnly: true,
+    sameSite: 'none',
     secure: true,
   });
   res.cookie(TOKEN_TYPES.REFRESH, tokens.refresh.token, {
     expires: tokens.refresh.expires,
     httpOnly: true,
+    sameSite: 'none',
     secure: true,
   });
 };
