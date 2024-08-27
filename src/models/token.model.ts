@@ -11,7 +11,7 @@ const tokenSchema = new Schema<IToken, ITokenModel>(
       required: true,
       index: true,
     },
-    user_id: {
+    user: {
       type: SchemaTypes.ObjectId,
       ref: 'User',
       required: true,
@@ -31,7 +31,10 @@ const tokenSchema = new Schema<IToken, ITokenModel>(
     },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 

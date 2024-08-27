@@ -1,9 +1,9 @@
 import { model, Schema, SchemaTypes } from 'mongoose';
-import { IShop, IShopModel } from '@/interfaces/models/shop';
+import { IShopDoc, IShopModel } from '@/interfaces/models/shop';
 import { toJSON, paginate } from '@/models/plugins';
 
 // define Schema.
-const shopSchema = new Schema<IShop, IShopModel>(
+const shopSchema = new Schema<IShopDoc, IShopModel>(
   {
     shop_name: {
       type: String,
@@ -19,7 +19,10 @@ const shopSchema = new Schema<IShop, IShopModel>(
     },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 
@@ -35,4 +38,4 @@ shopSchema.statics = {
 shopSchema.plugin(toJSON);
 shopSchema.plugin(paginate);
 
-export const Shop: IShopModel = model<IShop, IShopModel>('Shop', shopSchema);
+export const Shop: IShopModel = model<IShopDoc, IShopModel>('Shop', shopSchema);

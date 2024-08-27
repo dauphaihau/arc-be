@@ -1,14 +1,16 @@
 import { z } from 'zod';
+import { objectIdHttpSchema } from '@/schemas/utils/objectId.schema';
 import {
-  shopSchema,
-  productSchema,
-  createProductBodySchema, updateProductSchema
-} from '@/schemas';
-import { mixBaseQueryOptionsSchema } from '@/schemas/sub/queryOptions.schema';
+  createProductBodySchema,
+  updateProductBodySchema
+} from '@/schemas/request/shop-product';
+import { productSchema, shopSchema } from '@/schemas';
+import { mixBaseQueryGetListSchema } from '@/schemas/utils/paginate.schema';
+import { baseQueryGetListSchema } from '@/schemas/utils/common-query-params.schema';
 
 export const shopValidation = {
   getShops: z.object({
-    query: mixBaseQueryOptionsSchema(
+    query: mixBaseQueryGetListSchema(
       shopSchema
         .pick({ shop_name: true })
         .strict()
@@ -21,45 +23,35 @@ export const shopValidation = {
   }),
 
   // Product
-  createProductByShop: z.object({
-    params: productSchema.pick({ shop: true }),
-    body: createProductBodySchema.omit({ shop: true }),
-    // .superRefine((val, ctx) => {
-    //   if (val.variant_type === PRODUCT_VARIANT_TYPES.NONE && !val?.price) {
-    //     ctx.addIssue({
-    //       code: z.ZodIssueCode.custom,
-    //       message: 'require price',
-    //     });
-    //   }
-    //   if (val.variant_type === PRODUCT_VARIANT_TYPES.COMBINE && !val?.sub_variant_names) {
-    //     ctx.addIssue({
-    //       code: z.ZodIssueCode.custom,
-    //       message: 'require sub_variant_names',
-    //     });
-    //   }
-    // }),
+  createProduct: z.object({
+    params: z.object({ shop_id: objectIdHttpSchema }).strict(),
+    body: createProductBodySchema,
   }),
-
-  getProductsByShop: z.object({
-    params: productSchema.pick({ shop: true }),
-    query: mixBaseQueryOptionsSchema(
-      productSchema.pick({
-        title: true,
-        price: true,
-        category: true,
-      })
-    ),
-  }),
-  getDetailProductByShop: z.object({
-    params: productSchema.pick({ shop: true, id: true }),
-  }),
-  deleteProductByShop: z.object({
-    params: productSchema
-      .pick({ shop: true, id: true })
+  getProducts: z.object({
+    params: z.object({ shop_id: objectIdHttpSchema }).strict(),
+    query: productSchema
+      .pick({ title: true })
+      .merge(baseQueryGetListSchema)
+      .partial()
       .strict(),
   }),
-  updateProductByShop: z.object({
-    params: productSchema.pick({ shop: true, id: true }),
-    body: updateProductSchema,
+  getDetailProduct: z.object({
+    params: z.object({
+      shop_id: objectIdHttpSchema,
+      product_id: objectIdHttpSchema,
+    }).strict(),
+  }),
+  deleteProduct: z.object({
+    params: z.object({
+      shop_id: objectIdHttpSchema,
+      product_id: objectIdHttpSchema,
+    }).strict(),
+  }),
+  updateProduct: z.object({
+    params: z.object({
+      shop_id: objectIdHttpSchema,
+      product_id: objectIdHttpSchema,
+    }).strict(),
+    body: updateProductBodySchema,
   }),
 };

@@ -1,14 +1,15 @@
 import { ClientSession } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
+import { IUser } from '@/interfaces/models/user';
+import { log } from '@/config';
 import {
   CreateUserBody,
-  UpdateUserBody,
-  IUser
-} from '@/interfaces/models/user';
+  UpdateUserBody
+} from '@/interfaces/services/user';
 import { User } from '@/models';
 import { ApiError } from '@/utils/ApiError';
 
-const createUser = async (userBody: CreateUserBody, session?: ClientSession) => {
+const create = async (userBody: CreateUserBody, session?: ClientSession) => {
   if (await User.isEmailTaken(userBody.email)) {
     throw new ApiError(StatusCodes.CONFLICT, 'Email already taken');
   }
@@ -16,41 +17,40 @@ const createUser = async (userBody: CreateUserBody, session?: ClientSession) => 
   return user[0];
 };
 
-const getUserById = async (id: IUser['id']) => {
+const getById = async (id: IUser['id']) => {
   return User.findById(id);
 };
 
-const getUserByEmail = async (email: IUser['email']) => {
+const getByEmail = async (email: IUser['email']) => {
   return User.findOne({ email });
 };
 
-const updateUserById = async (
+const updateById = async (
   userId: IUser['id'],
   updateBody: UpdateUserBody,
   session: ClientSession
 ) => {
-  const user = await getUserById(userId);
-  if (!user) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
-  }
   if (updateBody.email) {
     if (await User.isEmailTaken(updateBody.email, userId)) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'Email already taken');
     }
     updateBody.is_email_verified = false;
   }
-  if (updateBody.market_preferences) {
-    updateBody.market_preferences = {
-      ...user.market_preferences, ...updateBody.market_preferences,
-    };
+  log.debug(`userId: ${userId}`);
+  const userUpdated = await User.findOneAndUpdate(
+    { _id: userId },
+    updateBody,
+    { session, new: true }
+  );
+  if (!userUpdated) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
   }
-  Object.assign(user, updateBody);
-  await user.save({ session });
-  return user;
+  log.debug('userUpdate %o', userUpdated);
+  return userUpdated;
 };
 
-const deleteUserById = async (userId: IUser['id']) => {
-  const user = await getUserById(userId);
+const deleteById = async (id: IUser['id']) => {
+  const user = await getById(id);
   if (!user) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
   }
@@ -59,9 +59,9 @@ const deleteUserById = async (userId: IUser['id']) => {
 };
 
 export const userService = {
-  createUser,
-  getUserById,
-  getUserByEmail,
-  updateUserById,
-  deleteUserById,
+  create,
+  getById,
+  getByEmail,
+  updateById,
+  deleteById,
 };

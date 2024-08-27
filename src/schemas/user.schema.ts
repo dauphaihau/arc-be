@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   MARKETPLACE_REGIONS, MARKETPLACE_LANGUAGES, MARKETPLACE_CURRENCIES
 } from '@/config/enums/marketplace';
-import { objectIdSchema } from '@/schemas/sub/objectId.schema';
+import { objectIdSchema } from '@/schemas/utils/objectId.schema';
 import {
   USER_REGEX_PASSWORD,
   USER_REGEX_NAME,
@@ -43,8 +43,8 @@ export const userSchema = z.object({
   is_email_verified: z.boolean().optional(),
   shop: objectIdSchema.describe('the shop that user owns').optional(),
   market_preferences: z.object({
-    region: z.nativeEnum(MARKETPLACE_REGIONS).default(MARKETPLACE_REGIONS.UNITED_STATES),
-    language: z.nativeEnum(MARKETPLACE_LANGUAGES).default(MARKETPLACE_LANGUAGES.EN),
+    region: z.string().default(MARKETPLACE_REGIONS.UNITED_STATES),
+    language: z.string().default(MARKETPLACE_LANGUAGES.EN),
     currency: z.nativeEnum(MARKETPLACE_CURRENCIES).default(MARKETPLACE_CURRENCIES.USD),
   }).optional(),
 });

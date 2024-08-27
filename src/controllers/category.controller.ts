@@ -1,30 +1,27 @@
-import { Request } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { log } from '@/config';
+import { RequestCreateCategory } from '@/interfaces/request/category';
+import { zParse } from '@/middlewares/zod-validate.middleware';
+import { categoryValidation } from '@/validations/category.validation';
 import { Category } from '@/models/category.model';
 import {
-  GetCategoryQueries,
-  CreateCategoryPayload,
   ICategorySearch,
   ICategory
 } from '@/interfaces/models/category';
 import { catchAsync } from '@/utils';
 
 const createRootOrSubCategory = catchAsync(async (
-  req: Request<unknown, unknown, CreateCategoryPayload>,
+  req: RequestCreateCategory,
   res
 ) => {
   const category = await Category.create(req.body);
   res.status(StatusCodes.CREATED).send({ category });
 });
 
-const getCategories = catchAsync(async (
-  req: Request<unknown, unknown, unknown, GetCategoryQueries>,
-  res
-) => {
+const getList = catchAsync(async (req, res) => {
+  const { query } = await zParse(categoryValidation.getList, req);
 
   const categories = await Category.find({
-    parent: req.query.parent || null,
+    parent: query.parent || null,
   }).sort({ rank: 1 });
 
   const subCategories = await Category.find({
@@ -40,23 +37,16 @@ const getCategories = catchAsync(async (
     });
 });
 
-const getSearchCategories = catchAsync(async (
-  req: Request<unknown, unknown, unknown, GetCategoryQueries>,
-  res
-) => {
+const getSearchCategories = catchAsync(async (req, res) => {
+  const { query } = await zParse(categoryValidation.getSearchCategories, req);
 
   let categories: ICategorySearch[] = [];
   const limitDefault = 6;
-  const limitQuery = req.query.limit as string;
-
-  const limit = limitQuery &&
-  parseInt(limitQuery, limitDefault) > 0 ?
-    parseInt(limitQuery, limitDefault) :
-    limitDefault;
+  const limit = query.limit ? query.limit : limitDefault;
 
   const categoriesResultSearch = await Category.find({
     name: {
-      $regex: req.query.name,
+      $regex: query.name,
       $options: 'i',
     },
   }).limit(limit);
@@ -83,8 +73,6 @@ const getSearchCategories = catchAsync(async (
     async function populatedToRoot(category: ICategory) {
 
       await category.populate('parent');
-      log.debug('category populated %o', category);
-
       const categoryParent = category.parent as unknown as ICategory;
       if (categoryParent?.name) {
         categoriesRelated.unshift(categoryParent.name);
@@ -125,8 +113,6 @@ const getSearchCategories = catchAsync(async (
         await populatedToRoot(categoryParent);
       }
     }
-    log.debug('initCategoriesRelated %o', initCategoriesRelated);
-
 
     await getSubCategories([categoryParam], initCategoriesMap);
 
@@ -190,8 +176,6 @@ const getSearchCategories = catchAsync(async (
         await getSubCategories(subCategories, newMapCategories);
       }
     }
-
-    // log.debug('categoriesResult %o', categoriesResult);
     return categoriesResult;
   }
 
@@ -200,6 +184,6 @@ const getSearchCategories = catchAsync(async (
 
 export const categoryController = {
   createRootOrSubCategory,
-  getCategories,
+  getList,
   getSearchCategories,
 };

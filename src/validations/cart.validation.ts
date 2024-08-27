@@ -1,32 +1,67 @@
 import { z } from 'zod';
-import { productCartSchema, lineItemSchema } from '@/schemas';
+import { booleanStringSchema } from '@/schemas/utils/boolean-string.schema';
+import { objectIdHttpSchema } from '@/schemas/utils/objectId.schema';
+import { additionInfoShopCartSchema } from '@/schemas/request/cart';
+import { productCartSchema } from '@/schemas';
 
 export const cartValidation = {
-  addProduct: z.object({
-    body: productCartSchema.omit({ id: true }).strict(),
+  getCart: z.object({
+    query: z.object({
+      cart_id: objectIdHttpSchema.optional(),
+    }).strict(),
   }),
-  updateProduct: z.object({
-    body: z
-      .object({
-        inventory: productCartSchema.shape.inventory,
-        variant: productCartSchema.shape.variant.optional(),
-        quantity: productCartSchema.shape.quantity.optional(),
-        is_select_order: productCartSchema.shape.is_select_order.optional(),
-        additionInfoItems: z.array(lineItemSchema.pick({
-          shop: true,
-          coupon_codes: true,
+  addProduct: z.object({
+    body: z.object({
+      inventory_id: objectIdHttpSchema,
+      quantity: productCartSchema.shape.quantity.min(1),
+      is_temp: booleanStringSchema.optional(),
+    }).strict(),
+  }),
+  updateCart: z.object({
+    body:
+      z.object({
+        inventory_id: objectIdHttpSchema,
+        is_select_order: booleanStringSchema,
+        cart_id: objectIdHttpSchema,
+        quantity: productCartSchema.shape.quantity.min(1),
+        addition_info_temp_cart: additionInfoShopCartSchema.pick({
+          promo_codes: true,
           note: true,
-        })).optional(),
+        }).strict(),
+        addition_info_shop_carts: z.array(
+          additionInfoShopCartSchema.strict()
+        ).min(1),
       })
-      .strict()
-      .refine((val) => {
-        return !(Object.keys(val).length === 1);
-      }, 'require at least is_select_order or quantity field')
-    ,
+        .partial()
+        .strict()
+        .superRefine((val, ctx) => {
+          if (Object.hasOwn(val, 'inventory_id')) {
+            if (
+              !Object.hasOwn(val, 'is_select_order') &&
+            !Object.hasOwn(val, 'quantity')
+            ) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'require at least is_select_order or quantity field',
+              });
+            }
+          }
+          if (Object.hasOwn(val, 'cart_id')) {
+            if (
+              !Object.hasOwn(val, 'addition_info_temp_cart') &&
+            !Object.hasOwn(val, 'quantity')
+            ) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'require at least quantity or addition_info_temp_cart field',
+              });
+            }
+          }
+        }),
   }),
   deleteProduct: z.object({
-    query: productCartSchema
-      .pick({ inventory: true })
-      .strict(),
+    query: z.object({
+      inventory_id: objectIdHttpSchema,
+    }),
   }),
 };

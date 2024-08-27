@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { productInventorySchema } from './product-inventory.schema';
 import {
   PRODUCT_STATES,
   PRODUCT_WHO_MADE,
@@ -8,7 +7,7 @@ import {
   PRODUCT_CONFIG,
   PRODUCT_VARIANT_TYPES
 } from '@/config/enums/product';
-import { objectIdSchema } from '@/schemas/sub/objectId.schema';
+import { objectIdSchema } from '@/schemas/utils/objectId.schema';
 
 export const productImageSchema = z.object({
   id: objectIdSchema,
@@ -54,9 +53,10 @@ export const productAttributeSchema = z.object({
 export const productSchema = z.object({
   id: objectIdSchema,
   shop: objectIdSchema,
-  inventory: objectIdSchema,
+  inventory: objectIdSchema.or(z.literal(null)),
+  shipping: objectIdSchema,
   category: objectIdSchema,
-  attributes: z.array(productAttributeSchema),
+  attributes: z.array(productAttributeSchema).default([]),
   title: z
     .string()
     .min(PRODUCT_CONFIG.MIN_CHAR_TITLE)
@@ -98,24 +98,19 @@ export const productSchema = z.object({
     .max(5, 'Rating must be equal or less than 5.0')
     .default(0)
     .optional(),
-  variant_type: z
-    .nativeEnum(PRODUCT_VARIANT_TYPES)
-    .default(PRODUCT_VARIANT_TYPES.NONE),
+  variant_type: z.nativeEnum(PRODUCT_VARIANT_TYPES),
   variant_group_name: z
     .string()
     .min(1)
-    .max(PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME)
-    .optional(),
+    .max(PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME),
   variant_sub_group_name: z
     .string()
     .min(1)
     .max(PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME)
-    .optional()
   ,
   variants: z
     .array(productVariantOptSchema.shape.id)
     .default([])
-    .optional()
   ,
 });
 
@@ -124,103 +119,3 @@ export const productStateUserCanModify = z.union([
   z.literal(PRODUCT_STATES.INACTIVE),
   z.literal(PRODUCT_STATES.DRAFT),
 ]).default(PRODUCT_STATES.ACTIVE);
-
-export const createProductBodySchema = productSchema
-  .omit({
-    id: true,
-    views: true,
-    rating_average: true,
-    inventory: true,
-    variants: true,
-  })
-  .merge(
-    z.object({
-      images: z
-        .array(productImageSchema
-          .omit({ id: true })
-          .strict()
-        )
-        .max(PRODUCT_CONFIG.MAX_IMAGES),
-      state: productStateUserCanModify,
-      new_variants: z.array(
-        productVariantSchema
-          .pick({ variant_name: true })
-          .merge(z.object({
-            variant_options: z.array(
-              productInventorySchema
-                .pick({ sku: true, price: true, stock: true })
-                .merge(productVariantOptSchema.partial())
-                .merge(productVariantSchema.pick({ variant_name: true }))
-            ),
-          }))
-          .merge(productInventorySchema.pick({ sku: true, price: true, stock: true })).partial()
-      ).optional(),
-    })
-  )
-  .merge(
-    productInventorySchema.pick({
-      price: true,
-      stock: true,
-      sku: true,
-    }).partial()
-  )
-  .strict();
-
-export const variantOptionsUpdateSchema = productInventorySchema
-  .pick({ price: true, sku: true, stock: true }).merge(
-    productVariantSchema.pick({ variant_name: true }).merge(
-      productVariantOptSchema.pick({ variant: true })
-    )
-  );
-
-export const updateProductSchema = productSchema
-  .omit({
-    shop: true,
-    rating_average: true,
-    views: true,
-  }).merge(
-    z.object({
-      state: productStateUserCanModify,
-      images: z
-        .array(productImageSchema.partial())
-        .min(PRODUCT_CONFIG.MIN_IMAGES)
-        .max(PRODUCT_CONFIG.MAX_IMAGES),
-      update_variants: z
-        .array(
-          productVariantSchema
-            .pick({ id: true, variant_name: true })
-            .partial({ variant_name: true })
-            .strict()
-        )
-        .optional(),
-      variant_inventories: z
-        .array(
-          productInventorySchema
-            .pick({
-              id: true, price: true, sku: true, stock: true,
-            })
-            .strict()
-        )
-        .optional(),
-      new_single_variants: z
-        .array(
-          productInventorySchema.pick({ price: true, sku: true, stock: true }).merge(
-            productVariantSchema.pick({ variant_name: true })
-          )
-        ),
-      new_combine_variants: z.array(
-        productVariantSchema
-          .pick({ variant_name: true })
-          .merge(
-            z.object({
-              variant_options: z.array(
-                variantOptionsUpdateSchema.partial({ variant: true })
-              // .refine((value) => !value?.variant && !value?.variant_name, 'required at least variant or variant_name field')
-              ),
-            })
-          ))
-        .optional(),
-    })
-  ).merge(
-    productInventorySchema.pick({ price: true, sku: true, stock: true })
-  ).partial();

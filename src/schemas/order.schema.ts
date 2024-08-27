@@ -1,50 +1,51 @@
 import { z } from 'zod';
-import { itemCartSchema } from '@/schemas/cart.schema';
+import { couponSchema } from '@/schemas/coupon.schema';
 import { productInventorySchema } from '@/schemas/product-inventory.schema';
 import { productSchema } from '@/schemas/product.schema';
 import {
-  PAYMENT_TYPES,
   ORDER_STATUSES,
-  ORDER_CONFIG
+  ORDER_CONFIG, ORDER_SHIPPING_STATUSES
 } from '@/config/enums/order';
-import { objectIdSchema } from '@/schemas/sub/objectId.schema';
+import { objectIdSchema } from '@/schemas/utils/objectId.schema';
 
-export const productInLineSchema = z.object({
-  inventory: objectIdSchema,
+export const orderProductSchema = z.object({
+  product: productSchema.shape.id,
+  inventory: productInventorySchema.shape.id,
+  percent_coupon: couponSchema.shape.id.or(z.literal(null)),
+  freeship_coupon: couponSchema.shape.id.or(z.literal(null)),
   price: productInventorySchema.shape.price,
+  sale_price: productInventorySchema.shape.price,
   quantity: z.number(),
   title: productSchema.shape.title,
   image_url: z.string(),
 });
 
-export const lineItemSchema = z.object({
+export const orderSchema = z.object({
+  id: objectIdSchema,
+  parent: objectIdSchema,
   shop: objectIdSchema,
-  coupon_codes: itemCartSchema.shape.coupon_codes,
+  user: objectIdSchema,
+  user_address: objectIdSchema,
+  payment: objectIdSchema,
+  tracking_number: z.string(),
+  stripe_charge_id: z.string(),
+  status: z.nativeEnum(ORDER_STATUSES),
+  shipping_status: z.nativeEnum(ORDER_SHIPPING_STATUSES).default(ORDER_SHIPPING_STATUSES.PRE_TRANSIT),
   products: z
-    .array(productInLineSchema)
-    .min(1)
-    .max(20),
+    .array(orderProductSchema)
+    .min(1),
+  // .max(20),
+  subtotal: z.number(),
+  total_shipping_fee: z.number(),
+  total_discount: z.number(),
+  total: z.number().max(ORDER_CONFIG.MAX_ORDER_TOTAL),
   note: z
     .string()
     .max(ORDER_CONFIG.MAX_CHAR_NOTE)
     .optional(),
-});
-
-export const orderSchema = z.object({
-  id: objectIdSchema,
-  user: objectIdSchema,
-  address: objectIdSchema,
-  payment_type: z.nativeEnum(PAYMENT_TYPES),
-  lines: z
-    .array(lineItemSchema)
-    .min(1)
-    .max(20),
-  tracking_number: z.string(),
-  stripe_charge_id: z.string(),
-  currency: z.string().max(3),
-  status: z.nativeEnum(ORDER_STATUSES),
-  subtotal: z.number(),
-  shipping_fee: z.number(),
-  total_discount: z.number(),
-  total: z.number().max(ORDER_CONFIG.MAX_ORDER_TOTAL),
+  promo_coupons: z
+    .array(couponSchema.shape.id).max(ORDER_CONFIG.MAX_PROMO_COUPONS)
+    .default([]),
+  created_at: z.date(),
+  updated_at: z.date(),
 });

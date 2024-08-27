@@ -13,7 +13,7 @@ const categorySchema = new Schema<ICategory>(
     },
     name: {
       type: String,
-      max: CATEGORY_CONFIG.MAX_CHAR_NAME,
+      maxlength: CATEGORY_CONFIG.MAX_CHAR_NAME,
       required: true,
     },
     rank: {
@@ -26,7 +26,10 @@ const categorySchema = new Schema<ICategory>(
     },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 

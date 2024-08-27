@@ -1,6 +1,6 @@
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { copyObject, getListObjects } from '@/services/aws-s3.service';
-import { env, awsS3Client } from '@/config';
+import { env, awsS3Client, log } from '@/config';
 
 export const copyFolderS3 = async (
   fromBucket: string,
@@ -30,7 +30,7 @@ export const copyFolderS3 = async (
     }
 
   } catch (error) {
-    throw new Error(error);
+    throw new Error();
   }
 };
 
@@ -53,7 +53,7 @@ export const deleteFolderS3 = async (key: string) => {
         );
       }
     }
-    console.log(`Success. Folder ${key} deleted.`);
+    log.info(`AWS S3, folder ${key} deleted.`);
   } catch (err) {
     throw Error;
   }

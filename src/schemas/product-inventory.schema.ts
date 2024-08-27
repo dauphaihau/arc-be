@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import { PRODUCT_CONFIG } from '@/config/enums/product';
-import { objectIdSchema } from '@/schemas/sub/objectId.schema';
+import { objectIdSchema } from '@/schemas/utils/objectId.schema';
 
 export const productInventoryReservationSchema = z.object({
   order: objectIdSchema,
   quantity: z.number(),
-  createdOn: z.date().optional(),
+  created_at: z.date(),
 });
 
 export const productInventorySchema = z.object({
@@ -27,4 +27,6 @@ export const productInventorySchema = z.object({
     .optional(),
   variant: z.string().optional(),
   reservations: z.array(productInventoryReservationSchema),
+  created_at: z.date(),
+  updated_at: z.date(),
 });

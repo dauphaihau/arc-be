@@ -3,10 +3,10 @@ import { userValidation } from '@/validations/user.validation';
 import {
   cartValidation,
   orderValidation,
-  addressValidation
+  userAddressValidation
 } from '@/validations';
 import {
-  addressController,
+  userAddressController,
   orderController,
   cartController,
   userController
@@ -21,42 +21,42 @@ router
     validate(userValidation.updateUser),
     auth(),
     userController.updateUser
+  )
+  .get(
+    auth(),
+    userController.getCurrentUser
   );
-
-router
-  .route('/me')
-  .get(auth(), userController.me);
 
 // Address
 router
   .route('/addresses')
   .post(
-    validate(addressValidation.createAddress),
+    validate(userAddressValidation.create),
     auth(),
-    addressController.createAddress
+    userAddressController.createAddress
   )
   .get(
     auth(),
-    validate(addressValidation.getAddresses),
-    addressController.getAddresses
+    validate(userAddressValidation.getList),
+    userAddressController.getAddresses
   );
 
 router
   .route('/addresses/:id')
   .patch(
-    validate(addressValidation.updateAddress),
+    validate(userAddressValidation.update),
     auth(),
-    addressController.updateAddress
+    userAddressController.updateAddress
   )
   .delete(
-    validate(addressValidation.deleteAddress),
+    validate(userAddressValidation.delete),
     auth(),
-    addressController.deleteAddress
+    userAddressController.deleteAddress
   )
   .get(
-    validate(addressValidation.getAddress),
+    validate(userAddressValidation.getDetail),
     auth(),
-    addressController.getAddress
+    userAddressController.getAddress
   );
 
 // Cart
@@ -68,17 +68,14 @@ router
     cartController.addProduct
   )
   .patch(
-    validate(cartValidation.updateProduct),
+    validate(cartValidation.updateCart),
     auth(),
-    cartController.updateProduct
+    cartController.updateCart
   )
   .get(
+    validate(cartValidation.getCart),
     auth(),
     cartController.getCart
-  )
-  .put(
-    auth(),
-    cartController.getCartWithCoupons
   )
   .delete(
     validate(cartValidation.deleteProduct),
@@ -90,9 +87,9 @@ router
 router
   .route('/orders')
   .delete(
-    validate(orderValidation.getSummaryOrder),
+    validate(orderValidation.getOrderByCheckoutSession),
     auth(),
-    orderController.getSummaryOrder
+    orderController.getOrderByCheckoutSession
   )
   .post(
     validate(orderValidation.createOrderFromCart),
@@ -104,9 +101,6 @@ router
     auth(),
     orderController.createOrderForBuyNow
   )
-  .get(auth(), orderController.getListOrders);
-router
-  .route('/orders/:id')
-  .get(auth(), orderController.getOrder);
+  .get(auth(), orderController.getOrderShopList);
 
 export default router;

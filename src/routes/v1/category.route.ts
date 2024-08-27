@@ -1,17 +1,22 @@
 import express from 'express';
-import { categoryController, attributeController } from '@/controllers';
+import { validate } from '@/middlewares';
+import { categoryValidation } from '@/validations/category.validation';
+import { categoryController, categoryAttributeController } from '@/controllers';
 
 const router = express.Router();
 
 router
   .route('/')
   .get(
-    categoryController.getCategories
+    validate(categoryValidation.getList),
+    categoryController.getList
   )
   .delete(
+    validate(categoryValidation.getSearchCategories),
     categoryController.getSearchCategories
   )
   .post(
+    validate(categoryValidation.createCategory),
     categoryController.createRootOrSubCategory
   );
 
@@ -19,10 +24,10 @@ router
 router
   .route('/:id/attributes')
   .post(
-    attributeController.createAttribute
+    categoryAttributeController.createAttribute
   )
   .get(
-    attributeController.getAttributesByCategory
+    categoryAttributeController.getAttributesByCategory
   );
 
 export default router;

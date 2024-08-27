@@ -1,27 +1,43 @@
 import { model, Schema } from 'mongoose';
 import {
-  paymentTypes,
   orderStatuses,
-  ORDER_STATUSES, ORDER_CONFIG
+  ORDER_CONFIG, ORDER_SHIPPING_STATUSES
 } from '@/config/enums/order';
 import {
-  IOrder,
-  IOrderModel,
-  ILineItemOrder,
-  IProductInLineOrder
+  IOrderDoc,
+  IOrderModel, IOrderShopProduct, IOrder
 } from '@/interfaces/models/order';
-import { toJSON, paginate } from '@/models/plugins';
+import { toJSON } from '@/models/plugins';
 
-// define product in line Schema
-const productInLineSchema = new Schema<IProductInLineOrder>(
+const productSchema = new Schema<IOrderShopProduct>(
   {
+    product: {
+      type: Schema.Types.ObjectId,
+      ref: 'Product',
+      required: true,
+    },
     inventory: {
       type: Schema.Types.ObjectId,
+      ref: 'product_inventory',
       required: true,
+    },
+    percent_coupon: {
+      type: Schema.Types.ObjectId,
+      ref: 'Coupon',
+      default: null,
+    },
+    freeship_coupon: {
+      type: Schema.Types.ObjectId,
+      ref: 'Coupon',
+      default: null,
     },
     price: {
       type: Number,
       required: true,
+    },
+    sale_price: {
+      type: Number,
+      default: 0,
     },
     quantity: {
       type: Number,
@@ -38,65 +54,51 @@ const productInLineSchema = new Schema<IProductInLineOrder>(
   }, { _id: false }
 );
 
-// define reserve Schema
-const lineItemSchema = new Schema<ILineItemOrder>(
-  {
-    shop: {
-      type: Schema.Types.ObjectId,
-      ref: 'Shop',
-      required: true,
-    },
-    products: {
-      type: [productInLineSchema],
-      required: true,
-    },
-    note: {
-      type: String,
-      max: ORDER_CONFIG.MAX_CHAR_NOTE,
-    },
-  }, { _id: false }
-);
-
 // define Schema
-const orderSchema = new Schema<IOrder, IOrderModel>(
+const orderSchema = new Schema<IOrderDoc, IOrderModel>(
   {
+    parent: {
+      type: Schema.Types.ObjectId,
+      ref: 'Order',
+      default: null,
+    },
     user: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
-    address: {
+    user_address: {
       type: Schema.Types.ObjectId,
-      ref: 'Address',
+      ref: 'user_address',
       required: true,
     },
-    payment_type: {
-      type: String,
-      enum: paymentTypes,
-      required: true,
+    shop: {
+      type: Schema.Types.ObjectId,
+      ref: 'Shop',
     },
-    lines: {
-      type: [lineItemSchema],
-      required: true,
+    payment: {
+      type: Schema.Types.ObjectId,
+      ref: 'Payment',
     },
     tracking_number: { type: String },
     stripe_charge_id: { type: String },
-    currency: {
+    shipping_status: {
       type: String,
-      max: 3,
-      default: 'usd',
+      enum: Object.values(ORDER_SHIPPING_STATUSES),
     },
     status: {
       type: String,
       enum: orderStatuses,
-      default: ORDER_STATUSES.PENDING,
+    },
+    products: {
+      type: [productSchema],
     },
     subtotal: {
       type: Number,
       default: 0,
       required: true,
     },
-    shipping_fee: {
+    total_shipping_fee: {
       type: Number,
       default: 0,
       required: true,
@@ -104,6 +106,7 @@ const orderSchema = new Schema<IOrder, IOrderModel>(
     total_discount: {
       type: Number,
       default: 0,
+      required: true,
     },
     total: {
       type: Number,
@@ -111,14 +114,28 @@ const orderSchema = new Schema<IOrder, IOrderModel>(
       max: ORDER_CONFIG.MAX_ORDER_TOTAL,
       required: true,
     },
+    promo_coupons: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'Coupon' }],
+      validate(val: IOrder['promo_coupons']) {
+        if (val && val.length > ORDER_CONFIG.MAX_PROMO_COUPONS) {
+          throw new Error('size is invalid');
+        }
+      },
+    },
+    note: {
+      type: String,
+      maxlength: ORDER_CONFIG.MAX_CHAR_NOTE,
+    },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 
 // Plugins
 orderSchema.plugin(toJSON);
-orderSchema.plugin(paginate);
 
-export const Order: IOrderModel = model<IOrder, IOrderModel>('Order', orderSchema);
+export const Order: IOrderModel = model<IOrderDoc, IOrderModel>('Order', orderSchema);

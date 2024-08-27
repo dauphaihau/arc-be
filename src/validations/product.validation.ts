@@ -1,25 +1,32 @@
 import { z } from 'zod';
+import { booleanStringSchema } from '@/schemas/utils/boolean-string.schema';
+import { baseQueryGetListSchema } from '@/schemas/utils/common-query-params.schema';
+import { objectIdHttpSchema } from '@/schemas/utils/objectId.schema';
 import { productSchema } from '@/schemas';
-import { mixBaseQueryOptionsSchema } from '@/schemas/sub/queryOptions.schema';
 
 export const productValidation = {
   getProducts: z.object({
-    query: mixBaseQueryOptionsSchema(
-      productSchema.merge(z.object({ title: z.string() }))
-    ),
-  }),
-  getProductsByCategory: z.object({
-    query: mixBaseQueryOptionsSchema(
-      productSchema.pick({ category: true, shop: true })
-        .merge(
-          z.object({
-            title: z.string(),
-            s: z.string(),
-          })
-        )
-    ),
+    query: z.object({
+      category_id: objectIdHttpSchema,
+      title: z.string(),
+      who_made: productSchema.shape.who_made,
+      s: z.string(),
+      is_digital: booleanStringSchema,
+      order: z.union([
+        z.literal('newest'),
+        z.literal('price_desc'),
+        z.literal('price_asc'),
+      ]),
+    })
+      .merge(baseQueryGetListSchema.extend({
+        select: z.string().optional(),
+      }))
+      .strict()
+      .partial(),
   }),
   getDetailProduct: z.object({
-    params: productSchema.pick({ id: true }),
+    params: z.object({
+      product_id: productSchema.shape.id,
+    }).strict(),
   }),
 };

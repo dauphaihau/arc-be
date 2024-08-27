@@ -1,33 +1,39 @@
 import { StatusCodes } from 'http-status-codes';
-import { ClientSession } from 'mongoose';
-import { Product } from '@/models';
+import mongoose, { ClientSession } from 'mongoose';
+import { BaseResponseGetList } from '@/interfaces/request/common-query-params';
+import { log } from '@/config';
+import { IOrderDoc } from '@/interfaces/models/order';
+import { IUserDoc } from '@/interfaces/models/user';
+import {
+  GetSaleCouponByShopIdsAggregate,
+  GetListCouponsPayload, CreateCouponBody, UpdateCouponBody
+} from '@/interfaces/services/coupon';
+import { IShopDoc } from '@/interfaces/models/shop';
 import {
   COUPON_TYPES,
   COUPON_MIN_ORDER_TYPES,
   COUPON_APPLIES_TO
 } from '@/config/enums/coupon';
 import {
-  CreateCouponPayload,
   ICoupon,
-  GetCouponByCode,
-  UpdateCouponPayload, UpdateCouponShopAfterUsed, ICouponModel
+  ICouponDoc
 } from '@/interfaces/models/coupon';
-import { productService } from '@/services/product.service';
+import { Product } from '@/models';
 import { Coupon } from '@/models/coupon.model';
-import { ApiError } from '@/utils';
+import { productService } from '@/services/product.service';
+import { ApiError, pick } from '@/utils';
 
-const getCouponById = async (id: ICoupon['id']) => {
+const getById = async (id: ICoupon['id']) => {
   return Coupon.findById(id);
 };
 
-const getCouponByCode = async (filter: GetCouponByCode) => {
+const getCouponByCode = async (filter: Pick<ICoupon, 'shop' | 'code'>) => {
   return Coupon.findOne(filter);
 };
 
-const createCoupon = async (createBody: CreateCouponPayload) => {
+const create = async (createBody: CreateCouponBody) => {
   const {
     shop,
-    title,
     code,
     type,
     amount_off,
@@ -37,6 +43,7 @@ const createCoupon = async (createBody: CreateCouponPayload) => {
     min_products,
     applies_product_ids = [],
     max_uses,
+    is_auto_sale = false,
     max_uses_per_user,
     start_date,
     end_date,
@@ -63,7 +70,6 @@ const createCoupon = async (createBody: CreateCouponPayload) => {
   return Coupon.create({
     shop,
     code,
-    title,
     type,
     percent_off,
     amount_off,
@@ -73,6 +79,7 @@ const createCoupon = async (createBody: CreateCouponPayload) => {
     max_uses,
     max_uses_per_user,
     is_active,
+    is_auto_sale,
     applies_to,
     applies_product_ids,
     start_date: new Date(start_date),
@@ -80,23 +87,68 @@ const createCoupon = async (createBody: CreateCouponPayload) => {
   });
 };
 
-/**
- * Query for coupons
- * @param filter - Mongo filter
- * @param options - Query options
- * @param [options.sortBy] - Sort option in the format: sortField:(desc|asc)
- * @param [options.limit] - Maximum number of results per page (default = 10)
- * @param [options.page] - Current page (default = 1)
- * @returns {Promise<QueryResult>}
- */
+const getList = async (payload?: GetListCouponsPayload) => {
+  const matchCoupons: mongoose.PipelineStage.Match = {
+    $match: {},
+  };
 
-const queryCoupons: ICouponModel['paginate'] = async (filter, options) => {
-  const coupons = await Coupon.paginate(filter, options);
-  return coupons;
+  const limitDefault = 10;
+  const pageDefault = 1;
+  const limit = payload?.limit ? payload.limit : limitDefault;
+  const page = payload?.page ? payload.page : pageDefault;
+
+  if (payload) {
+    matchCoupons.$match = pick(payload, ['code', 'is_auto_sale']);
+
+    if (payload.shop_id) {
+      matchCoupons.$match = {
+        ...matchCoupons.$match,
+        shop: new mongoose.Types.ObjectId(payload.shop_id),
+      };
+    }
+  }
+  const couponAggregate = await Coupon.aggregate<BaseResponseGetList<ICouponDoc>>([
+    matchCoupons,
+    {
+      $facet: {
+        results: [
+          { $sort: { created_at: -1 } },
+          { $skip: (page - 1) * limit },
+          { $limit: limit },
+          {
+            $addFields: {
+              id: '$_id',
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              __v: 0,
+            },
+          },
+        ],
+        metadata: [
+          { $count: 'total_results' },
+        ],
+      },
+    },
+    { $unwind: '$metadata' },
+    {
+      $project: {
+        results: 1,
+        page: { $literal: page },
+        limit: { $literal: limit },
+        total_results: '$metadata.total_results',
+        total_pages: { $ceil: { $divide: ['$metadata.total_results', limit] } },
+      },
+    },
+  ]);
+  log.debug('coupon-aggregate %o', couponAggregate);
+  return couponAggregate[0];
 };
 
-const deleteCouponById = async (id: ICoupon['id']) => {
-  const coupon = await getCouponById(id);
+const deleteCouponById = async (id: ICouponDoc['id']) => {
+  const coupon = await getById(id);
   if (!coupon) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Coupon not found');
   }
@@ -104,13 +156,13 @@ const deleteCouponById = async (id: ICoupon['id']) => {
 };
 
 const updateCoupon = async (
-  couponId: ICoupon['id'],
-  updateBody: UpdateCouponPayload
+  couponId: ICouponDoc['id'],
+  updateBody: UpdateCouponBody
 ) => {
-  const coupon = await getCouponById(couponId);
+  const coupon = await getById(couponId);
   if (!coupon) throw new ApiError(StatusCodes.NOT_FOUND, 'Coupon not found');
 
-  // coupon started
+  // coupon is active
   if (
     coupon.start_date <= new Date() &&
     (Object.keys(updateBody).length !== 1 || !updateBody?.end_date)
@@ -145,28 +197,165 @@ const updateCoupon = async (
   return coupon;
 };
 
-const updateCouponsShopAfterUsed = async (
-  { shop, user, codes }: UpdateCouponShopAfterUsed,
+const getSaleCouponByShopIds = async (shopIds: IShopDoc['id'][]) => {
+  const shopCoupons = await Coupon.aggregate<GetSaleCouponByShopIdsAggregate>([
+    {
+      $match: {
+        shop: {
+          $in: shopIds.map(id => new mongoose.Types.ObjectId(id)),
+        },
+        is_auto_sale: true,
+        is_active: true,
+        $or: [
+          { type : COUPON_TYPES.PERCENTAGE },
+          { type : COUPON_TYPES.FREE_SHIP },
+        ],
+        start_date: {
+          $lt: new Date(),
+        },
+        end_date: {
+          $gt: new Date(),
+        },
+        // debug
+        // type : COUPON_TYPES.FREE_SHIP,
+      },
+    },
+    {
+      $addFields: {
+        id: {
+          $toString: '$_id',
+        },
+      },
+    },
+    {
+      $group: {
+        _id: '$shop',
+        coupons: { $push: '$$ROOT' },
+      },
+    },
+    {
+      $sort: {
+        percent_off: -1,
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        coupons: {
+          id: 1,
+          type: 1,
+          applies_product_ids: 1,
+          applies_to: 1,
+          percent_off: 1,
+          start_date: 1,
+          end_date: 1,
+        },
+      },
+    },
+  ]);
+  // log.debug('sale coupons aggregate %o', shopCoupons);
+  return shopCoupons;
+};
+
+const reserveQuantity = async (
+  payload: { coupon_id: ICouponDoc['id']; order_id: IOrderDoc['id'], user_id: IUserDoc['id'] },
   session: ClientSession
 ) => {
+  const { coupon_id, order_id, user_id } = payload;
+
   const filter = {
-    shop,
-    code: { $in: codes },
+    _id: new mongoose.Types.ObjectId(coupon_id),
   };
   const update = {
-    $set: { users_used: user },
-    $inc: { uses_count: 1 },
+    $inc: {
+      uses_count: 1,
+    },
+    $push: {
+      reservations: {
+        order: order_id,
+      },
+      users_used: user_id,
+    },
   };
-  const options = { upsert: false, session };
-  await Coupon.updateMany(filter, update, options);
+  const options = { upsert: false, new: true, session };
+
+  return Coupon.updateOne(filter, update, options);
+};
+
+const clearCouponsReversedByOrder = async (
+  order: IOrderDoc,
+  orderShops: IOrderDoc[],
+  session: ClientSession
+) => {
+  const promises: unknown[] = [];
+
+  orderShops.forEach((orderShop) => {
+    orderShop.products.forEach((prod) => {
+
+      if (prod.percent_coupon) {
+        promises.push(
+          Coupon.findOneAndUpdate(
+            { _id: prod.percent_coupon },
+            {
+              $pull: {
+                reservations: { order: order.id },
+              },
+            },
+            { session }
+          )
+        );
+      }
+
+      if (prod.freeship_coupon) {
+        promises.push(
+          Coupon.findOneAndUpdate(
+            { _id: prod.freeship_coupon },
+            {
+              $pull: {
+                reservations: { order: order.id },
+              },
+            },
+            { session }
+          )
+        );
+      }
+
+    });
+    if (orderShop.promo_coupons) {
+      orderShop.promo_coupons.forEach((couponId) => {
+        promises.push(
+          Coupon.findOneAndUpdate(
+            { _id: couponId },
+            {
+              $pull: {
+                reservations: { order: order.id },
+              },
+            },
+            { session }
+          )
+        );
+      });
+    }
+  });
+
+  const results = await Promise.allSettled(promises);
+  results.forEach(rel => {
+    if (rel.status === 'rejected') {
+      throw new ApiError(
+        StatusCodes.INTERNAL_SERVER_ERROR, 'error clear coupon reserved'
+      );
+    }
+  });
 };
 
 export const couponService = {
-  createCoupon,
-  queryCoupons,
+  create,
+  getList,
   deleteCouponById,
-  getCouponById,
+  getById,
   getCouponByCode,
   updateCoupon,
-  updateCouponsShopAfterUsed,
+  getSaleCouponByShopIds,
+  reserveQuantity,
+  clearCouponsReversedByOrder,
 };

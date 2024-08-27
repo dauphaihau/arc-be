@@ -1,20 +1,16 @@
 import { StatusCodes } from 'http-status-codes';
 import { log } from '@/config';
-import { IBodyRequest } from '@/interfaces/common/request';
-import { CreateShopPayload } from '@/interfaces/models/shop';
-import { shopService, memberService, userService } from '@/services';
-import { MEMBER_ROLES } from '@/config/enums/member';
+import { RequestCreateShop } from '@/interfaces/models/shop';
+import { shopService, shopMemberService, userService } from '@/services';
+import { SHOP_MEMBER_ROLES } from '@/config/enums/shop';
 import {
   catchAsync, transactionWrapper, ApiError, pick
 } from '@/utils';
 import {
-  Shop, Member, Product, Coupon, ProductInventory
+  Shop, ShopMember, Product, Coupon, ProductInventory
 } from '@/models';
 
-const createShop = catchAsync(async (
-  req: IBodyRequest<CreateShopPayload>,
-  res
-) => {
+const createShop = catchAsync(async (req: RequestCreateShop, res) => {
   await transactionWrapper(async (session) => {
     const userId = req.user.id;
 
@@ -24,20 +20,20 @@ const createShop = catchAsync(async (
     }
 
     // Create Shop
-    const shop = await shopService.createShop({
+    const shop = await shopService.create({
       user: userId,
       shop_name: req.body.shop_name,
     }, session);
 
     // Init owner member shop
-    const member = await memberService.addMember({
+    const member = await shopMemberService.addMember({
       shop: shop.id,
       user: userId,
-      role: MEMBER_ROLES.OWNER,
+      role: SHOP_MEMBER_ROLES.OWNER,
     }, session);
 
     // Attach shop to user
-    const updatedUser = await userService.updateUserById(userId, {
+    const updatedUser = await userService.updateById(userId, {
       shop: shop.id,
     }, session);
 
@@ -78,7 +74,7 @@ const deleteShop = catchAsync(async (req, res) => {
     if (!isDeletedCoupons.deletedCount) throw new Error();
 
     // Remove all members
-    const isDeletedMembers = await Member.deleteMany({ shop_id: shop.id }, { session });
+    const isDeletedMembers = await ShopMember.deleteMany({ shop_id: shop.id }, { session });
     if (!isDeletedMembers.deletedCount) throw new Error();
 
     // Remove shop
@@ -87,15 +83,18 @@ const deleteShop = catchAsync(async (req, res) => {
   });
 });
 
-const getListShops = catchAsync(async (req, res) => {
-  const filter = pick(req.query, ['shop_name']);
-  const options = pick(req.query, ['sortBy', 'limit', 'page']);
-  const result = await shopService.queryShops(filter, options);
-  res.send(result);
-});
+// const getListShops = catchAsync(async (
+//   req,
+//   res
+// ) => {
+//   const filter = pick(req.query, ['shop_name']);
+//   const options = pick(req.query, ['sortBy', 'limit', 'page']);
+//   const result = await Shop.paginate(filter, options);
+//   res.send(result);
+// });
 
 export const shopController = {
   createShop,
-  getListShops,
+  // getListShops,
   deleteShop,
 };

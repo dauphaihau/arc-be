@@ -10,9 +10,10 @@ import {
 } from '@/config/enums/product';
 import {
   IProductModel,
-  IProduct,
+  IProductDoc,
   IProductImage,
-  IProductAttribute
+  IProductAttribute,
+  IProduct
 } from '@/interfaces/models/product';
 import { toJSON, paginate } from '@/models/plugins';
 
@@ -35,13 +36,16 @@ const imageSchema = new Schema<IProductImage>(
       default: 1,
     },
   }, {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 imageSchema.plugin(toJSON);
 
 // define attribute Schema
-const attributeSchema = new Schema<IProductAttribute>(
+const productAttributeSchema = new Schema<IProductAttribute>(
   {
     attribute: {
       type: Schema.Types.ObjectId,
@@ -51,12 +55,13 @@ const attributeSchema = new Schema<IProductAttribute>(
     selected: {
       type: String,
     },
-  }
+  },
+  { _id: false }
 );
-attributeSchema.plugin(toJSON);
+productAttributeSchema.plugin(toJSON);
 
 // define product Schema
-const productSchema = new Schema<IProduct, IProductModel>(
+const productSchema = new Schema<IProductDoc, IProductModel>(
   {
     shop: {
       type: Schema.Types.ObjectId,
@@ -72,23 +77,27 @@ const productSchema = new Schema<IProduct, IProductModel>(
       ref: 'product_inventory',
       default: null,
     },
+    shipping: {
+      type: Schema.Types.ObjectId,
+      ref: 'product_shipping',
+      default: null,
+    },
     variant_type: {
       type: String,
       enum: Object.values(PRODUCT_VARIANT_TYPES),
-      default: PRODUCT_VARIANT_TYPES.NONE,
     },
     variant_group_name: {
       type: String,
-      max: PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME,
-      required: function (this: IProduct) {
+      maxlength: PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME,
+      required: function (this: IProductDoc) {
         return this.variant_type === PRODUCT_VARIANT_TYPES.SINGLE ||
           this.variant_type === PRODUCT_VARIANT_TYPES.COMBINE;
       },
     },
     variant_sub_group_name: {
       type: String,
-      max: PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME,
-      required: function (this: IProduct) {
+      maxlength: PRODUCT_CONFIG.MAX_CHAR_VARIANT_GROUP_NAME,
+      required: function (this: IProductDoc) {
         return this.variant_type === PRODUCT_VARIANT_TYPES.COMBINE;
       },
     },
@@ -97,23 +106,23 @@ const productSchema = new Schema<IProduct, IProductModel>(
       default: [],
     },
     attributes: {
-      type: [attributeSchema],
+      type: [productAttributeSchema],
+      default: [],
     },
     title: {
       type: String,
       min: PRODUCT_CONFIG.MIN_CHAR_TITLE,
-      max: PRODUCT_CONFIG.MAX_CHAR_TITLE,
+      maxlength: PRODUCT_CONFIG.MAX_CHAR_TITLE,
       required: true,
     },
     description: {
       type: String,
       min: PRODUCT_CONFIG.MIN_CHAR_DESCRIPTION,
-      max: PRODUCT_CONFIG.MAX_CHAR_DESCRIPTION,
+      maxlength: PRODUCT_CONFIG.MAX_CHAR_DESCRIPTION,
       required: true,
     },
     views: {
       type: Number,
-      required: true,
       default: 0,
     },
     slug: {
@@ -126,8 +135,17 @@ const productSchema = new Schema<IProduct, IProductModel>(
     },
     tags: {
       type: [String],
-      max: PRODUCT_CONFIG.MAX_TAGS,
       default: [],
+      validate(val: IProduct['tags']) {
+        if (val) {
+          if (val.length > PRODUCT_CONFIG.MAX_TAGS) {
+            throw new Error('Cannot have more than ten tags');
+          }
+          if (val.some((tag) => tag.length > PRODUCT_CONFIG.MAX_CHAR_TAG)) {
+            throw new Error('exceed max chars of tag');
+          }
+        }
+      },
     },
     state: {
       type: String,
@@ -149,12 +167,9 @@ const productSchema = new Schema<IProduct, IProductModel>(
     },
     images: {
       type: [imageSchema],
-      default: [],
-      min: PRODUCT_CONFIG.MIN_IMAGES,
-      max: PRODUCT_CONFIG.MAX_IMAGES,
-      validate(value: object[]) {
-        if (value.length > PRODUCT_CONFIG.MAX_IMAGES) {
-          throw new Error(`exceeds the limit of ${PRODUCT_CONFIG.MAX_IMAGES}`);
+      validate(val: IProduct['images']) {
+        if (val.length < PRODUCT_CONFIG.MIN_IMAGES || val.length > PRODUCT_CONFIG.MAX_IMAGES) {
+          throw new Error('size is invalid');
         }
       },
       required: true,
@@ -168,7 +183,10 @@ const productSchema = new Schema<IProduct, IProductModel>(
     },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 
@@ -200,4 +218,4 @@ function transformDoc(doc: Document) {
   delete doc.__v;
 }
 
-export const Product: IProductModel = model<IProduct, IProductModel>('Product', productSchema);
+export const Product: IProductModel = model<IProductDoc, IProductModel>('Product', productSchema);

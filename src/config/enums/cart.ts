@@ -1,3 +1,3 @@
 export const CART_CONFIG = {
-  MAX_ITEMS: 20,
+  MAX_SHOP_CART: 20,
 };

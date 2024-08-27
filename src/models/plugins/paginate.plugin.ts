@@ -2,12 +2,13 @@ import { z } from 'zod';
 import { FilterQuery, Schema } from 'mongoose';
 import { Override } from '@/interfaces/utils';
 import {
-  baseQueryOptionsSchema,
-  queryResultSchema
-} from '@/schemas/sub/queryOptions.schema';
+  baseQueryGetListSchema,
+  baseResponseGetListSchema
+} from '@/schemas/utils/paginate.schema';
 
-export type IBaseQueryOptions = z.infer<typeof baseQueryOptionsSchema>;
-export type IQueryResultTest = z.infer<typeof queryResultSchema>;
+export type IBaseQueryOptions = z.infer<typeof baseQueryGetListSchema>;
+export type IQueryResultTest = z.infer<typeof baseResponseGetListSchema>;
+
 export type IQueryResult<T> = Override<IQueryResultTest, {
   results: T[]
 }>;
@@ -67,7 +68,8 @@ export const paginate = (schema: Schema) => {
     const countPromise = this.countDocuments(filter).exec();
     let docsPromise = this.find(filter).sort(sort).skip(skip).limit(limit).select(select);
 
-    if (options.populate) {
+    // if (options.populate) {
+    if (typeof options.populate === 'string') {
       options.populate.split(',').forEach((populateOption) => {
         if (populateOption.includes('/')) {
           const [root, subs] = populateOption.split('/');
@@ -91,21 +93,23 @@ export const paginate = (schema: Schema) => {
             .reduce((a, b) => ({ path: b, populate: a }))
         );
       });
-
+    }
+    else if (typeof options.populate === 'object') {
+      docsPromise = docsPromise.populate(options.populate);
     }
 
     docsPromise = docsPromise.lean({ virtual: true }).exec();
     // docsPromise = docsPromise.exec();
 
     return Promise.all([countPromise, docsPromise]).then((values) => {
-      const [totalResults, results] = values;
-      const totalPages = Math.ceil(totalResults / limit);
+      const [total_results, results] = values;
+      const total_pages = Math.ceil(total_results / limit);
       const result = {
         results,
         page,
         limit,
-        totalPages,
-        totalResults,
+        total_pages,
+        total_results,
       };
       // eslint-disable-next-line promise/no-return-wrap
       return Promise.resolve(result);

@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import authRoute from './auth.route';
 import docsRoute from './docs.route';
-import shopRoute from './shop.route';
+import shopsRoute from './shops.route';
 import uploadRoute from './upload.route';
-import cartRoute from './cart.route';
 import userRoute from './user.route';
 import productRoute from './product.route';
 import categoryRoute from './category.route';
@@ -17,20 +16,12 @@ const defaultRoutes = [
     route: authRoute,
   },
   {
-    path: '/shops',
-    route: shopRoute,
-  },
-  {
-    path: '/upload',
-    route: uploadRoute,
-  },
-  {
-    path: '/cart',
-    route: cartRoute,
-  },
-  {
     path: '/user',
     route: userRoute,
+  },
+  {
+    path: '/shops',
+    route: shopsRoute,
   },
   {
     path: '/products',
@@ -39,6 +30,14 @@ const defaultRoutes = [
   {
     path: '/categories',
     route: categoryRoute,
+  },
+  // {
+  //   path: '/cart',
+  //   route: cartRoute,
+  // },
+  {
+    path: '/upload',
+    route: uploadRoute,
   },
 ];
 

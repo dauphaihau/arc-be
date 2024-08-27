@@ -1,17 +1,16 @@
-import { ClientSession, ObjectId } from 'mongoose';
+import httpStatus from 'http-status-codes';
+import { ClientSession } from 'mongoose';
 import jwt from 'jsonwebtoken';
 import moment from 'moment';
+import { ApiError } from '@/utils';
 import { TOKEN_TYPES } from '@/config/enums/token';
 import { env, log } from '@/config';
 import { userService } from '@/services';
 import { Token } from '@/models';
-import { IUser } from '@/interfaces/models/user';
+import { IUserDoc } from '@/interfaces/models/user';
 
-/**
- * Generate token
- */
 const generateToken = (
-  userId: ObjectId,
+  userId: IUserDoc['id'],
   expires: moment.Moment,
   type: string,
   secret = env.jwt.secret
@@ -30,7 +29,7 @@ const generateToken = (
  */
 const saveToken = async (
   token: string,
-  userId: ObjectId,
+  userId: IUserDoc['id'],
   expires: moment.Moment,
   type: string,
   blacklisted = false,
@@ -40,7 +39,7 @@ const saveToken = async (
     [
       {
         token,
-        user_id: userId,
+        user: userId,
         expires: expires.toDate(),
         type,
         blacklisted,
@@ -59,7 +58,7 @@ const verifyToken = async (token: string, type: string) => {
     const tokenDoc = await Token.findOne({
       token,
       type,
-      user_id: payload.sub,
+      user: payload.sub,
       blacklisted: false,
     });
     if (!tokenDoc) {
@@ -68,14 +67,14 @@ const verifyToken = async (token: string, type: string) => {
     return tokenDoc;
   }
   catch (error) {
-    throw new Error('Token is invalid');
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Token is invalid');
   }
 };
 
 /**
  * Generate auth tokens
  */
-const generateAuthTokens = async (user: IUser, session?: ClientSession) => {
+const generateAuthTokens = async (user: IUserDoc, session?: ClientSession) => {
   const accessTokenExpires = moment().add(env.jwt.accessExpirationMinutes, 'minutes');
   const accessToken = generateToken(user.id, accessTokenExpires, TOKEN_TYPES.ACCESS);
 
@@ -99,7 +98,7 @@ const generateAuthTokens = async (user: IUser, session?: ClientSession) => {
  * Generate reset password token
  */
 const generateResetPasswordToken = async (email: string) => {
-  const user = await userService.getUserByEmail(email);
+  const user = await userService.getByEmail(email);
   if (!user) {
     log.error('No users found with this email');
     // throw new ApiError(StatusCodes.NOT_FOUND, 'No users found with this email');
@@ -114,7 +113,7 @@ const generateResetPasswordToken = async (email: string) => {
 /**
  * Generate verify email token
  */
-const generateVerifyEmailToken = async (user: IUser) => {
+const generateVerifyEmailToken = async (user: IUserDoc) => {
   const expires = moment().add(env.jwt.verifyEmailExpirationMinutes, 'minutes');
   const verifyEmailToken = generateToken(user.id, expires, TOKEN_TYPES.VERIFY_EMAIL);
   await saveToken(verifyEmailToken, user.id, expires, TOKEN_TYPES.VERIFY_EMAIL);

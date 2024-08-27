@@ -1,17 +1,42 @@
 import { StatusCodes } from 'http-status-codes';
 import { Schema, model } from 'mongoose';
-import { PRODUCT_CONFIG } from '@/config/enums/product';
-import { ICoupon, ICouponModel } from '@/interfaces/models/coupon';
-import { toJSON, paginate } from '@/models/plugins';
-import { ApiError } from '@/utils';
 import {
   COUPON_TYPES,
   COUPON_APPLIES_TO,
-  COUPON_MIN_ORDER_TYPES
+  COUPON_MIN_ORDER_TYPES,
+  COUPON_CONFIG
 } from '@/config/enums/coupon';
+import { PRODUCT_CONFIG } from '@/config/enums/product';
+import {
+  ICouponDoc,
+  ICouponModel,
+  CouponReservation
+} from '@/interfaces/models/coupon';
+import { toJSON, paginate } from '@/models/plugins';
+import { ApiError } from '@/utils';
+
+const reserveSchema = new Schema<CouponReservation>(
+  {
+    order: {
+      type: Schema.Types.ObjectId,
+      ref: 'order',
+    },
+    // quantity: {
+    //   type: Number,
+    //   default: 0,
+    // },
+  },
+  {
+    _id: false,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: false,
+    },
+  }
+);
 
 // define Schema
-const couponSchema = new Schema<ICoupon, ICouponModel>(
+const couponSchema = new Schema<ICouponDoc, ICouponModel>(
   {
     shop: {
       type: Schema.Types.ObjectId,
@@ -21,14 +46,8 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
     code: {
       type: String,
       immutable: true,
-      min: 6,
-      max: 12,
-      required: true,
-    },
-    title: {
-      type: String,
-      min: 2,
-      max: 50,
+      minlength: COUPON_CONFIG.MIN_CHAR_CODE,
+      maxlength: COUPON_CONFIG.MAX_CHAR_CODE,
       required: true,
     },
     applies_to: {
@@ -49,15 +68,15 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
       type: Number,
       default: 0,
       max: PRODUCT_CONFIG.MAX_PRICE - 1,
-      required: function (this: ICoupon) {
+      required: function (this: ICouponDoc) {
         return this.type === COUPON_TYPES.FIXED_AMOUNT;
       },
     },
     percent_off: {
       type: Number,
       default: 0,
-      max: 99,
-      required: function (this: ICoupon) {
+      max: COUPON_CONFIG.MAX_PERCENTAGE_OFF,
+      required: function (this: ICouponDoc) {
         return this.type === COUPON_TYPES.PERCENTAGE;
       },
     },
@@ -71,12 +90,12 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
     },
     max_uses: {
       type: Number,
-      max: PRODUCT_CONFIG.MAX_STOCK,
+      max: COUPON_CONFIG.MAX_USES,
       required: true,
     },
     max_uses_per_user: {
       type: Number,
-      max: 5,
+      max: COUPON_CONFIG.MAX_USES_PER_USER,
       immutable: true,
       required: true,
     },
@@ -97,22 +116,35 @@ const couponSchema = new Schema<ICoupon, ICouponModel>(
       type: Number,
       default: 0,
       // max: PRODUCT_CONFIG.MAX_PRICE,
-      required: function (this: ICoupon) {
+      required: function (this: ICouponDoc) {
         return this.min_order_type === COUPON_MIN_ORDER_TYPES.ORDER_TOTAL;
       },
     },
     min_products: {
       type: Number,
       default: 0,
-      required: function (this: ICoupon) {
+      required: function (this: ICouponDoc) {
         return this.min_order_type === COUPON_MIN_ORDER_TYPES.NUMBER_OF_PRODUCTS;
       },
     },
-    is_active: { type: Boolean, default: false },
-    is_auto_sale: { type: Boolean, default: false },
+    is_active: {
+      type: Boolean,
+      default: true,
+    },
+    is_auto_sale: {
+      type: Boolean,
+      default: false,
+    },
+    reservations: {
+      type: [reserveSchema],
+      default: [],
+    },
   },
   {
-    timestamps: true,
+    timestamps: {
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
   }
 );
 
@@ -150,4 +182,4 @@ couponSchema.pre('save', function (next) {
   next();
 });
 
-export const Coupon: ICouponModel = model<ICoupon, ICouponModel>('Coupon', couponSchema);
+export const Coupon: ICouponModel = model<ICouponDoc, ICouponModel>('Coupon', couponSchema);

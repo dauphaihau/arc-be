@@ -40,11 +40,11 @@ router.post(
   authController.resetPassword
 );
 
-router.post(
-  '/send-verification-email',
-  auth(),
-  authController.sendVerificationEmail
-);
+// router.post(
+//   '/send-verification-email',
+//   auth(),
+//   authController.sendVerificationEmail
+// );
 
 router.post(
   '/verify-email',

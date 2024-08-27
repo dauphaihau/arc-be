@@ -6,7 +6,13 @@ import {
   COUPON_MIN_ORDER_TYPES,
   COUPON_CONFIG
 } from '@/config/enums/coupon';
-import { objectIdSchema } from '@/schemas/sub/objectId.schema';
+import { objectIdSchema } from '@/schemas/utils/objectId.schema';
+
+export const couponReservationSchema = z.object({
+  order: objectIdSchema,
+  // quantity: z.number(),
+  created_at: z.date(),
+});
 
 export const couponSchema = z.object({
   id: objectIdSchema,
@@ -15,31 +21,24 @@ export const couponSchema = z.object({
     .string()
     .min(COUPON_CONFIG.MIN_CHAR_CODE)
     .max(COUPON_CONFIG.MAX_CHAR_CODE),
-  title: z
-    .string()
-    .min(COUPON_CONFIG.MIN_CHAR_TITLE)
-    .max(COUPON_CONFIG.MAX_CHAR_TITLE),
-  type: z
-    .nativeEnum(COUPON_TYPES)
-    .optional(),
+  type: z.nativeEnum(COUPON_TYPES),
   amount_off: z
     .number()
     .min(1, 'must be large than 1')
-    .max(PRODUCT_CONFIG.MAX_PRICE - 1)
-    .optional(),
+    .max(PRODUCT_CONFIG.MAX_PRICE - 1),
   percent_off: z
     .number()
     .min(1, 'must be large than 1')
-    .max(99, 'must be less than 99')
-    .optional(),
+    .max(COUPON_CONFIG.MAX_PERCENTAGE_OFF, `must be less than ${COUPON_CONFIG.MAX_PERCENTAGE_OFF}`)
+    .default(0),
   applies_to: z
     .nativeEnum(COUPON_APPLIES_TO)
     .default(COUPON_APPLIES_TO.ALL),
   applies_product_ids: z
     .array(objectIdSchema)
     .min(1)
-    .default([])
-    .optional(),
+    .default([]),
+  // .optional(),
   users_used: z
     .array(objectIdSchema)
     .optional(),
@@ -51,35 +50,35 @@ export const couponSchema = z.object({
   max_uses: z
     .number()
     .min(1)
-    .max(PRODUCT_CONFIG.MAX_STOCK,
-      `the maximum number cannot exceed ${PRODUCT_CONFIG.MAX_STOCK}`),
+    .max(COUPON_CONFIG.MAX_USES,
+      `the maximum number cannot exceed ${COUPON_CONFIG.MAX_USES}`),
   min_order_type: z
     .nativeEnum(COUPON_MIN_ORDER_TYPES)
     .default(COUPON_MIN_ORDER_TYPES.NONE),
   min_order_value: z
     .number()
-    // .max(PRODUCT_CONFIG.MAX_PRICE)
-    .default(0)
-    .optional(),
+    .default(0),
   min_products: z
     .number()
-    .min(1)
-    .optional(),
+    .min(1),
   start_date: z
     .coerce
-    .date()
-    .refine((val) => new Date(val) >= new Date(), 'must be greater than current date'),
+    .date(),
   end_date: z
     .coerce
-    .date()
-    .refine((val) => new Date(val) >= new Date(), 'must be large than current date'),
+    .date(),
   uses_count: z
     .number()
-    .default(0),
+    .default(0)
+    .optional(),
   is_active: z
     .boolean()
-    .default(false),
+    .default(false)
+    .optional(),
   is_auto_sale: z
     .boolean()
     .default(false),
+  reservations: z.array(couponReservationSchema).default([]).optional(),
+  created_at: z.date(),
+  updated_at: z.date(),
 });
