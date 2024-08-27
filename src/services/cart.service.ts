@@ -789,7 +789,8 @@ async function applyAdditionsInfoShopCart(
         },
       });
       if (coupons.length !== promo_codes.length) {
-        throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'Some coupon not found');
+        const codeInvalid = promo_codes[coupons.length + 1] || promo_codes[0];
+        throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, `Coupon code ${codeInvalid} is invalid`);
       }
 
       if (
@@ -851,6 +852,21 @@ async function applyAdditionsInfoShopCart(
             StatusCodes.BAD_REQUEST,
             `User has reach limit use coupon ${coupon.code}`
           );
+        }
+        if (coupon.applies_to === COUPON_APPLIES_TO.SPECIFIC) {
+          const appliesProductIdsSet = new Set(coupon.applies_product_ids.map(p => p.toString()));
+          const invalidTitleProducts: string[] = [];
+          shopCart.products.forEach((prod) => {
+            if (prod.is_select_order && !appliesProductIdsSet.has(prod.product.id.toString())) {
+              invalidTitleProducts.push(prod.product.title);
+            }
+          });
+          if (invalidTitleProducts.length > 0) {
+            throw new ApiError(
+              StatusCodes.UNPROCESSABLE_ENTITY,
+              `Coupon code ${coupon.code} does not apply to products: ${invalidTitleProducts.join(', ')}`
+            );
+          }
         }
 
         switch (coupon.type) {

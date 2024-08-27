@@ -8,7 +8,7 @@ export const productValidation = {
   getProducts: z.object({
     query: z.object({
       category_id: objectIdHttpSchema,
-      title: productSchema.shape.title,
+      title: z.string(),
       who_made: productSchema.shape.who_made,
       s: z.string(),
       is_digital: booleanStringSchema,
